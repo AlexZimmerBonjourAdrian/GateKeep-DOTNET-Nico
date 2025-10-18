@@ -1,127 +1,206 @@
-param(
-    [int]$Port = 4200,
-    [switch]$Open
-)
+# Script para levantar el frontend de GateKeep
+# Autor: Sistema automatizado
+# Fecha: $(Get-Date -Format "yyyy-MM-dd")
 
-Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
+Write-Host "===============================================" -ForegroundColor Cyan
+Write-Host "    GATEKEEP FRONTEND - SCRIPT DE INICIO" -ForegroundColor Cyan
+Write-Host "===============================================" -ForegroundColor Cyan
+Write-Host ""
 
-function Write-Info($msg) { Write-Host "[INFO] $msg" -ForegroundColor Cyan }
-function Write-Warn($msg) { Write-Host "[WARN] $msg" -ForegroundColor Yellow }
-function Write-Err($msg)  { Write-Host "[ERROR] $msg" -ForegroundColor Red }
-
-function Test-Command {
-    param([Parameter(Mandatory=$true)][string]$Name)
-    $null -ne (Get-Command $Name -ErrorAction SilentlyContinue)
-}
-
-function Get-NodeVersionMajorMinor {
+# Funcion para verificar si Node.js esta instalado
+function Test-NodeJS {
     try {
-        $raw = (& node --version).Trim()  # e.g. v20.11.1
-        if ($raw -match '^v(\d+)\.(\d+)\.(\d+)$') {
-            return @{ Major = [int]$Matches[1]; Minor = [int]$Matches[2]; Patch = [int]$Matches[3]; Raw = $raw }
+        $nodeVersion = node --version 2>$null
+        if ($nodeVersion) {
+            Write-Host "OK Node.js detectado: $nodeVersion" -ForegroundColor Green
+            return $true
         }
-        return $null
-    } catch {
-        return $null
+    }
+    catch {
+        Write-Host "ERROR Node.js no esta instalado o no esta en el PATH" -ForegroundColor Red
+        return $false
     }
 }
 
-function Test-PortInUse {
-    param([int]$CheckPort)
+# Funcion para verificar si npm esta instalado
+function Test-NPM {
     try {
-        $conn = Get-NetTCPConnection -State Listen -LocalPort $CheckPort -ErrorAction SilentlyContinue
-        if ($null -ne $conn) { return $true }
-    } catch {
-        # Fallback a netstat si Get-NetTCPConnection no está disponible
-        $lines = & netstat -ano | Select-String -Pattern ":$CheckPort\s+LISTENING"
-        if ($lines) { return $true }
+        $npmVersion = npm --version 2>$null
+        if ($npmVersion) {
+            Write-Host "OK npm detectado: v$npmVersion" -ForegroundColor Green
+            return $true
+        }
     }
-    return $false
+    catch {
+        Write-Host "ERROR npm no esta instalado o no esta en el PATH" -ForegroundColor Red
+        return $false
+    }
 }
 
-function Find-FreePort {
-    param([int]$StartPort)
-    $p = [Math]::Max(1024, $StartPort)
-    while (Test-PortInUse -CheckPort $p) { $p++ }
-    return $p
+# Funcion para verificar dependencias
+function Test-Dependencies {
+    Write-Host "Verificando dependencias..." -ForegroundColor Yellow
+    
+    if (Test-Path "package.json") {
+        Write-Host "OK package.json encontrado" -ForegroundColor Green
+    } else {
+        Write-Host "ERROR package.json no encontrado" -ForegroundColor Red
+        return $false
+    }
+    
+    if (Test-Path "node_modules") {
+        Write-Host "OK node_modules encontrado" -ForegroundColor Green
+    } else {
+        Write-Host "WARNING node_modules no encontrado - ejecutando npm install..." -ForegroundColor Yellow
+        npm install
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "ERROR al instalar dependencias" -ForegroundColor Red
+            return $false
+        }
+    }
+    
+    # Verificar dependencias criticas
+    $criticalDeps = @("next", "react", "primereact")
+    foreach ($dep in $criticalDeps) {
+        if (Test-Path "node_modules\$dep") {
+            Write-Host "OK $dep instalado" -ForegroundColor Green
+        } else {
+            Write-Host "ERROR $dep no encontrado" -ForegroundColor Red
+            return $false
+        }
+    }
+    
+    return $true
 }
 
-# Cambiar al directorio del script (raíz del frontend)
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-Set-Location $scriptDir
-
-if (-not (Test-Path -Path './package.json')) {
-    Write-Err 'No se encontró package.json. Ejecuta este script dentro de la carpeta frontend.'
-    exit 1
+# Funcion para verificar configuracion de Next.js
+function Test-NextJSConfig {
+    Write-Host "Verificando configuracion de Next.js..." -ForegroundColor Yellow
+    
+    if (Test-Path "next.config.js") {
+        Write-Host "OK next.config.js encontrado" -ForegroundColor Green
+    } else {
+        Write-Host "ERROR next.config.js no encontrado" -ForegroundColor Red
+        return $false
+    }
+    
+    if (Test-Path "app") {
+        Write-Host "OK Directorio app encontrado" -ForegroundColor Green
+    } else {
+        Write-Host "ERROR Directorio app no encontrado" -ForegroundColor Red
+        return $false
+    }
+    
+    if (Test-Path "app/layout.js") {
+        Write-Host "OK app/layout.js encontrado" -ForegroundColor Green
+    } else {
+        Write-Host "ERROR app/layout.js no encontrado" -ForegroundColor Red
+        return $false
+    }
+    
+    if (Test-Path "app/page.js") {
+        Write-Host "OK app/page.js encontrado" -ForegroundColor Green
+    } else {
+        Write-Host "ERROR app/page.js no encontrado" -ForegroundColor Red
+        return $false
+    }
+    
+    return $true
 }
 
-Write-Info 'Validando dependencias...'
-
-if (-not (Test-Command -Name 'node')) {
-    Write-Err 'Node.js no está instalado o no está en PATH. Instala Node 18+ (recomendado 20 LTS).'
-    exit 1
+# Funcion para limpiar procesos anteriores
+function Clear-PreviousProcesses {
+    Write-Host "Limpiando procesos anteriores..." -ForegroundColor Yellow
+    
+    # Buscar procesos de Node.js que puedan estar usando el puerto 3000
+    $processes = Get-Process -Name "node" -ErrorAction SilentlyContinue
+    if ($processes) {
+        foreach ($process in $processes) {
+            try {
+                $process.Kill()
+                Write-Host "OK Proceso Node.js terminado (PID: $($process.Id))" -ForegroundColor Green
+            }
+            catch {
+                Write-Host "WARNING No se pudo terminar el proceso (PID: $($process.Id))" -ForegroundColor Yellow
+            }
+        }
+    }
+    
+    # Esperar un momento para que los puertos se liberen
+    Start-Sleep -Seconds 2
 }
 
-if (-not (Test-Command -Name 'npm')) {
-    Write-Err 'npm no está instalado o no está en PATH.'
-    exit 1
+# Funcion principal
+function Start-Frontend {
+    Write-Host "Iniciando servidor de desarrollo..." -ForegroundColor Yellow
+    Write-Host ""
+    
+    # Mostrar informacion del proyecto
+    Write-Host "Informacion del proyecto:" -ForegroundColor Cyan
+    Write-Host "- Framework: Next.js 15" -ForegroundColor White
+    Write-Host "- UI Library: PrimeReact" -ForegroundColor White
+    Write-Host "- Estilos: CSS Personalizado + PrimeFlex" -ForegroundColor White
+    Write-Host "- Puerto: 3000" -ForegroundColor White
+    Write-Host ""
+    
+    # Ejecutar el servidor de desarrollo
+    Write-Host "Ejecutando: npm run dev" -ForegroundColor Cyan
+    Write-Host "Presiona Ctrl+C para detener el servidor" -ForegroundColor Yellow
+    Write-Host ""
+    
+    npm run dev
 }
 
-$ver = Get-NodeVersionMajorMinor
-if ($null -eq $ver) {
-    Write-Warn 'No se pudo determinar la versión de Node. Continuando bajo tu propio riesgo.'
-} else {
-    if ($ver.Major -lt 18) {
-        Write-Err "Se requiere Node 18+ (recomendado 20 LTS). Detectado: $($ver.Raw)"
+# ===============================================
+# EJECUCION PRINCIPAL
+# ===============================================
+
+try {
+    # Verificaciones previas
+    Write-Host "Realizando verificaciones previas..." -ForegroundColor Yellow
+    Write-Host ""
+    
+    if (-not (Test-NodeJS)) {
+        Write-Host "Error: Node.js es requerido para ejecutar este proyecto" -ForegroundColor Red
         exit 1
     }
-    Write-Info "Node detectado: $($ver.Raw)"
-}
-
-Write-Info 'Instalando dependencias...'
-$useCi = Test-Path -Path './package-lock.json'
-try {
-    if ($useCi) {
-        Write-Info 'Usando npm ci (lockfile encontrado)'
-        & npm ci | Write-Host
-    } else {
-        Write-Warn 'No se encontró package-lock.json. Usando npm install.'
-        & npm install | Write-Host
+    
+    if (-not (Test-NPM)) {
+        Write-Host "Error: npm es requerido para ejecutar este proyecto" -ForegroundColor Red
+        exit 1
     }
+    
+    Write-Host ""
+    
+    # Verificar dependencias
+    if (-not (Test-Dependencies)) {
+        Write-Host "Error: Las dependencias no estan correctamente instaladas" -ForegroundColor Red
+        exit 1
+    }
+    
+    Write-Host ""
+    
+    # Verificar configuracion
+    if (-not (Test-NextJSConfig)) {
+        Write-Host "Error: La configuracion de Next.js no es valida" -ForegroundColor Red
+        exit 1
+    }
+    
+    Write-Host ""
+    
+    # Limpiar procesos anteriores
+    Clear-PreviousProcesses
+    
+    Write-Host ""
+    Write-Host "OK Todas las verificaciones completadas exitosamente" -ForegroundColor Green
+    Write-Host ""
+    
+    # Iniciar el frontend
+    Start-Frontend
+    
 } catch {
-    Write-Warn "Fallo instalando dependencias: $($_.Exception.Message)"
-    Write-Info 'Intentando recuperación: limpiando instalación parcial y reintentando con npm install...'
-    try { if (Test-Path './node_modules') { Remove-Item -Recurse -Force './node_modules' } } catch {}
-    try { if (Test-Path './package-lock.json') { Remove-Item -Force './package-lock.json' } } catch {}
-    try { & npm cache clean --force | Write-Host } catch {}
-    & npm install | Write-Host
-}
-
-# Preferir CLI local
-$ngPath = Join-Path $scriptDir 'node_modules/.bin/ng.cmd'
-if (-not (Test-Path $ngPath)) {
-    Write-Warn 'Angular CLI local no encontrado. Se usará npx ng.'
-}
-
-# Resolver puerto libre
-if (Test-PortInUse -CheckPort $Port) {
-    $free = Find-FreePort -StartPort $Port
-    Write-Warn "El puerto $Port está en uso. Se usará el puerto $free."
-    $Port = $free
-}
-
-Write-Info "Levantando el servidor de desarrollo en http://localhost:$Port ..."
-$argsList = @('start', '--', '--port', "$Port")
-if ($Open.IsPresent) { $argsList += '--open' }
-
-# Iniciar servidor
-try {
-    # Usamos npm start para respetar scripts y CLI local
-    & npm @argsList
-} catch {
-    Write-Err "Fallo al iniciar el servidor: $($_.Exception.Message)"
+    Write-Host ""
+    Write-Host "ERROR inesperado: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Por favor, revisa la configuracion del proyecto" -ForegroundColor Yellow
     exit 1
 }
-
-
