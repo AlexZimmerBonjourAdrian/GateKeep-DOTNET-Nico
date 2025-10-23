@@ -79,29 +79,29 @@ export default function Header() {
 
       <div className="header-bottom-bar">
         <Link href="/" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Home" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
-          <div className="item-card" style={{width:"225px", height:"230px"}}>
-            <i className="pi pi-home item-icon" aria-hidden={true} style={{fontSize:"140px"}}></i>
+          <div className="item-card">
+            <i className="pi pi-home item-icon" aria-hidden={true}></i>
             <p className="item-text">Home</p>
           </div>
         </Link>
 
         <Link href="/eventos" style={{ textDecoration: 'none', outline: 'none'}} aria-label="Eventos" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
-          <div className="item-card" style={{width:"225px", height:"230px"}}>
-            <BasketballIcon style={{ color: '#231F20', width: 140, height: 140 }} />
+          <div className="item-card">
+            <BasketballIcon style={{ color: '#231F20', width: 30, height: 30 }} />
             <p className="item-text">Eventos</p>
           </div>
         </Link>
 
         <Link href="/anuncios" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Anuncios" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
-          <div className="item-card" style={{width:"225px", height:"230px"}}>
-            <i className="pi pi-megaphone item-icon" aria-hidden={true} style={{fontSize:"140px"}}></i>
+          <div className="item-card">
+            <i className="pi pi-megaphone item-icon" aria-hidden={true}></i>
             <p className="item-text">Anuncios</p>
           </div>
         </Link>
 
         <Link href="/perfil" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Perfil" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
-          <div className="item-card" style={{width:"225px", height:"230px"}}>
-            <i className="pi pi-user item-icon" aria-hidden={true} style={{fontSize:"140px"}}></i>
+          <div className="item-card">
+            <i className="pi pi-user item-icon" aria-hidden={true}></i>
             <p className="item-text">Perfil</p>
           </div>
         </Link>
@@ -245,10 +245,9 @@ export default function Header() {
         }
 
         @media (max-width: 425px) {
-            .header-bottom-bar{
+            .header-bottom-bar {
                 width: 100%;
-                height: auto; /* Adjust height dynamically */
-                min-height: 230px; /* Ensure enough space for the cards */
+                height: 80px; 
                 background-color: #7e4928;
                 display: flex;
                 justify-content: space-evenly; /* Ensures equal spacing between items */
@@ -256,12 +255,21 @@ export default function Header() {
                 position: fixed; /* Make the bottom bar fixed */
                 bottom: 0; /* Stick to the bottom of the viewport */
                 z-index: 4; /* Place the bottom bar above other elements */
-                padding: 40px 0; /* Add padding for better spacing */
+                padding: 7px; /* Add padding for better spacing */
             }
 
-            .bottom-bar-item-card {
-                width: 11.67vw; /* 224px to vw assuming 1920px width */
-                height: 200px; /* Adjust height to fit within the bar */
+            .header-bottom-bar .item-icon {
+                font-size: 2.1rem;
+            }
+
+            .header-bottom-bar .item-text {
+                font-size: 0.7rem; /* 12px to rem */
+                font-weight: 250; /* Cambiado a un peso de fuente más fino */
+            }
+
+            .header-bottom-bar .item-card {
+                width: 18vw; /* Reduce width to one-eighth */
+                height: 70px; /* Reduce height to one-eighth */
                 background-color: #F37426;
                 border-radius: 20px;
                 display: flex;
@@ -277,14 +285,14 @@ export default function Header() {
                 transform: none;
                 box-shadow: none;
             }
+
+             .harvard-image {
+                display: none;
+            }
         }
 
         @media (min-width: 426px) {
-          .header-bottom-bar{
-                display: none;
-            }
-
-            .bottom-bar-item-card {
+            .header-bottom-bar{
                 display: none;
             }
 
