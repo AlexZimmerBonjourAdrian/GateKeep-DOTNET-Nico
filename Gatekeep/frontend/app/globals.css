@@ -1,0 +1,22 @@
+:root {
+  --bg-color: #594C44;
+  --font-family: 'Roboto', sans-serif;
+}
+
+html, body, #__next {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-color);
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-family);
+  color: #ffffff;
+}
+
+/* Ensure main app container stretches */
+main {
+  flex: 1 1 auto;
+}

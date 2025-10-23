@@ -35,7 +35,7 @@ const Layout = () => {
   const end = (
     <div className="flex items-center gap-2">
       <button className="p-button p-button-outlined p-button-sm">
-        <i className="pi pi-user mr-2"></i>
+        <i className="pi pi-user mr-2" style={{ color: '#231F20' }}></i>
         Login
       </button>
     </div>

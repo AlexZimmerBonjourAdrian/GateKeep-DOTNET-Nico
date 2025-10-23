@@ -1,4 +1,10 @@
 import React from 'react'
+import './globals.css'
+// PrimeReact and PrimeIcons global styles
+import 'primeflex/primeflex.css'
+import 'primereact/resources/themes/lara-light-cyan/theme.css'
+import 'primereact/resources/primereact.min.css'
+import 'primeicons/primeicons.css'
 
 export const metadata = {
   title: 'Gatekeep',
