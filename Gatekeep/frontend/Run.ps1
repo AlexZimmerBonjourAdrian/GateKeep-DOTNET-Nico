@@ -7,6 +7,15 @@ Write-Host "    GATEKEEP FRONTEND - SCRIPT DE INICIO" -ForegroundColor Cyan
 Write-Host "===============================================" -ForegroundColor Cyan
 Write-Host ""
 
+# Asegurar que el directorio de trabajo es el del script
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+try {
+    Set-Location -Path $ScriptDir
+    Write-Host "Directorio de trabajo establecido a: $ScriptDir" -ForegroundColor Green
+} catch {
+    Write-Host "ERROR no se pudo establecer el directorio de trabajo: $ScriptDir" -ForegroundColor Red
+}
+
 # Funcion para verificar si Node.js esta instalado
 function Test-NodeJS {
     try {

@@ -53,3 +53,5 @@ CodeCoverage/
 TestResult.xml
 nunit-*.xml
 demo1-apis-patterns/
+
+Gatekeep/frontend/.next/
