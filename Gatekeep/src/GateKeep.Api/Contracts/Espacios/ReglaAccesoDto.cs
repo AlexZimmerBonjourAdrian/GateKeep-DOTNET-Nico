@@ -2,7 +2,7 @@ using GateKeep.Api.Domain.Enums;
 
 namespace GateKeep.Api.Contracts.Espacios;
 
-public sealed record ReglaAccesoDto
+public record ReglaAccesoDto
 {
     public long Id { get; init; }
     public DateTime HorarioApertura { get; init; }

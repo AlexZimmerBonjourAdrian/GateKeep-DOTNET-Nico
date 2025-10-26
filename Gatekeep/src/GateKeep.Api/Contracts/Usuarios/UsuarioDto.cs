@@ -2,7 +2,7 @@ using GateKeep.Api.Domain.Enums;
 
 namespace GateKeep.Api.Contracts.Usuarios;
 
-public sealed record UsuarioDto
+public record UsuarioDto
 {
     public long Id { get; init; }
     public required string Email { get; init; }

@@ -1,6 +1,6 @@
 namespace GateKeep.Api.Contracts.Acceso;
 
-public sealed record EventoAccesoDto
+public record EventoAccesoDto
 {
     public long Id { get; init; }
     public required string Nombre { get; init; }

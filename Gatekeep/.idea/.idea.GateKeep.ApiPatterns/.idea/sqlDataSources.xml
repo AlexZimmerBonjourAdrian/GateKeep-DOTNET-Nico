@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DdlMappings">
+    <mapping uuid="e1927860-fa8b-411f-9763-57e9a4b144cf" name="Gatekeep@localhost Mapping">
+      <data-sources db="409aac6c-7d43-47f5-8837-a506da2ff855" ddl="c6be210e-bbcf-4a0a-9ef2-65cc907adb5d" />
+      <scope>
+        <node kind="database" negative="1" />
+      </scope>
+    </mapping>
+  </component>
+</project>
