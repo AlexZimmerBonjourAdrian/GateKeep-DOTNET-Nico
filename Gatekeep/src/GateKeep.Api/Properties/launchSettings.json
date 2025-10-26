@@ -6,8 +6,7 @@
       "launchBrowser": true,
       "applicationUrl": "http://localhost:5011",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "ConnectionStrings__Postgres": "Host=localhost;Port=5432;Database=Gatekeep;Username=postgres;Password=897888fg2"
+        "ASPNETCORE_ENVIRONMENT": "Development"
       }
     }
   }

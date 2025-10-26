@@ -8,6 +8,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Cargar config.json
+builder.Configuration.AddJsonFile("config.json", optional: false, reloadOnChange: true);
+
 // Swagger (exploración y documentación)
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -21,7 +24,16 @@ builder.Services.ConfigureHttpJsonOptions(o =>
 // EF Core - PostgreSQL
 builder.Services.AddDbContext<GateKeepDbContext>(options =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("Postgres");
+    // Leer configuración desde config.json
+    var config = builder.Configuration.GetSection("database");
+    var host = config["host"] ?? "localhost";
+    var port = config["port"] ?? "5432";
+    var database = config["name"] ?? "GateKeep_Dev";
+    var username = config["user"] ?? "postgres";
+    var password = config["password"] ?? "dev_password";
+    
+    var connectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};";
+    
     options.UseNpgsql(connectionString, npgsql =>
     {
         // Usar un esquema interno para el historial de migraciones

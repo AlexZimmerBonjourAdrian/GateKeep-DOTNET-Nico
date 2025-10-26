@@ -1,0 +1,13 @@
+{
+  "database": {
+    "host": "localhost",
+    "port": "5432",
+    "name": "Gatekeep",
+    "user": "postgres",
+    "password": "897888fg2"
+  },
+  "application": {
+    "environment": "Development",
+    "urls": "http://localhost:5011"
+  }
+}
