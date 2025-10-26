@@ -1,4 +1,7 @@
 using System.Text.Json.Serialization;
+using GateKeep.Api.Application.Espacios;
+using GateKeep.Api.Endpoints.Espacios;
+using GateKeep.Api.Infrastructure.Espacios;
 using GateKeep.Api.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +29,10 @@ builder.Services.AddDbContext<GateKeepDbContext>(options =>
     });
 });
 
+// Factory Pattern para Espacios
+builder.Services.AddScoped<IEspacioRepository, EspacioRepository>();
+builder.Services.AddScoped<IEspacioFactory, EspacioFactory>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -40,6 +47,9 @@ app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 // Health
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }))
   .WithTags("System");
+
+// Endpoints
+app.MapEspacioEndpoints();
 
 // (MongoDB eliminado en favor de PostgreSQL)
 

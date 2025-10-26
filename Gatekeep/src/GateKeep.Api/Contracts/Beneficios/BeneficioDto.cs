@@ -2,7 +2,7 @@ using GateKeep.Api.Domain.Enums;
 
 namespace GateKeep.Api.Contracts.Beneficios;
 
-public sealed record BeneficioDto
+public record BeneficioDto
 {
     public long Id { get; init; }
     public TipoBeneficio Tipo { get; init; }
