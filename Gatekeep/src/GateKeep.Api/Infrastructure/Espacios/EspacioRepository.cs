@@ -42,26 +42,17 @@ public sealed class EspacioRepository : IEspacioRepository
 
     public async Task<IEnumerable<Espacio>> ObtenerTodosAsync()
     {
-        var edificios = await _context.Edificios.ToListAsync();
-        var salones = await _context.Salones.ToListAsync();
-        var laboratorios = await _context.Laboratorios.ToListAsync();
-
-        return edificios.Cast<Espacio>()
-            .Concat(salones.Cast<Espacio>())
-            .Concat(laboratorios.Cast<Espacio>());
+        // TPT: Una sola consulta optimizada usando Set<Espacio>()
+        return await _context.Set<Espacio>()
+            .Where(e => e.Activo)
+            .ToListAsync();
     }
 
     public async Task<Espacio?> ObtenerPorIdAsync(long id)
     {
-        // Buscar en todas las tablas de espacios
-        var edificio = await _context.Edificios.FindAsync(id);
-        if (edificio is not null) return edificio;
-
-        var salon = await _context.Salones.FindAsync(id);
-        if (salon is not null) return salon;
-
-        var laboratorio = await _context.Laboratorios.FindAsync(id);
-        return laboratorio;
+        // TPT: Una sola consulta optimizada usando Set<Espacio>()
+        return await _context.Set<Espacio>()
+            .FirstOrDefaultAsync(e => e.Id == id);
     }
 
     public async Task<Espacio> CrearAsync(Espacio espacio)
@@ -129,31 +120,74 @@ public sealed class EspacioRepository : IEspacioRepository
 
     public async Task<bool> EliminarAsync(long id)
     {
-        // Buscar y eliminar en todas las tablas
-        var edificio = await _context.Edificios.FindAsync(id);
-        if (edificio is not null)
+        // TPT: Buscar y eliminar usando Set<Espacio>()
+        var espacio = await _context.Set<Espacio>().FindAsync(id);
+        if (espacio is not null)
         {
-            _context.Edificios.Remove(edificio);
-            await _context.SaveChangesAsync();
-            return true;
-        }
-
-        var salon = await _context.Salones.FindAsync(id);
-        if (salon is not null)
-        {
-            _context.Salones.Remove(salon);
-            await _context.SaveChangesAsync();
-            return true;
-        }
-
-        var laboratorio = await _context.Laboratorios.FindAsync(id);
-        if (laboratorio is not null)
-        {
-            _context.Laboratorios.Remove(laboratorio);
+            _context.Set<Espacio>().Remove(espacio);
             await _context.SaveChangesAsync();
             return true;
         }
 
         return false;
     }
+
+    #region Métodos específicos optimizados para TPT
+
+    /// <summary>
+    /// Obtiene todos los edificios activos
+    /// </summary>
+    public async Task<IEnumerable<Edificio>> ObtenerEdificiosAsync()
+    {
+        return await _context.Set<Espacio>()
+            .OfType<Edificio>()
+            .Where(e => e.Activo)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Obtiene todos los salones activos
+    /// </summary>
+    public async Task<IEnumerable<Salon>> ObtenerSalonesAsync()
+    {
+        return await _context.Set<Espacio>()
+            .OfType<Salon>()
+            .Where(s => s.Activo)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Obtiene todos los laboratorios activos
+    /// </summary>
+    public async Task<IEnumerable<Laboratorio>> ObtenerLaboratoriosAsync()
+    {
+        return await _context.Set<Espacio>()
+            .OfType<Laboratorio>()
+            .Where(l => l.Activo)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Obtiene salones por edificio
+    /// </summary>
+    public async Task<IEnumerable<Salon>> ObtenerSalonesPorEdificioAsync(long edificioId)
+    {
+        return await _context.Set<Espacio>()
+            .OfType<Salon>()
+            .Where(s => s.EdificioId == edificioId && s.Activo)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Obtiene laboratorios por edificio
+    /// </summary>
+    public async Task<IEnumerable<Laboratorio>> ObtenerLaboratoriosPorEdificioAsync(long edificioId)
+    {
+        return await _context.Set<Espacio>()
+            .OfType<Laboratorio>()
+            .Where(l => l.EdificioId == edificioId && l.Activo)
+            .ToListAsync();
+    }
+
+    #endregion
 }

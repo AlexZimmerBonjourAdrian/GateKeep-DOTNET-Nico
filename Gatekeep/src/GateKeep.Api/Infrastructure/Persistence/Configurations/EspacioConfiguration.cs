@@ -8,11 +8,12 @@ public sealed class EspacioConfiguration : IEntityTypeConfiguration<Espacio>
 {
     public void Configure(EntityTypeBuilder<Espacio> builder)
     {
+        // TPT: Solo mapear la tabla base con propiedades comunes
         builder.ToTable("espacios");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
 
-        // Mapear las propiedades de la clase base
+        // Propiedades comunes de la clase base
         builder.Property(x => x.Nombre)
             .IsRequired()
             .HasMaxLength(200);
@@ -31,11 +32,12 @@ public sealed class EspacioConfiguration : IEntityTypeConfiguration<Espacio>
             .IsRequired()
             .HasDefaultValue(true);
 
-        builder.HasDiscriminator<string>("tipo")
-            .HasValue<Espacio>("espacio")
-            .HasValue<Edificio>("edificio")
-            .HasValue<Laboratorio>("laboratorio")
-            .HasValue<Salon>("salon");
+        // Índices para optimizar consultas comunes
+        builder.HasIndex(x => x.Activo)
+            .HasDatabaseName("IX_espacios_activo");
+            
+        builder.HasIndex(x => x.Nombre)
+            .HasDatabaseName("IX_espacios_nombre");
     }
 }
 

@@ -66,4 +66,33 @@ public interface IEspacioRepository
     /// Elimina un espacio
     /// </summary>
     Task<bool> EliminarAsync(long id);
+
+    #region Métodos específicos optimizados para TPT
+
+    /// <summary>
+    /// Obtiene todos los edificios activos
+    /// </summary>
+    Task<IEnumerable<Edificio>> ObtenerEdificiosAsync();
+
+    /// <summary>
+    /// Obtiene todos los salones activos
+    /// </summary>
+    Task<IEnumerable<Salon>> ObtenerSalonesAsync();
+
+    /// <summary>
+    /// Obtiene todos los laboratorios activos
+    /// </summary>
+    Task<IEnumerable<Laboratorio>> ObtenerLaboratoriosAsync();
+
+    /// <summary>
+    /// Obtiene salones por edificio
+    /// </summary>
+    Task<IEnumerable<Salon>> ObtenerSalonesPorEdificioAsync(long edificioId);
+
+    /// <summary>
+    /// Obtiene laboratorios por edificio
+    /// </summary>
+    Task<IEnumerable<Laboratorio>> ObtenerLaboratoriosPorEdificioAsync(long edificioId);
+
+    #endregion
 }
