@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using BCrypt.Net;
 
 namespace GateKeep.Api.Application.Security;
 
@@ -16,8 +17,8 @@ public class PasswordService : IPasswordService
         if (string.IsNullOrEmpty(password))
             throw new ArgumentException("La contraseña no puede estar vacía", nameof(password));
 
-        // Por ahora, retornar la contraseña sin encriptar
-        return password;
+        // Usar BCrypt para hash seguro
+        return BCrypt.Net.BCrypt.HashPassword(password, BCrypt.Net.BCrypt.GenerateSalt(12));
     }
 
     public bool VerifyPassword(string password, string hashedPassword)
@@ -27,8 +28,8 @@ public class PasswordService : IPasswordService
 
         try
         {
-            // Por ahora, comparación directa sin encriptación
-            return password == hashedPassword;
+            // Verificar contraseña usando BCrypt
+            return BCrypt.Net.BCrypt.Verify(password, hashedPassword);
         }
         catch
         {

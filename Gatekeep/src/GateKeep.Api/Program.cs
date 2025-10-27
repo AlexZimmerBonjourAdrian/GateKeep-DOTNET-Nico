@@ -25,6 +25,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Security.Claims;
+using Microsoft.OpenApi.Models;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,7 +35,54 @@ builder.Configuration.AddJsonFile("config.json", optional: false, reloadOnChange
 
 // Swagger (exploración y documentación)
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo 
+    { 
+        Title = "GateKeep API", 
+        Version = "v1",
+        Description = "API para el sistema de gestión de acceso GateKeep",
+        Contact = new OpenApiContact
+        {
+            Name = "GateKeep Team",
+            Email = "support@gatekeep.com"
+        }
+    });
+
+    // Configuración para JWT
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header usando el esquema Bearer. Ejemplo: \"Authorization: Bearer {token}\"",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        }
+    });
+
+    // Incluir comentarios XML si los tienes
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        c.IncludeXmlComments(xmlPath);
+    }
+});
 
 // JSON
 builder.Services.ConfigureHttpJsonOptions(o =>
@@ -58,7 +107,56 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwtIssuer,
             ValidAudience = jwtAudience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ClockSkew = TimeSpan.FromMinutes(5) // Permitir 5 minutos de diferencia
+        };
+
+        // Configuración para Swagger con logging completo
+        options.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = context =>
+            {
+                Console.WriteLine($"JWT Authentication Failed: {context.Exception.Message}");
+                Console.WriteLine($"Exception Type: {context.Exception.GetType().Name}");
+                Console.WriteLine($"Request Path: {context.Request.Path}");
+                
+                if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
+                {
+                    Console.WriteLine("Token has expired");
+                    context.Response.Headers["Token-Expired"] = "true";
+                }
+                else if (context.Exception.GetType() == typeof(SecurityTokenInvalidSignatureException))
+                {
+                    Console.WriteLine("Token signature is invalid");
+                }
+                else if (context.Exception.GetType() == typeof(SecurityTokenInvalidIssuerException))
+                {
+                    Console.WriteLine("Token issuer is invalid");
+                }
+                else if (context.Exception.GetType() == typeof(SecurityTokenInvalidAudienceException))
+                {
+                    Console.WriteLine("Token audience is invalid");
+                }
+                
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = context =>
+            {
+                Console.WriteLine($"JWT Token Validated for user: {context.Principal?.Identity?.Name}");
+                var roles = context.Principal?.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList() ?? new List<string>();
+                Console.WriteLine($"User Roles: {string.Join(", ", roles)}");
+                return Task.CompletedTask;
+            },
+            OnChallenge = context =>
+            {
+                Console.WriteLine($"JWT Challenge: {context.Error} - {context.ErrorDescription}");
+                return Task.CompletedTask;
+            },
+            OnMessageReceived = context =>
+            {
+                Console.WriteLine($"JWT Message Received from: {context.Request.Path}");
+                return Task.CompletedTask;
+            }
         };
     });
 
@@ -152,7 +250,18 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "GateKeep API v1");
+        c.RoutePrefix = "swagger";
+        c.DocumentTitle = "GateKeep API Documentation";
+        c.DefaultModelsExpandDepth(-1); // Ocultar modelos por defecto
+        c.DisplayRequestDuration();
+        c.EnableDeepLinking();
+        // c.EnableFilter(); // ← Comentado para deshabilitar el filtro
+        c.ShowExtensions();
+        c.EnableValidator();
+    });
 }
 
 // Middleware de Seguridad
@@ -261,6 +370,7 @@ using (var scope = app.Services.CreateScope())
         if (!db.Usuarios.Any())
         {
             var factory = scope.ServiceProvider.GetRequiredService<IUsuarioFactory>();
+            var passwordService = scope.ServiceProvider.GetRequiredService<IPasswordService>();
             
             // Crear usuario admin por defecto
             var adminDto = new UsuarioDto
@@ -269,7 +379,7 @@ using (var scope = app.Services.CreateScope())
                 Email = "admin@gatekeep.com",
                 Nombre = "Administrador",
                 Apellido = "Sistema",
-                Contrasenia = "admin123", // En producción usar hash
+                Contrasenia = passwordService.HashPassword("admin123"),
                 Telefono = "+1234567890",
                 FechaAlta = DateTime.UtcNow,
                 Credencial = TipoCredencial.Vigente
@@ -285,7 +395,7 @@ using (var scope = app.Services.CreateScope())
                 Email = "estudiante@gatekeep.com",
                 Nombre = "Juan",
                 Apellido = "Pérez",
-                Contrasenia = "estudiante123",
+                Contrasenia = passwordService.HashPassword("estudiante123"),
                 Telefono = "+1234567891",
                 FechaAlta = DateTime.UtcNow,
                 Credencial = TipoCredencial.Vigente
@@ -301,7 +411,7 @@ using (var scope = app.Services.CreateScope())
                 Email = "funcionario@gatekeep.com",
                 Nombre = "María",
                 Apellido = "García",
-                Contrasenia = "funcionario123",
+                Contrasenia = passwordService.HashPassword("funcionario123"),
                 Telefono = "+1234567892",
                 FechaAlta = DateTime.UtcNow,
                 Credencial = TipoCredencial.Vigente

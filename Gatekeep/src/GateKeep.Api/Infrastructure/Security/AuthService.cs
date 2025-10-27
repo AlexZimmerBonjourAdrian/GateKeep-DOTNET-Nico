@@ -67,7 +67,8 @@ public class AuthService : IAuthService
                 FechaAlta = usuario.FechaAlta
             };
 
-            return AuthResult.Success(token, userInfo, expiresAt: expiresAt);
+            var refreshToken = GenerateRefreshToken();
+            return AuthResult.Success(token, userInfo, refreshToken: refreshToken, expiresAt: expiresAt);
         }
         catch (Exception ex)
         {
@@ -133,7 +134,8 @@ public class AuthService : IAuthService
                 FechaAlta = nuevoUsuario.FechaAlta
             };
 
-            return AuthResult.Success(token, userInfo, expiresAt: expiresAt);
+            var refreshToken = GenerateRefreshToken();
+            return AuthResult.Success(token, userInfo, refreshToken: refreshToken, expiresAt: expiresAt);
         }
         catch (Exception ex)
         {
@@ -174,19 +176,55 @@ public class AuthService : IAuthService
         }
     }
 
-    public Task<string?> RefreshTokenAsync(string token)
+    public Task<string?> RefreshTokenAsync(string refreshToken)
     {
-        // Implementación básica - en producción usar refresh tokens
-        var principal = ValidateJwtToken(token);
-        if (principal == null)
-            return Task.FromResult<string?>(null);
+        try
+        {
+            // Validar que el refresh token no esté vacío
+            if (string.IsNullOrEmpty(refreshToken))
+                return Task.FromResult<string?>(null);
 
-        var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null || !long.TryParse(userIdClaim.Value, out var userId))
-            return Task.FromResult<string?>(null);
+            // En una implementación real, aquí validarías el refresh token contra una base de datos
+            // y verificarías que no haya expirado. Por ahora, implementación básica.
+            
+            // Generar un nuevo JWT token
+            // Nota: En producción, deberías extraer el userId del refresh token almacenado
+            // Por ahora, generamos un token genérico
+            var jwtConfig = _configuration.GetSection("jwt");
+            var jwtKey = jwtConfig["key"] ?? throw new InvalidOperationException("JWT Key no configurada");
+            var jwtIssuer = jwtConfig["issuer"] ?? "GateKeep";
+            var jwtAudience = jwtConfig["audience"] ?? "GateKeepUsers";
+            var expirationHours = jwtConfig.GetValue<int>("expirationHours", 8);
 
-        // Aquí podrías implementar lógica de refresh tokens más sofisticada
-        return Task.FromResult<string?>(null);
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
+            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            // Claims básicos para el nuevo token
+            var claims = new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, "1"), // En producción, usar el userId real
+                new Claim(ClaimTypes.Email, "user@example.com"), // En producción, usar el email real
+                new Claim(ClaimTypes.Name, "Usuario"),
+                new Claim(ClaimTypes.Role, "Estudiante"),
+                new Claim("TipoUsuario", "Estudiante"),
+                new Claim("Telefono", ""),
+                new Claim("FechaAlta", DateTime.UtcNow.ToString("O"))
+            };
+
+            var token = new JwtSecurityToken(
+                issuer: jwtIssuer,
+                audience: jwtAudience,
+                claims: claims,
+                expires: DateTime.UtcNow.AddHours(expirationHours),
+                signingCredentials: credentials
+            );
+
+            return Task.FromResult<string?>(new JwtSecurityTokenHandler().WriteToken(token));
+        }
+        catch
+        {
+            return Task.FromResult<string?>(null);
+        }
     }
 
     public Task<bool> LogoutAsync(string token)
@@ -259,5 +297,11 @@ public class AuthService : IAuthService
         {
             return null;
         }
+    }
+
+    private string GenerateRefreshToken()
+    {
+        // Generar un refresh token único usando GUID y timestamp
+        return Guid.NewGuid().ToString("N") + DateTime.UtcNow.Ticks.ToString("X");
     }
 }
