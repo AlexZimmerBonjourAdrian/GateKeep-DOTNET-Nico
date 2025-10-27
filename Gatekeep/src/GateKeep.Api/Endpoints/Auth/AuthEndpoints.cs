@@ -1,6 +1,5 @@
 using GateKeep.Api.Contracts.Security;
 using GateKeep.Api.Application.Security;
-using System.Security.Claims;
 
 namespace GateKeep.Api.Endpoints.Auth;
 
@@ -10,9 +9,44 @@ public static class AuthEndpoints
     {
         var group = app.MapGroup("/auth").WithTags("Authentication");
 
-        group.MapPost("/login", (LoginRequest request, IAuthService authService) =>
+        // Login endpoint
+        group.MapPost("/login", async (LoginRequest request, IAuthService authService) =>
         {
-            return Results.StatusCode(501);
+            if (string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Password))
+            {
+                return Results.BadRequest(new AuthResponse
+                {
+                    IsSuccess = false,
+                    ErrorMessage = "Email y contraseña son requeridos"
+                });
+            }
+
+            var result = await authService.LoginAsync(request.Email, request.Password);
+            
+            if (!result.IsSuccess)
+            {
+                return Results.Unauthorized();
+            }
+
+            var response = new AuthResponse
+            {
+                IsSuccess = true,
+                Token = result.Token,
+                RefreshToken = result.RefreshToken,
+                ExpiresAt = result.ExpiresAt,
+                User = new UserInfoResponse
+                {
+                    Id = result.User!.Id,
+                    Email = result.User.Email,
+                    Nombre = result.User.Nombre,
+                    Apellido = result.User.Apellido,
+                    TipoUsuario = result.User.TipoUsuario.ToString(),
+                    Telefono = result.User.Telefono,
+                    FechaAlta = result.User.FechaAlta
+                }
+            };
+
+            return Results.Ok(response);
         })
         .WithName("Login")
         .WithSummary("Iniciar sesión")
