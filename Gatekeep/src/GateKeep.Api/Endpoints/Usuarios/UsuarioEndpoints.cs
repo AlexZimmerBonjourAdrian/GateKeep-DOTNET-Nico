@@ -33,35 +33,41 @@ public static class UsuarioEndpoints
         .Produces<Usuario>(200)
         .Produces(404);
 
-        // POST /usuarios - Crear nuevo usuario
-        group.MapPost("/", async (UsuarioDto dto, [FromServices] IUsuarioFactory factory, [FromServices] IUsuarioRepository repo) =>
+        // POST /usuarios - Crear nuevo usuario (Estudiante)
+        group.MapPost("/estudiante", async (UsuarioDto dto, [FromServices] IUsuarioFactory factory, [FromServices] IUsuarioRepository repo) =>
         {
-            if (!factory.EsRolValido(dto.Rol))
-                return Results.BadRequest($"Rol inválido: {dto.Rol}");
-
-            var usuario = factory.CrearUsuario(dto);
+            var usuario = factory.CrearEstudiante(dto);
             await repo.AddAsync(usuario);
             return Results.Created($"/usuarios/{usuario.Id}", usuario);
         })
-        .WithName("CreateUsuario")
-        .WithSummary("Crear nuevo usuario")
+        .WithName("CreateEstudiante")
+        .WithSummary("Crear nuevo estudiante")
         .Produces<Usuario>(201)
         .Produces(400);
 
-        // PUT /usuarios/{id} - Actualizar usuario
-        group.MapPut("/{id:long}", async (long id, UsuarioDto dto, [FromServices] IUsuarioFactory factory, [FromServices] IUsuarioRepository repo) =>
+        // POST /usuarios/funcionario - Crear nuevo funcionario
+        group.MapPost("/funcionario", async (UsuarioDto dto, [FromServices] IUsuarioFactory factory, [FromServices] IUsuarioRepository repo) =>
         {
-            var existente = await repo.GetByIdAsync(id);
-            if (existente is null) return Results.NotFound();
-
-            var actualizado = factory.CrearUsuario(dto) with { Id = id };
-            await repo.UpdateAsync(actualizado);
-            return Results.Ok(actualizado);
+            var usuario = factory.CrearFuncionario(dto);
+            await repo.AddAsync(usuario);
+            return Results.Created($"/usuarios/{usuario.Id}", usuario);
         })
-        .WithName("UpdateUsuario")
-        .WithSummary("Actualizar usuario")
-        .Produces<Usuario>(200)
-        .Produces(404);
+        .WithName("CreateFuncionario")
+        .WithSummary("Crear nuevo funcionario")
+        .Produces<Usuario>(201)
+        .Produces(400);
+
+        // POST /usuarios/admin - Crear nuevo administrador
+        group.MapPost("/admin", async (UsuarioDto dto, [FromServices] IUsuarioFactory factory, [FromServices] IUsuarioRepository repo) =>
+        {
+            var admin = factory.CrearAdmin(dto);
+            await repo.AddAsync(admin);
+            return Results.Created($"/usuarios/{admin.Id}", admin);
+        })
+        .WithName("CreateAdmin")
+        .WithSummary("Crear nuevo administrador")
+        .Produces<Usuario>(201)
+        .Produces(400);
 
         // DELETE /usuarios/{id} - Eliminar usuario (borrado lógico)
         group.MapDelete("/{id:long}", async (long id, [FromServices] IUsuarioRepository repo) =>

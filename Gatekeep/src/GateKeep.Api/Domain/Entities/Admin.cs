@@ -2,8 +2,7 @@ using GateKeep.Api.Domain.Enums;
 
 namespace GateKeep.Api.Domain.Entities;
 
-public abstract record Usuario
-(
+public sealed record class Admin(
     long Id,
     string Email,
     string Nombre,
@@ -11,8 +10,5 @@ public abstract record Usuario
     string Contrasenia,
     string? Telefono,
     DateTime FechaAlta,
-    TipoCredencial Credencial,
-    string TipoUsuario
-);
-
-
+    TipoCredencial Credencial
+) : Usuario(Id, Email, Nombre, Apellido, Contrasenia, Telefono, FechaAlta, Credencial, "Admin");

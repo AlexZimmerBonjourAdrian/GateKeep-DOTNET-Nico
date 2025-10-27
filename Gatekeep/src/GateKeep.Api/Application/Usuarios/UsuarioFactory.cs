@@ -2,27 +2,21 @@
 using GateKeep.Api.Domain.Entities;
 using GateKeep.Api.Domain.Enums;
 using GateKeep.Api.Application.Usuarios;
+
 public class UsuarioFactory : IUsuarioFactory
 {
-  public Usuario CrearUsuario(UsuarioDto dto)
+  public Usuario CrearEstudiante(UsuarioDto dto)
   {
-    return dto.Rol switch
-    {
-      Rol.Estudiante => new Estudiante(dto.Id, dto.Email, dto.Nombre, dto.Apellido, dto.Contrasenia, dto.Telefono, dto.FechaAlta, dto.Credencial),
-      Rol.Funcionario => new Funcionario(dto.Id, dto.Email, dto.Nombre, dto.Apellido, dto.Contrasenia, dto.Telefono, dto.FechaAlta, dto.Credencial),
-      _ => throw new InvalidOperationException($"Rol no soportado: {dto.Rol}")
-    };
+    return new Estudiante(dto.Id, dto.Email, dto.Nombre, dto.Apellido, dto.Contrasenia, dto.Telefono, dto.FechaAlta, dto.Credencial);
   }
 
-  public bool TryCrearUsuario(UsuarioDto dto, out Usuario? usuario)
+  public Usuario CrearFuncionario(UsuarioDto dto)
   {
-    usuario = null;
-    if (!EsRolValido(dto.Rol)) return false;
-
-    usuario = CrearUsuario(dto);
-    return true;
+    return new Funcionario(dto.Id, dto.Email, dto.Nombre, dto.Apellido, dto.Contrasenia, dto.Telefono, dto.FechaAlta, dto.Credencial);
   }
 
-  public bool EsRolValido(Rol rol) =>
-    rol == Rol.Estudiante || rol == Rol.Funcionario;
+  public Usuario CrearAdmin(UsuarioDto dto)
+  {
+    return new Admin(dto.Id, dto.Email, dto.Nombre, dto.Apellido, dto.Contrasenia, dto.Telefono, dto.FechaAlta, dto.Credencial);
+  }
 }

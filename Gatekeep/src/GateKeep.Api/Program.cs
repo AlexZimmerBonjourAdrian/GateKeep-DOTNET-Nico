@@ -2,17 +2,29 @@ using System.Text.Json.Serialization;
 using GateKeep.Api.Application.Beneficios;
 using GateKeep.Api.Application.Espacios;
 using GateKeep.Api.Application.Notificaciones;
+using GateKeep.Api.Application.Security;
+using GateKeep.Api.Application.Usuarios;
+using GateKeep.Api.Contracts.Usuarios;
+using GateKeep.Api.Domain.Enums;
+using GateKeep.Api.Endpoints.Auth;
 using GateKeep.Api.Endpoints.Beneficios;
 using GateKeep.Api.Endpoints.Espacios;
 using GateKeep.Api.Endpoints.Notificaciones;
+using GateKeep.Api.Endpoints.Usuarios;
 using GateKeep.Api.Infrastructure.Beneficios;
 using GateKeep.Api.Infrastructure.Espacios;
 using GateKeep.Api.Infrastructure.Notificaciones;
 using GateKeep.Api.Infrastructure.Persistence;
+using GateKeep.Api.Infrastructure.Security;
+using GateKeep.Api.Infrastructure.Usuarios;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
 using MongoDB.Bson;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,6 +40,33 @@ builder.Services.ConfigureHttpJsonOptions(o =>
 {
     o.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
+
+// Configuración de Seguridad JWT
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        var jwtConfig = builder.Configuration.GetSection("jwt");
+        var jwtKey = jwtConfig["key"] ?? throw new InvalidOperationException("JWT Key no configurada");
+        var jwtIssuer = jwtConfig["issuer"] ?? "GateKeep";
+        var jwtAudience = jwtConfig["audience"] ?? "GateKeepUsers";
+        
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        };
+    });
+
+// Configuración de Autorización
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"))
+    .AddPolicy("FuncionarioOrAdmin", policy => policy.RequireRole("Funcionario", "Admin"))
+    .AddPolicy("AllUsers", policy => policy.RequireRole("Estudiante", "Funcionario", "Admin"));
 
 // EF Core - PostgreSQL
 builder.Services.AddDbContext<GateKeepDbContext>(options =>
@@ -58,6 +97,14 @@ builder.Services.AddScoped<IBeneficioRepository, BeneficioRepository>();
 builder.Services.AddScoped<IBeneficioService, BeneficioService>();
 builder.Services.AddScoped<IBeneficioUsuarioRepository, BeneficioUsuarioRepository>();
 builder.Services.AddScoped<IBeneficioUsuarioService, BeneficioUsuarioService>();
+
+// Servicios de Usuarios
+builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+builder.Services.AddScoped<IUsuarioFactory, UsuarioFactory>();
+
+// Servicios de Seguridad
+builder.Services.AddScoped<IPasswordService, PasswordService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 // Servicios de Notificaciones MongoDB
 builder.Services.AddScoped<INotificacionRepository, NotificacionRepository>();
@@ -107,6 +154,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// Middleware de Seguridad
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Minimal API
 app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
@@ -186,38 +237,87 @@ app.MapDelete("/system/mongodb/clear", (IMongoDatabase mongoDatabase, IWebHostEn
 .WithDescription("Elimina todos los documentos de todas las colecciones en la base de datos MongoDB");
 
 // Endpoints
+app.MapAuthEndpoints();
 app.MapEdificioEndpoints();
 app.MapLaboratorioEndpoints();
 app.MapSalonEndpoints();
 app.MapBeneficioEndpoints();
 app.MapNotificacionEndpoints();
+app.MapUsuarioEndpoints();
+app.MapUsuarioProfileEndpoints();
 
 // Auto-aplicar migraciones al iniciar
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<GateKeepDbContext>();
-    // Mover historial de migraciones a esquema 'infra' si existe en 'public'
-    try
+    
+    if (app.Environment.IsDevelopment())
     {
-        db.Database.ExecuteSqlRaw(@"
-            CREATE SCHEMA IF NOT EXISTS infra;
-            DO $$
-            BEGIN
-                IF EXISTS (
-                    SELECT 1 FROM information_schema.tables
-                    WHERE table_schema = 'public' AND table_name = '__EFMigrationsHistory'
-                ) THEN
-                    EXECUTE 'ALTER TABLE public.""__EFMigrationsHistory"" SET SCHEMA infra';
-                END IF;
-            END
-            $$;
-        ");
+        // En desarrollo: recrear BD automáticamente
+        db.Database.EnsureDeleted();
+        db.Database.EnsureCreated();
+        
+        // Seed data inicial
+        if (!db.Usuarios.Any())
+        {
+            var factory = scope.ServiceProvider.GetRequiredService<IUsuarioFactory>();
+            
+            // Crear usuario admin por defecto
+            var adminDto = new UsuarioDto
+            {
+                Id = 0,
+                Email = "admin@gatekeep.com",
+                Nombre = "Administrador",
+                Apellido = "Sistema",
+                Contrasenia = "admin123", // En producción usar hash
+                Telefono = "+1234567890",
+                FechaAlta = DateTime.UtcNow,
+                Credencial = TipoCredencial.Vigente
+            };
+            
+            var admin = factory.CrearAdmin(adminDto);
+            db.Usuarios.Add(admin);
+            
+            // Crear estudiante de ejemplo
+            var estudianteDto = new UsuarioDto
+            {
+                Id = 0,
+                Email = "estudiante@gatekeep.com",
+                Nombre = "Juan",
+                Apellido = "Pérez",
+                Contrasenia = "estudiante123",
+                Telefono = "+1234567891",
+                FechaAlta = DateTime.UtcNow,
+                Credencial = TipoCredencial.Vigente
+            };
+            
+            var estudiante = factory.CrearEstudiante(estudianteDto);
+            db.Usuarios.Add(estudiante);
+            
+            // Crear funcionario de ejemplo
+            var funcionarioDto = new UsuarioDto
+            {
+                Id = 0,
+                Email = "funcionario@gatekeep.com",
+                Nombre = "María",
+                Apellido = "García",
+                Contrasenia = "funcionario123",
+                Telefono = "+1234567892",
+                FechaAlta = DateTime.UtcNow,
+                Credencial = TipoCredencial.Vigente
+            };
+            
+            var funcionario = factory.CrearFuncionario(funcionarioDto);
+            db.Usuarios.Add(funcionario);
+            
+            await db.SaveChangesAsync();
+        }
     }
-    catch
+    else
     {
-        // Si falla, continuar; la migración seguirá funcionando
+        // En producción: solo migraciones
+        db.Database.Migrate();
     }
-    db.Database.Migrate();
 }
 
 app.Run();

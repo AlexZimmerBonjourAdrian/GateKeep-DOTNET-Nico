@@ -10,5 +10,5 @@ public sealed record class Funcionario(
   string? Telefono,
   DateTime FechaAlta,
   TipoCredencial Credencial
-) : Usuario(Id, Email, Nombre, Apellido, Contrasenia, Telefono, FechaAlta, Rol.Funcionario, Credencial);
+) : Usuario(Id, Email, Nombre, Apellido, Contrasenia, Telefono, FechaAlta, Credencial, "Funcionario");
 

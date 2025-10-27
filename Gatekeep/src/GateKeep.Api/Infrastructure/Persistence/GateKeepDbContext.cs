@@ -19,8 +19,6 @@ public sealed class GateKeepDbContext : DbContext
     public DbSet<Salon> Salones => Set<Salon>();
     public DbSet<ReglaAcceso> ReglasAcceso => Set<ReglaAcceso>();
     public DbSet<EventoAcceso> EventosAcceso => Set<EventoAcceso>();
-    public DbSet<Notificacion> Notificaciones => Set<Notificacion>();
-    public DbSet<NotificacionUsuario> NotificacionesUsuarios => Set<NotificacionUsuario>();
     public DbSet<UsuarioEspacio> UsuariosEspacios => Set<UsuarioEspacio>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

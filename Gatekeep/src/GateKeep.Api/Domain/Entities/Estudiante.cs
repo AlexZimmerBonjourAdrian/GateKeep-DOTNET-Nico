@@ -10,5 +10,5 @@ public sealed record class Estudiante(
   string? Telefono,
   DateTime FechaAlta,
   TipoCredencial Credencial
-) : Usuario(Id, Email, Nombre, Apellido, Contrasenia, Telefono, FechaAlta, Rol.Estudiante, Credencial);
+) : Usuario(Id, Email, Nombre, Apellido, Contrasenia, Telefono, FechaAlta, Credencial, "Estudiante");
 

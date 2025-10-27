@@ -11,7 +11,6 @@ public record UsuarioDto
     public required string Contrasenia { get; init; }
     public string? Telefono { get; init; }
     public DateTime FechaAlta { get; init; }
-    public Rol Rol { get; init; }
     public TipoCredencial Credencial { get; init; }
 }
 
