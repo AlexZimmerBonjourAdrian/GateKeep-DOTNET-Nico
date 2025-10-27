@@ -1,4 +1,5 @@
 /* Variables CSS personalizadas */
+
 :root {
     --primary-color: #6366f1;
     --secondary-color: #64748b;
@@ -11,7 +12,9 @@
     --text-color-secondary: #64748b;
 }
 
+
 /* Estilos base */
+
 #root {
     margin: 0;
     padding: 0;
@@ -26,21 +29,471 @@ body {
     padding: 0;
 }
 
+
 /* Estilos globales para PrimeReact */
+
 .p-component {
     font-family: 'Inter', sans-serif;
 }
 
+
 /* Utilidades personalizadas */
+
 .container {
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 1rem;
 }
 
+
 /* Responsive utilities */
+
 @media (max-width: 768px) {
     .container {
         padding: 0 0.5rem;
+    }
+}
+
+
+/* Estilos para Crear Evento */
+
+.crear-evento-page {
+    min-height: 100vh;
+    background-image: url("https://images.unsplash.com/photo-1562774053-701939374585?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.crear-evento-page::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(2px);
+}
+
+.crear-evento-logo {
+    position: absolute;
+    top: 2rem;
+    left: 2rem;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.crear-evento-logo-icon {
+    width: 50px;
+    height: 50px;
+    background-color: #FF6B35;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #FFFFFF;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.crear-evento-logo-text {
+    color: #FF6B35;
+    font-size: 1.8rem;
+    font-weight: bold;
+    font-style: italic;
+}
+
+.crear-evento-container {
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+    z-index: 5;
+}
+
+.crear-evento-form {
+    background-color: rgba(60, 60, 60, 0.8);
+    border-radius: 20px;
+    border: 2px solid #FF6B35;
+    padding: 2.5rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    position: relative;
+    z-index: 5;
+}
+
+.crear-evento-title {
+    color: #FF6B35;
+    text-align: center;
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+}
+
+.crear-evento-underline {
+    width: 60px;
+    height: 3px;
+    background-color: #FF6B35;
+    margin: 0 auto 2rem auto;
+}
+
+.crear-evento-form-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.crear-evento-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.crear-evento-row {
+    display: flex;
+    gap: 1rem;
+}
+
+.crear-evento-input-half {
+    flex: 1;
+}
+
+.crear-evento-label {
+    color: #FF6B35;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.crear-evento-input {
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: 1px solid #FF6B35;
+    background-color: #FFFFFF;
+    font-size: 1rem;
+    color: #1e293b;
+}
+
+.crear-evento-input-wide {
+    width: 100%;
+}
+
+.crear-evento-input:focus {
+    outline: none;
+    border-color: #FF8C00;
+    box-shadow: 0 0 0 2px rgba(255, 140, 0, 0.2);
+}
+
+.crear-evento-button {
+    width: 100%;
+    padding: 1rem;
+    background-color: #FF6B35;
+    border: none;
+    border-radius: 8px;
+    color: #FFFFFF;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 1.1rem;
+    margin-top: 1.5rem;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+}
+
+.crear-evento-button:hover {
+    background-color: #FF8C00;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+}
+
+.crear-evento-button:active {
+    transform: translateY(0);
+}
+
+.crear-evento-separator {
+    width: 20px;
+    height: 20px;
+    background-color: #FF6B35;
+    border-radius: 50%;
+    margin: 1rem auto;
+    display: block;
+}
+
+.crear-evento-login-link {
+    text-align: center;
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: #FFFFFF;
+}
+
+.crear-evento-login-text {
+    color: #FF6B35;
+    text-decoration: none;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.crear-evento-login-text:hover {
+    text-decoration: underline;
+}
+
+
+/* Responsive para Crear Evento */
+
+@media (max-width: 768px) {
+    .crear-evento-form {
+        padding: 1.5rem;
+        margin: 1rem;
+    }
+    .crear-evento-row {
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    .crear-evento-input-half {
+        flex: none;
+    }
+    .crear-evento-logo {
+        top: 1rem;
+        left: 1rem;
+    }
+    .crear-evento-logo-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.2rem;
+    }
+    .crear-evento-logo-text {
+        font-size: 1.4rem;
+    }
+}
+
+
+/* Estilos para Crear Beneficio */
+
+.crear-beneficio-page {
+    min-height: 100vh;
+    background-image: url("https://images.unsplash.com/photo-1562774053-701939374585?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.crear-beneficio-page::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(2px);
+}
+
+.crear-beneficio-logo {
+    position: absolute;
+    top: 2rem;
+    left: 2rem;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.crear-beneficio-logo-icon {
+    width: 50px;
+    height: 50px;
+    background-color: #FF6B35;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #FFFFFF;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.crear-beneficio-logo-text {
+    color: #FF6B35;
+    font-size: 1.8rem;
+    font-weight: bold;
+    font-style: italic;
+}
+
+.crear-beneficio-container {
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+    z-index: 5;
+}
+
+.crear-beneficio-form {
+    background-color: rgba(60, 60, 60, 0.8);
+    border-radius: 20px;
+    border: 2px solid #FF6B35;
+    padding: 2.5rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    position: relative;
+    z-index: 5;
+}
+
+.crear-beneficio-title {
+    color: #FF6B35;
+    text-align: center;
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+}
+
+.crear-beneficio-underline {
+    width: 60px;
+    height: 3px;
+    background-color: #FF6B35;
+    margin: 0 auto 2rem auto;
+}
+
+.crear-beneficio-form-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.crear-beneficio-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.crear-beneficio-label {
+    color: #FF6B35;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.crear-beneficio-input {
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: 1px solid #FF6B35;
+    background-color: #FFFFFF;
+    font-size: 1rem;
+    color: #1e293b;
+}
+
+.crear-beneficio-select {
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: 1px solid #FF6B35;
+    background-color: #FFFFFF;
+    font-size: 1rem;
+    color: #1e293b;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+    padding-right: 2.5rem;
+}
+
+.crear-beneficio-input:focus,
+.crear-beneficio-select:focus {
+    outline: none;
+    border-color: #FF8C00;
+    box-shadow: 0 0 0 2px rgba(255, 140, 0, 0.2);
+}
+
+.crear-beneficio-button {
+    width: 100%;
+    padding: 1rem;
+    background-color: #FF6B35;
+    border: none;
+    border-radius: 8px;
+    color: #FFFFFF;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 1.1rem;
+    margin-top: 1.5rem;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+}
+
+.crear-beneficio-button:hover {
+    background-color: #FF8C00;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+}
+
+.crear-beneficio-button:active {
+    transform: translateY(0);
+}
+
+.crear-beneficio-separator {
+    width: 100%;
+    height: 1px;
+    background-color: #FF6B35;
+    margin: 1rem 0;
+    position: relative;
+}
+
+.crear-beneficio-separator::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    background-color: #FF6B35;
+    border-radius: 50%;
+}
+
+.crear-beneficio-register-link {
+    text-align: center;
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: #FFFFFF;
+}
+
+.crear-beneficio-register-text {
+    color: #FF6B35;
+    text-decoration: none;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.crear-beneficio-register-text:hover {
+    text-decoration: underline;
+}
+
+
+/* Responsive para Crear Beneficio */
+
+@media (max-width: 768px) {
+    .crear-beneficio-form {
+        padding: 1.5rem;
+        margin: 1rem;
+    }
+    .crear-beneficio-logo {
+        top: 1rem;
+        left: 1rem;
+    }
+    .crear-beneficio-logo-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.2rem;
+    }
+    .crear-beneficio-logo-text {
+        font-size: 1.4rem;
     }
 }
