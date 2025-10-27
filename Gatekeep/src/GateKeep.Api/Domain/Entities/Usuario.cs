@@ -2,7 +2,7 @@ using GateKeep.Api.Domain.Enums;
 
 namespace GateKeep.Api.Domain.Entities;
 
-public sealed record Usuario
+public abstract record Usuario
 (
     long Id,
     string Email,
