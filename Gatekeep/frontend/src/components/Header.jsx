@@ -3,9 +3,9 @@
 import React from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import logo from '../../src/assets/LogoGateKeep.webp'
-import harvard from '../../src/assets/Harvard.webp'
-import BasketballIcon from '../../src/assets/basketball-icon.svg'
+import logo from '/public/assets/LogoGateKeep.webp'
+import harvard from '/public/assets/Harvard.webp'
+import BasketballIcon from '/public/assets/basketball-icon.svg'
 
 export default function Header() {
   const notificaciones = [
@@ -17,24 +17,23 @@ export default function Header() {
       <div className="header-hero">
         <Image src={harvard} alt="Harvard" fill className="harvard-image" priority />
         <div className="header-overlay" />
+          <div className="header-topbar">
+            <div className="icon-group">
+              <Link href="/">
+                <Image src={logo} alt="Logo GateKeep" width={160} priority className="logo-image" />
+              </Link>
 
-  <div className="header-topbar">
-          <div className="icon-group">
-            <Link href="/">
-              <Image src={logo} alt="Logo GateKeep" width={160} priority className="logo-image" />
-            </Link>
-
-            <Link href="/notificaciones" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Notificaciones" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
-              <div className="item-card notification-card">
-                <i className="pi pi-bell item-icon" aria-hidden={true}></i>
-                {notificaciones.length > 0 && (
-                  <div className="notification-badge">
-                    {notificaciones.length}
-                  </div>
-                )}
-              </div>
-            </Link>
-          </div>
+              <Link href="/notificaciones" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Notificaciones" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
+                <div className="item-card notification-card">
+                  <i className="pi pi-bell item-icon" aria-hidden={true}></i>
+                    {notificaciones.length > 0 && (
+                      <div className="notification-badge">
+                        {notificaciones.length}
+                      </div>
+                    )}
+                </div>
+              </Link>
+            </div>
 
           <div className="icon-group">
             <Link href="/" style={{ textDecoration: 'none', outline: 'none'}} aria-label="Home" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
@@ -110,7 +109,9 @@ export default function Header() {
       <style jsx>{`
         .header-root {
           width: 100%;
+          display: block;
         }
+
         .header-hero {
           width: 100%;
           height: 768px;
@@ -180,6 +181,7 @@ export default function Header() {
           outline: none;
           box-shadow: 0 0 0 4px rgba(243,116,38,0.16);
         }
+
         .item-icon {
           display: block;
           font-size: 1.875rem; /* 30px to rem */
