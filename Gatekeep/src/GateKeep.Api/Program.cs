@@ -1,10 +1,13 @@
 using System.Text.Json.Serialization;
 using GateKeep.Api.Application.Beneficios;
 using GateKeep.Api.Application.Espacios;
+using GateKeep.Api.Application.Notificaciones;
 using GateKeep.Api.Endpoints.Beneficios;
 using GateKeep.Api.Endpoints.Espacios;
+using GateKeep.Api.Endpoints.Notificaciones;
 using GateKeep.Api.Infrastructure.Beneficios;
 using GateKeep.Api.Infrastructure.Espacios;
+using GateKeep.Api.Infrastructure.Notificaciones;
 using GateKeep.Api.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -55,6 +58,10 @@ builder.Services.AddScoped<IBeneficioRepository, BeneficioRepository>();
 builder.Services.AddScoped<IBeneficioService, BeneficioService>();
 builder.Services.AddScoped<IBeneficioUsuarioRepository, BeneficioUsuarioRepository>();
 builder.Services.AddScoped<IBeneficioUsuarioService, BeneficioUsuarioService>();
+
+// Servicios de Notificaciones MongoDB
+builder.Services.AddScoped<INotificacionRepository, NotificacionRepository>();
+builder.Services.AddScoped<INotificacionService, NotificacionService>();
 
 // MongoDB - Configuración con Atlas y API estable
 builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
@@ -183,8 +190,7 @@ app.MapEdificioEndpoints();
 app.MapLaboratorioEndpoints();
 app.MapSalonEndpoints();
 app.MapBeneficioEndpoints();
-
-// (MongoDB eliminado en favor de PostgreSQL)
+app.MapNotificacionEndpoints();
 
 // Auto-aplicar migraciones al iniciar
 using (var scope = app.Services.CreateScope())
