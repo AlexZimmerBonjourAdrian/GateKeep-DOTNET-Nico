@@ -3,6 +3,7 @@ using System;
 using GateKeep.Api.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GateKeep.Api.Migrations
 {
     [DbContext(typeof(GateKeepDbContext))]
-    partial class GateKeepDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251025203341_Init")]
+    partial class Init
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -71,39 +74,18 @@ namespace GateKeep.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
-                    b.Property<bool>("Activo")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
-
-                    b.Property<int>("Capacidad")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Descripcion")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("Nombre")
+                    b.Property<string>("tipo")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("Ubicacion")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                        .HasMaxLength(13)
+                        .HasColumnType("character varying(13)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Activo")
-                        .HasDatabaseName("IX_espacios_activo");
-
-                    b.HasIndex("Nombre")
-                        .HasDatabaseName("IX_espacios_nombre");
-
                     b.ToTable("espacios", (string)null);
 
-                    b.UseTptMappingStrategy();
+                    b.HasDiscriminator<string>("tipo").HasValue("espacio");
+
+                    b.UseTphMappingStrategy();
                 });
 
             modelBuilder.Entity("GateKeep.Api.Domain.Entities.EventoAcceso", b =>
@@ -278,111 +260,21 @@ namespace GateKeep.Api.Migrations
                 {
                     b.HasBaseType("GateKeep.Api.Domain.Entities.Espacio");
 
-                    b.Property<string>("CodigoEdificio")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<int>("NumeroPisos")
-                        .HasColumnType("integer");
-
-                    b.HasIndex("CodigoEdificio")
-                        .IsUnique()
-                        .HasDatabaseName("IX_edificios_codigo")
-                        .HasFilter("\"CodigoEdificio\" IS NOT NULL");
-
-                    b.ToTable("edificios", (string)null);
+                    b.HasDiscriminator().HasValue("edificio");
                 });
 
             modelBuilder.Entity("GateKeep.Api.Domain.Entities.Laboratorio", b =>
                 {
                     b.HasBaseType("GateKeep.Api.Domain.Entities.Espacio");
 
-                    b.Property<long>("EdificioId")
-                        .HasColumnType("bigint");
-
-                    b.Property<bool>("EquipamientoEspecial")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
-
-                    b.Property<int>("NumeroLaboratorio")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("TipoLaboratorio")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.HasIndex("EdificioId")
-                        .HasDatabaseName("IX_laboratorios_edificio_id");
-
-                    b.HasIndex("EdificioId", "NumeroLaboratorio")
-                        .IsUnique()
-                        .HasDatabaseName("IX_laboratorios_edificio_numero");
-
-                    b.ToTable("laboratorios", (string)null);
+                    b.HasDiscriminator().HasValue("laboratorio");
                 });
 
             modelBuilder.Entity("GateKeep.Api.Domain.Entities.Salon", b =>
                 {
                     b.HasBaseType("GateKeep.Api.Domain.Entities.Espacio");
 
-                    b.Property<long>("EdificioId")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("NumeroSalon")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("TipoSalon")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.HasIndex("EdificioId")
-                        .HasDatabaseName("IX_salones_edificio_id");
-
-                    b.HasIndex("EdificioId", "NumeroSalon")
-                        .IsUnique()
-                        .HasDatabaseName("IX_salones_edificio_numero");
-
-                    b.ToTable("salones", (string)null);
-                });
-
-            modelBuilder.Entity("GateKeep.Api.Domain.Entities.Edificio", b =>
-                {
-                    b.HasOne("GateKeep.Api.Domain.Entities.Espacio", null)
-                        .WithOne()
-                        .HasForeignKey("GateKeep.Api.Domain.Entities.Edificio", "Id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("GateKeep.Api.Domain.Entities.Laboratorio", b =>
-                {
-                    b.HasOne("GateKeep.Api.Domain.Entities.Edificio", null)
-                        .WithMany()
-                        .HasForeignKey("EdificioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("GateKeep.Api.Domain.Entities.Espacio", null)
-                        .WithOne()
-                        .HasForeignKey("GateKeep.Api.Domain.Entities.Laboratorio", "Id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("GateKeep.Api.Domain.Entities.Salon", b =>
-                {
-                    b.HasOne("GateKeep.Api.Domain.Entities.Edificio", null)
-                        .WithMany()
-                        .HasForeignKey("EdificioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("GateKeep.Api.Domain.Entities.Espacio", null)
-                        .WithOne()
-                        .HasForeignKey("GateKeep.Api.Domain.Entities.Salon", "Id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.HasDiscriminator().HasValue("salon");
                 });
 #pragma warning restore 612, 618
         }
