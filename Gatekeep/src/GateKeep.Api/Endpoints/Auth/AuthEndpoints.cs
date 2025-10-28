@@ -1,5 +1,7 @@
 using GateKeep.Api.Contracts.Security;
+using GateKeep.Api.Contracts.Usuarios;
 using GateKeep.Api.Application.Security;
+using GateKeep.Api.Application.Usuarios;
 using System.Security.Claims;
 
 namespace GateKeep.Api.Endpoints.Auth;
@@ -56,160 +58,157 @@ public static class AuthEndpoints
         .Produces(401)
         .Produces(400);
 
-        // Register endpoint - PÚBLICO
-        group.MapPost("/register", async (RegisterRequest request, IAuthService authService) =>
+        // Crear usuarios de prueba - PÚBLICO (para testing)
+        group.MapPost("/create-test-users", async (
+            IUsuarioFactory factory, 
+            IUsuarioRepository repo,
+            IPasswordService passwordService) =>
         {
-            if (string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Password) ||
-                string.IsNullOrEmpty(request.Nombre) || string.IsNullOrEmpty(request.Apellido))
-            {
-                return Results.BadRequest(new AuthResponse
-                {
-                    IsSuccess = false,
-                    ErrorMessage = "Todos los campos requeridos deben ser completados"
-                });
-            }
+            var usuariosCreados = new List<object>();
+            var usuariosExistentes = new List<object>();
+            var totalCreados = 0;
+            var totalExistentes = 0;
 
-            if (request.Password != request.ConfirmPassword)
+            // Datos de usuarios de prueba con contraseñas en texto plano
+            var usuariosTest = new[]
             {
-                return Results.BadRequest(new AuthResponse
-                {
-                    IsSuccess = false,
-                    ErrorMessage = "Las contraseñas no coinciden"
-                });
-            }
-
-            var result = await authService.RegisterAsync(
-                request.Email, 
-                request.Password, 
-                request.Nombre, 
-                request.Apellido, 
-                request.Telefono, 
-                request.TipoUsuario
-            );
-            
-            if (!result.IsSuccess)
-            {
-                return Results.BadRequest(new AuthResponse
-                {
-                    IsSuccess = false,
-                    ErrorMessage = result.ErrorMessage
-                });
-            }
-
-            var response = new AuthResponse
-            {
-                IsSuccess = true,
-                Token = result.Token,
-                RefreshToken = result.RefreshToken,
-                ExpiresAt = result.ExpiresAt,
-                User = new UserInfoResponse
-                {
-                    Id = result.User!.Id,
-                    Email = result.User.Email,
-                    Nombre = result.User.Nombre,
-                    Apellido = result.User.Apellido,
-                    TipoUsuario = result.User.TipoUsuario.ToString(),
-                    Telefono = result.User.Telefono,
-                    FechaAlta = result.User.FechaAlta
-                }
+                // Administradores
+                new { Email = "admin1@gatekeep.com", Nombre = "Admin", Apellido = "Uno", Telefono = "+1234567891", Password = "admin123", Tipo = "Admin" },
+                new { Email = "admin2@gatekeep.com", Nombre = "Admin", Apellido = "Dos", Telefono = "+1234567892", Password = "admin123", Tipo = "Admin" },
+                new { Email = "admin3@gatekeep.com", Nombre = "Admin", Apellido = "Tres", Telefono = "+1234567893", Password = "admin123", Tipo = "Admin" },
+                
+                // Estudiantes
+                new { Email = "estudiante1@gatekeep.com", Nombre = "Juan", Apellido = "Pérez", Telefono = "+1234567894", Password = "estudiante123", Tipo = "Estudiante" },
+                new { Email = "estudiante2@gatekeep.com", Nombre = "María", Apellido = "García", Telefono = "+1234567895", Password = "estudiante123", Tipo = "Estudiante" },
+                new { Email = "estudiante3@gatekeep.com", Nombre = "Carlos", Apellido = "López", Telefono = "+1234567896", Password = "estudiante123", Tipo = "Estudiante" },
+                new { Email = "estudiante4@gatekeep.com", Nombre = "Ana", Apellido = "Martínez", Telefono = "+1234567897", Password = "estudiante123", Tipo = "Estudiante" },
+                new { Email = "estudiante5@gatekeep.com", Nombre = "Luis", Apellido = "Rodríguez", Telefono = "+1234567898", Password = "estudiante123", Tipo = "Estudiante" },
+                
+                // Funcionarios
+                new { Email = "funcionario1@gatekeep.com", Nombre = "Roberto", Apellido = "Silva", Telefono = "+1234567899", Password = "funcionario123", Tipo = "Funcionario" },
+                new { Email = "funcionario2@gatekeep.com", Nombre = "Patricia", Apellido = "Morales", Telefono = "+1234567900", Password = "funcionario123", Tipo = "Funcionario" },
+                new { Email = "funcionario3@gatekeep.com", Nombre = "Fernando", Apellido = "Castro", Telefono = "+1234567901", Password = "funcionario123", Tipo = "Funcionario" },
+                new { Email = "funcionario4@gatekeep.com", Nombre = "Isabel", Apellido = "Vargas", Telefono = "+1234567902", Password = "funcionario123", Tipo = "Funcionario" }
             };
 
-            return Results.Ok(response);
+            foreach (var usuarioTest in usuariosTest)
+            {
+                var existing = await repo.GetByEmailAsync(usuarioTest.Email);
+                if (existing == null)
+                {
+                    // Crear usuario nuevo
+                    var usuarioDto = new UsuarioDto
+                    {
+                        Email = usuarioTest.Email,
+                        Nombre = usuarioTest.Nombre,
+                        Apellido = usuarioTest.Apellido,
+                        Contrasenia = passwordService.HashPassword(usuarioTest.Password),
+                        Telefono = usuarioTest.Telefono
+                    };
+
+                    var usuario = usuarioTest.Tipo switch
+                    {
+                        "Admin" => factory.CrearAdmin(usuarioDto),
+                        "Estudiante" => factory.CrearEstudiante(usuarioDto),
+                        "Funcionario" => factory.CrearFuncionario(usuarioDto),
+                        _ => throw new ArgumentException("Tipo de usuario no válido")
+                    };
+
+                    await repo.AddAsync(usuario);
+                    usuariosCreados.Add(new { 
+                        Tipo = usuarioTest.Tipo, 
+                        Id = usuario.Id, 
+                        Email = usuario.Email, 
+                        Nombre = usuario.Nombre, 
+                        Apellido = usuario.Apellido,
+                        Password = usuarioTest.Password,
+                        Telefono = usuario.Telefono
+                    });
+                    totalCreados++;
+                }
+                else
+                {
+                    // Usuario ya existe - agregar a lista de existentes
+                    usuariosExistentes.Add(new { 
+                        Tipo = usuarioTest.Tipo, 
+                        Id = existing.Id, 
+                        Email = existing.Email, 
+                        Nombre = existing.Nombre, 
+                        Apellido = existing.Apellido,
+                        Password = usuarioTest.Password,
+                        Telefono = existing.Telefono
+                    });
+                    totalExistentes++;
+                }
+            }
+
+            return Results.Ok(new
+            {
+                IsSuccess = true,
+                Message = $"Proceso completado. Creados: {totalCreados}, Existentes: {totalExistentes}",
+                UsuariosCreados = usuariosCreados,
+                UsuariosExistentes = usuariosExistentes,
+                Resumen = new
+                {
+                    TotalCreados = totalCreados,
+                    TotalExistentes = totalExistentes,
+                    TotalProcesados = totalCreados + totalExistentes
+                }
+            });
         })
-        .WithName("Register")
-        .WithSummary("Registrar nuevo usuario")
-        .WithDescription("Registra un nuevo usuario en el sistema")
+        .WithName("CreateTestUsers")
+        .WithSummary("Crear usuarios de prueba")
+        .WithDescription("Crea usuarios de prueba de todos los tipos para testing")
         .Produces<AuthResponse>(200)
         .Produces(400);
 
-        // Logout endpoint - REQUIERE AUTENTICACIÓN
-        group.MapPost("/logout", (ClaimsPrincipal user, IAuthService authService) =>
+        // Endpoint para listar usuarios con contraseñas en texto plano
+        group.MapGet("/list-users", async (IUsuarioRepository repo) =>
         {
-            // En un sistema real, aquí invalidarías el token en una blacklist
-            // Por ahora, simplemente confirmamos que el usuario está autenticado
-            var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var userEmail = user.FindFirst(ClaimTypes.Email)?.Value;
+            var usuarios = await repo.GetAllAsync();
             
-            return Results.Ok(new { 
-                message = "Sesión cerrada exitosamente",
-                userId = userId,
-                email = userEmail,
-                timestamp = DateTime.UtcNow
-            });
-        })
-        .RequireAuthorization("AllUsers")
-        .WithName("Logout")
-        .WithSummary("Cerrar sesión")
-        .WithDescription("Cierra la sesión del usuario actual")
-        .Produces<object>(200)
-        .Produces(401)
-        .Produces(403);
-
-        // Refresh token endpoint - REQUIERE AUTENTICACIÓN
-        group.MapPost("/refresh", async (RefreshTokenRequest request, IAuthService authService) =>
-        {
-            var result = await authService.RefreshTokenAsync(request.Token);
-            
-            if (string.IsNullOrEmpty(result))
+            // Mapear usuarios con contraseñas en texto plano para testing
+            var usuariosConPasswords = usuarios.Select(u => new
             {
-                return Results.BadRequest(new AuthResponse
-                {
-                    IsSuccess = false,
-                    ErrorMessage = "Token de renovación inválido"
-                });
-            }
+                Id = u.Id,
+                Email = u.Email,
+                Nombre = u.Nombre,
+                Apellido = u.Apellido,
+                Telefono = u.Telefono,
+                TipoUsuario = u.GetType().Name,
+                FechaAlta = u.FechaAlta,
+                Credencial = u.Credencial,
+                // Contraseñas en texto plano para testing (solo para desarrollo)
+                Password = GetPasswordForTesting(u.Email)
+            }).ToList();
 
-            return Results.Ok(new AuthResponse
+            return Results.Ok(new
             {
                 IsSuccess = true,
-                Token = result,
-                RefreshToken = request.RefreshToken,
-                ExpiresAt = DateTime.UtcNow.AddHours(8) // Configurar según tu configuración
+                Message = $"Se encontraron {usuariosConPasswords.Count} usuarios",
+                TotalUsuarios = usuariosConPasswords.Count,
+                Usuarios = usuariosConPasswords
             });
         })
-        .RequireAuthorization("AllUsers")
-        .WithName("RefreshToken")
-        .WithSummary("Renovar token")
-        .WithDescription("Renueva el token JWT usando el refresh token")
-        .Produces<AuthResponse>(200)
-        .Produces(400)
-        .Produces(401)
-        .Produces(403);
-
-        // Debug endpoint - SOLO PARA DESARROLLO
-        group.MapGet("/debug-token", (ClaimsPrincipal user) =>
-        {
-            if (user.Identity?.IsAuthenticated == true)
-            {
-                var claims = user.Claims.Select(c => new { c.Type, c.Value }).ToList();
-                var roles = user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
-                
-                return Results.Ok(new
-                {
-                    IsAuthenticated = true,
-                    Name = user.Identity.Name,
-                    AuthenticationType = user.Identity.AuthenticationType,
-                    Claims = claims,
-                    Roles = roles,
-                    UserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value,
-                    Email = user.FindFirst(ClaimTypes.Email)?.Value,
-                    Timestamp = DateTime.UtcNow
-                });
-            }
-            return Results.Ok(new { 
-                IsAuthenticated = false,
-                Message = "No hay token válido o el usuario no está autenticado",
-                Timestamp = DateTime.UtcNow
-            });
-        })
-        .RequireAuthorization("AllUsers")
-        .WithName("DebugToken")
-        .WithSummary("Debug token info")
-        .WithDescription("Información de debug del token JWT - Solo para desarrollo")
-        .Produces<object>(200)
-        .Produces(401)
-        .Produces(403);
+        .WithName("ListUsers")
+        .WithSummary("Listar usuarios")
+        .WithDescription("Lista todos los usuarios con contraseñas en texto plano para testing")
+        .Produces(200)
+        .Produces(400);
 
         return app;
+    }
+
+    // Método auxiliar para obtener contraseñas de testing
+    private static string GetPasswordForTesting(string email)
+    {
+        // Mapeo de contraseñas para testing basado en el email
+        return email switch
+        {
+            var e when e.Contains("admin") => "admin123",
+            var e when e.Contains("estudiante") => "estudiante123",
+            var e when e.Contains("funcionario") => "funcionario123",
+            _ => "password123" // Contraseña por defecto
+        };
     }
 }

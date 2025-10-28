@@ -1,6 +1,7 @@
 using GateKeep.Api.Contracts.Usuarios;
 using GateKeep.Api.Domain.Entities;
 using GateKeep.Api.Application.Usuarios;
+using GateKeep.Api.Application.Security;
 using GateKeep.Api.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -48,9 +49,11 @@ public static class UsuarioEndpoints
         .Produces(403);
 
         // POST /usuarios/estudiante - Solo administradores pueden crear estudiantes
-        group.MapPost("/estudiante", async (UsuarioDto dto, [FromServices] IUsuarioFactory factory, [FromServices] IUsuarioRepository repo) =>
+        group.MapPost("/estudiante", async (UsuarioDto dto, [FromServices] IUsuarioFactory factory, [FromServices] IUsuarioRepository repo, [FromServices] IPasswordService passwordService) =>
         {
-            var usuario = factory.CrearEstudiante(dto);
+            // Hashear la contraseña antes de crear el usuario
+            var dtoConPasswordHasheada = dto with { Contrasenia = passwordService.HashPassword(dto.Contrasenia) };
+            var usuario = factory.CrearEstudiante(dtoConPasswordHasheada);
             await repo.AddAsync(usuario);
             return Results.Created($"/usuarios/{usuario.Id}", usuario);
         })
@@ -63,9 +66,11 @@ public static class UsuarioEndpoints
         .Produces(403);
 
         // POST /usuarios/funcionario - Solo administradores pueden crear funcionarios
-        group.MapPost("/funcionario", async (UsuarioDto dto, [FromServices] IUsuarioFactory factory, [FromServices] IUsuarioRepository repo) =>
+        group.MapPost("/funcionario", async (UsuarioDto dto, [FromServices] IUsuarioFactory factory, [FromServices] IUsuarioRepository repo, [FromServices] IPasswordService passwordService) =>
         {
-            var usuario = factory.CrearFuncionario(dto);
+            // Hashear la contraseña antes de crear el usuario
+            var dtoConPasswordHasheada = dto with { Contrasenia = passwordService.HashPassword(dto.Contrasenia) };
+            var usuario = factory.CrearFuncionario(dtoConPasswordHasheada);
             await repo.AddAsync(usuario);
             return Results.Created($"/usuarios/{usuario.Id}", usuario);
         })
@@ -78,9 +83,11 @@ public static class UsuarioEndpoints
         .Produces(403);
 
         // POST /usuarios/admin - Solo administradores pueden crear otros administradores
-        group.MapPost("/admin", async (UsuarioDto dto, [FromServices] IUsuarioFactory factory, [FromServices] IUsuarioRepository repo) =>
+        group.MapPost("/admin", async (UsuarioDto dto, [FromServices] IUsuarioFactory factory, [FromServices] IUsuarioRepository repo, [FromServices] IPasswordService passwordService) =>
         {
-            var admin = factory.CrearAdmin(dto);
+            // Hashear la contraseña antes de crear el usuario
+            var dtoConPasswordHasheada = dto with { Contrasenia = passwordService.HashPassword(dto.Contrasenia) };
+            var admin = factory.CrearAdmin(dtoConPasswordHasheada);
             await repo.AddAsync(admin);
             return Results.Created($"/usuarios/{admin.Id}", admin);
         })
