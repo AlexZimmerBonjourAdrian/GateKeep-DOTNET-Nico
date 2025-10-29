@@ -1,13 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext.jsx';
+import { useRouter } from 'next/navigation';
 
 const Register = () => {
+    const { register, isAuthenticated, error, clearError } = useAuth();
+    const router = useRouter();
+
     const [formData, setFormData] = useState({
         nombre: '',
         apellido: '',
         email: '',
         password: '',
-        confirmPassword: ''
+        confirmPassword: '',
+        telefono: ''
     });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [localError, setLocalError] = useState(null);
 
     const handleFieldChange = (fieldName, value) => {
         setFormData(prev => ({
@@ -16,10 +24,56 @@ const Register = () => {
         }));
     };
     
-    const handleRegister = (e) => {
+    // Redirigir si ya está autenticado
+    useEffect(() => {
+        if (isAuthenticated) {
+            router.push('/');
+        }
+    }, [isAuthenticated, router]);
+
+    // Limpiar errores al modificar campos
+    useEffect(() => {
+        setLocalError(null);
+        if (error) clearError();
+    }, [formData.nombre, formData.apellido, formData.email, formData.password, formData.confirmPassword, formData.telefono]);
+
+    const validate = () => {
+        if (!formData.email.includes('@')) return 'Email inválido';
+        if (formData.password.length < 6) return 'La contraseña debe tener al menos 6 caracteres';
+        if (formData.password !== formData.confirmPassword) return 'Las contraseñas no coinciden';
+        return null;
+    };
+
+    const handleRegister = async (e) => {
         e.preventDefault();
-        // Vista de demostración - sin lógica
-        console.log('Formulario de registro - vista de demostración');
+        if (isSubmitting) return;
+
+        const validation = validate();
+        if (validation) {
+            setLocalError(validation);
+            return;
+        }
+
+        setIsSubmitting(true);
+        clearError();
+        setLocalError(null);
+
+        try {
+            const result = await register({
+                nombre: formData.nombre,
+                apellido: formData.apellido,
+                email: formData.email,
+                password: formData.password,
+                telefono: formData.telefono || undefined,
+            });
+            if (result.success) {
+                router.push('/');
+            }
+        } catch (err) {
+            // error global manejado por el contexto
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const styles = {
@@ -135,6 +189,41 @@ const Register = () => {
             textTransform: 'uppercase',
             transition: 'all 0.3s ease'
         },
+        loadingButton: {
+            width: '100%',
+            padding: '1rem',
+            backgroundColor: '#9CA3AF',
+            border: 'none',
+            borderRadius: '8px',
+            color: '#FFFFFF',
+            fontWeight: 'bold',
+            cursor: 'not-allowed',
+            fontSize: '1.1rem',
+            marginTop: '1.5rem',
+            textTransform: 'uppercase',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem'
+        },
+        loadingSpinner: {
+            width: '20px',
+            height: '20px',
+            border: '2px solid #FFFFFF',
+            borderTop: '2px solid transparent',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+        },
+        errorMessage: {
+            backgroundColor: 'rgba(220, 38, 38, 0.1)',
+            border: '1px solid #DC2626',
+            color: '#FEE2E2',
+            padding: '0.75rem',
+            borderRadius: '8px',
+            marginBottom: '1rem',
+            fontSize: '0.9rem',
+            textAlign: 'center'
+        },
         separator: {
             width: '20px',
             height: '20px',
@@ -158,11 +247,20 @@ const Register = () => {
     };
 
     return (
+        <>
+        <style>
+            {`
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            `}
+        </style>
         <div style={styles.mainContainer}>
             <div style={styles.backgroundOverlay}></div>
 
             <div style={styles.logo}>
-                <div style={styles.logoIcon}>🔑</div>
+                <div style={styles.logoIcon}>GK</div>
                 <span style={styles.logoText}>Gatekeep</span>
             </div>
               
@@ -171,6 +269,11 @@ const Register = () => {
                 <div style={styles.titleUnderline}></div>
                 
                 <form onSubmit={handleRegister}>
+                    {(localError || error) && (
+                        <div style={styles.errorMessage}>
+                            {localError || error}
+                        </div>
+                    )}
                     <div style={styles.formRow}>
                         <div style={styles.inputGroup}>
                             <label htmlFor="nombre" style={styles.label}>Nombre</label>
@@ -181,6 +284,7 @@ const Register = () => {
                                 onChange={(e) => handleFieldChange('nombre', e.target.value)}
                                 style={styles.input}
                                 required
+                                disabled={isSubmitting}
                             />
                         </div>
                         <div style={styles.inputGroup}>
@@ -192,6 +296,7 @@ const Register = () => {
                                 onChange={(e) => handleFieldChange('apellido', e.target.value)}
                                 style={styles.input}
                                 required
+                                disabled={isSubmitting}
                             />
                         </div>
                     </div>
@@ -205,6 +310,19 @@ const Register = () => {
                             onChange={(e) => handleFieldChange('email', e.target.value)}
                             style={styles.input}
                             required
+                            disabled={isSubmitting}
+                        />
+                    </div>
+
+                    <div style={styles.inputGroup}>
+                        <label htmlFor="telefono" style={styles.label}>Teléfono (opcional)</label>
+                        <input
+                            id="telefono"
+                            type="text"
+                            value={formData.telefono}
+                            onChange={(e) => handleFieldChange('telefono', e.target.value)}
+                            style={styles.input}
+                            disabled={isSubmitting}
                         />
                     </div>
 
@@ -218,6 +336,7 @@ const Register = () => {
                                 onChange={(e) => handleFieldChange('password', e.target.value)}
                                 style={styles.input}
                                 required
+                            disabled={isSubmitting}
                             />
                         </div>
                         <div style={styles.inputGroup}>
@@ -229,15 +348,24 @@ const Register = () => {
                                 onChange={(e) => handleFieldChange('confirmPassword', e.target.value)}
                                 style={styles.input}
                                 required
+                                disabled={isSubmitting}
                             />
                         </div>
                     </div>
 
                     <button
                         type="submit"
-                        style={styles.registerButton}
+                        style={isSubmitting ? styles.loadingButton : styles.registerButton}
+                        disabled={isSubmitting}
                     >
-                        REGISTRARSE
+                        {isSubmitting ? (
+                            <>
+                                <div style={styles.loadingSpinner}></div>
+                                REGISTRANDO...
+                            </>
+                        ) : (
+                            'REGISTRARSE'
+                        )}
                     </button>
 
                     <div style={styles.separator}></div>
@@ -253,6 +381,7 @@ const Register = () => {
                 </form>
             </div>
         </div>
+        </>
     );
 };
 

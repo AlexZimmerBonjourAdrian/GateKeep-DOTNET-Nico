@@ -1,8 +1,11 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Menubar } from 'primereact/menubar';
+import { useAuth } from '../contexts/AuthContext.jsx';
 
 const Layout = () => {
+  const { user, isAuthenticated, logout } = useAuth();
+
   const items = [
     {
       label: 'Inicio',
@@ -34,10 +37,28 @@ const Layout = () => {
 
   const end = (
     <div className="flex items-center gap-2">
-      <button className="p-button p-button-outlined p-button-sm">
-        <i className="pi pi-user mr-2" style={{ color: '#231F20' }}></i>
-        Login
-      </button>
+      {isAuthenticated ? (
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-600">
+            Hola, {user?.nombre} {user?.apellido}
+          </span>
+          <span className="text-xs text-gray-500">
+            ({user?.tipoUsuario})
+          </span>
+          <button 
+            className="p-button p-button-outlined p-button-sm"
+            onClick={logout}
+          >
+            <i className="pi pi-sign-out mr-2" style={{ color: '#231F20' }}></i>
+            Cerrar Sesión
+          </button>
+        </div>
+      ) : (
+        <a href="/auth/login" className="p-button p-button-outlined p-button-sm">
+          <i className="pi pi-user mr-2" style={{ color: '#231F20' }}></i>
+          Login
+        </a>
+      )}
     </div>
   );
 
