@@ -93,24 +93,24 @@ function Test-NextJSConfig {
         return $false
     }
     
-    if (Test-Path "app") {
-        Write-Host "OK Directorio app encontrado" -ForegroundColor Green
+    if (Test-Path "src/app") {
+        Write-Host "OK Directorio src/app encontrado" -ForegroundColor Green
     } else {
-        Write-Host "ERROR Directorio app no encontrado" -ForegroundColor Red
+        Write-Host "ERROR Directorio src/app no encontrado" -ForegroundColor Red
         return $false
     }
     
-    if (Test-Path "app/layout.js") {
-        Write-Host "OK app/layout.js encontrado" -ForegroundColor Green
+    if (Test-Path "src/app/layout.js") {
+        Write-Host "OK src/app/layout.js encontrado" -ForegroundColor Green
     } else {
-        Write-Host "ERROR app/layout.js no encontrado" -ForegroundColor Red
+        Write-Host "ERROR src/app/layout.js no encontrado" -ForegroundColor Red
         return $false
     }
     
-    if (Test-Path "app/page.js") {
-        Write-Host "OK app/page.js encontrado" -ForegroundColor Green
+    if (Test-Path "src/app/page.jsx") {
+        Write-Host "OK src/app/page.jsx encontrado" -ForegroundColor Green
     } else {
-        Write-Host "ERROR app/page.js no encontrado" -ForegroundColor Red
+        Write-Host "ERROR src/app/page.jsx no encontrado" -ForegroundColor Red
         return $false
     }
     
