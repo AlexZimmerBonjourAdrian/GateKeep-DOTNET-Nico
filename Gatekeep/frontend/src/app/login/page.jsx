@@ -24,10 +24,44 @@ export default function Login() {
       </div>
             
       <div className="header-middle-bar">
-        <div className="text-card">
-          <h1 className="text-3xl font-bold text-white">Bienvenido a GateKeep</h1>
-          <p className="text-lg text-white mt-2">Tu sistema de gestión integral</p>
-        </div>
+        <form className="text-card">
+          <div style={{alignItems: 'center', width: '100%'}}>
+            <h1 className="text-3xl font-bold text-white">Iniciar Sesión</h1>
+            <hr />
+          </div>
+
+          <div className='input-container'>
+            <div className='w-full'>
+              <span>Email</span>
+              <input type="text" placeholder="Email"  />
+            </div>
+
+            <div className='w-full'>
+              <span>Password</span>
+              <input type="password" placeholder="Password"  />
+            </div>
+          </div>
+         
+          <div className='button-container'>
+            <button>Iniciar Sesión</button>
+          </div>
+
+          <div className="w-full flex">
+            <hr/>
+            <span className='pi pi-circle' style={{"marginTop": "3px"}}></span>
+            <hr/>
+          </div>
+
+
+          <div className="w-full flex">
+            <div className="flex-1 container-Subtext">
+              ¿No tienes una cuenta?
+              <Link href="/register" className="text-sm text-white">Crear una</Link>
+            </div>
+          </div>
+          
+
+        </form>
       </div>
     </div>
 
@@ -43,9 +77,23 @@ export default function Login() {
           position: relative;
           display: flex;
           flex-direction: column;
-          gap: 80px; 
-          padding: 24px; 
+          gap: 5px;
+          padding: 24px; /* Valor por defecto para pantallas grandes */
           box-sizing: border-box;
+        }
+
+        @media (max-width: 768px) {
+          .header-hero {
+            padding: 16px; /* Reduce el padding en pantallas medianas */
+            height: 600px; /* Ajusta la altura en pantallas medianas */
+          }
+        }
+
+        @media (max-width: 425px) {
+          .header-hero {
+            padding: 12px; /* Reduce aún más el padding en pantallas pequeñas */
+            height: auto; /* Permite que la altura sea dinámica */
+          }
         }
 
         .harvard-image {
@@ -55,12 +103,18 @@ export default function Login() {
           z-index: 0;
         }
 
+        @media (max-width: 425px) {
+          .harvard-image {
+            display: none; /* Oculta la imagen en pantallas pequeñas */
+          }
+        }
+
         .header-overlay {
           position: absolute;
           inset: 0;
           z-index: 1;
           pointer-events: none;
-          box-shadow: inset 0 80px 120px rgba(0,0,0,0.6), inset 0 -80px 120px rgba(0,0,0,0.6);
+          box-shadow: inset 0 80px 120px rgba(0, 0, 0, 0.6), inset 0 -80px 120px rgba(0, 0, 0, 0.6);
         }
 
         .header-topbar {
@@ -80,10 +134,90 @@ export default function Login() {
           opacity: 0.9;
         }
 
+        @media (max-width: 425px) {
+          .logo-image {
+            width: 120px; /* Ajusta el tamaño del logo en pantallas pequeñas */
+          }
+        }
+
         .icon-group {
           display: inline-flex;
           align-items: center;
           gap: 10px;
+        }
+
+        span {
+          font-size: 0.8rem;
+          margin-left: 1vw;
+          margin-right: 1vw;
+          margin-bottom: 0;
+        }
+
+        h1 {
+          color: #F37426;
+          margin-left: 1vw;
+          margin-right: 1vw;
+          text-align: center; /* Centra el texto "Log in" */
+        }
+
+        input {
+          border-radius: 20px;
+          width: calc(100% - 2vw);
+          margin-left: 1vw;
+          margin-right: 1vw;
+          margin-top: 0;
+          padding: 8px;
+        }
+
+        @media (max-width: 425px) {
+          input {
+            padding: 6px; /* Reduce el padding en pantallas pequeñas */
+          }
+        }
+
+        hr {
+          width: 100%;
+          border: 1.5px solid #F37426;
+        }
+
+        .input-container {
+          display: flex; /* Flexbox para organizar los inputs */
+          flex-direction: column; /* Coloca los inputs en columna */
+          gap: 16px; /* Espaciado entre los inputs */
+          width: 100%; /* Asegura que ocupe todo el ancho */
+        }
+
+        .button-container {
+          width: 100%;
+          display: flex;
+          justify-content: center;
+          align-items: center; /* Centra el botón */
+        }
+
+        button {
+          margin-top: 30px;
+          border-radius: 20px;
+          width: calc(80% - 2vw);
+          padding: 8px;
+          background: #F37426;
+          margin-bottom: 20px;
+        }
+
+        @media (max-width: 425px) {
+          button {
+            width: 100%; /* Botón ocupa todo el ancho en pantallas pequeñas */
+            padding: 10px; /* Ajusta el padding */
+          }
+        }
+
+        .container-Subtext {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          width: 100%;
+          gap: 14px;
+          margin-top: 7px;
+          margin-bottom: 10px;
         }
 
         .text-card {
@@ -91,24 +225,38 @@ export default function Login() {
           flex-direction: column;
           align-items: flex-start;
           width: 42.97vw;
-          height: 246px;
+          height: auto;
           background-color: #231F20;
-          opacity: 0.9;
-          padding: 0.52vw;
+          opacity: 0.75;
+          padding: 0vw;
           border-radius: 20px;
+          border: 3px solid #F37426;
+        }
+
+        @media (max-width: 768px) {
+          .text-card {
+            width: 90%; /* Ajusta el ancho en pantallas medianas */
+          }
+        }
+
+        @media (max-width: 425px) {
+          .text-card {
+            width: 100%; /* Ocupa todo el ancho en pantallas pequeñas */
+          }
         }
 
         .header-middle-bar {
           position: relative;
           z-index: 2;
           display: flex;
-          justify-content: flex-start;
+          justify-content: center;
+          width: 100%;
         }
 
         @media (max-width: 425px) {
           .header-bottom-bar {
             width: 100%;
-            height: 80px; 
+            height: 80px;
             background-color: #7e4928;
             display: flex;
             justify-content: space-evenly;
@@ -145,10 +293,6 @@ export default function Login() {
           .header-bottom-bar .item-card:hover {
             transform: none;
             box-shadow: none;
-          }
-
-          .harvard-image {
-            display: none;
           }
         }
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 
-const EventCarousel = ({ items }) => {
+const Carousel = ({ items }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const itemsPerPage = 3;
   const maxIndex = Math.min(items.length, 9) - itemsPerPage;
@@ -110,7 +110,7 @@ const EventCarousel = ({ items }) => {
   );
 };
 
-EventCarousel.propTypes = {
+Carousel.propTypes = {
   items: PropTypes.arrayOf(
     PropTypes.shape({
       title: PropTypes.string,
@@ -119,4 +119,4 @@ EventCarousel.propTypes = {
   ).isRequired,
 };
 
-export default EventCarousel;
+export default Carousel;

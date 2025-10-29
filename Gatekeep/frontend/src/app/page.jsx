@@ -1,11 +1,13 @@
 "use client"
 
-import React from 'react'
-import Header from '../components/Header'
-import EventCarousel from '../components/Carousel' // Asegúrate de crear este componente
+import React from 'react';
+import { useRouter } from 'next/navigation'; // Importa el hook para la navegación
+import Header from '../components/Header';
+import EventCarousel from '../components/Carousel';
 
 export default function Home() {
-  
+  const router = useRouter(); // Inicializa el hook useRouter
+
   const eventos = [
     { id: 1, title: 'Evento 1', date: '2024-07-01' },
     { id: 2, title: 'Evento 2', date: '2024-07-05' },
@@ -20,16 +22,22 @@ export default function Home() {
 
   ];
 
+   const handleVerMas = () => {
+    const encodedEventos = encodeURIComponent(JSON.stringify(eventos)); // Codifica los eventos
+    router.push(`/evento/listadoEventos?eventos=${encodedEventos}`); // Pasa los eventos como parámetro en la URL
+  };
+
   return (
     <div className="container-nothing">
-      <header>
-        <Header/>
-      </header>
+
+      <Header/>
 
       <div className="container">
         <div className="container-header">
           <h2>Eventos</h2>
-          <h2 style={{ cursor: 'pointer' }}>Ver más</h2>
+          <h2 style={{ cursor: 'pointer' }} onClick={handleVerMas}>
+            Ver más
+          </h2>
         </div>
         
         <div className="carrusel-container">
