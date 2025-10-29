@@ -1,10 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext.jsx';
+import { useRouter } from 'next/navigation';
 
 const Login = () => {
+    const { login, isAuthenticated, isLoading, error, clearError } = useAuth();
+    const router = useRouter();
+    
     const [formData, setFormData] = useState({
         email: '',
         password: ''
     });
+
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Redirigir si ya está autenticado
+    useEffect(() => {
+        if (isAuthenticated) {
+            router.push('/');
+        }
+    }, [isAuthenticated, router]);
+
+    // Limpiar errores al cambiar los campos
+    useEffect(() => {
+        if (error) {
+            clearError();
+        }
+    }, [formData.email, formData.password]);
 
     const handleFieldChange = (fieldName, value) => {
         setFormData(prev => ({
@@ -13,10 +34,27 @@ const Login = () => {
         }));
     };
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        // Vista de demostración - sin lógica
-        console.log('Formulario de login - vista de demostración');
+        
+        if (isSubmitting) return;
+        
+        setIsSubmitting(true);
+        clearError();
+
+        try {
+            const result = await login(formData.email, formData.password);
+            
+            if (result.success) {
+                // Redirigir al dashboard o página principal
+                router.push('/');
+            }
+            // Si hay error, se mostrará automáticamente a través del contexto
+        } catch (error) {
+            console.error('Error inesperado en login:', error);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const styles = {
@@ -145,15 +183,59 @@ const Login = () => {
             textDecoration: 'none',
             cursor: 'pointer',
             fontWeight: 'bold'
+        },
+        errorMessage: {
+            backgroundColor: 'rgba(220, 38, 38, 0.1)',
+            border: '1px solid #DC2626',
+            color: '#FEE2E2',
+            padding: '0.75rem',
+            borderRadius: '8px',
+            marginBottom: '1rem',
+            fontSize: '0.9rem',
+            textAlign: 'center'
+        },
+        loadingButton: {
+            width: '100%',
+            padding: '1rem',
+            backgroundColor: '#9CA3AF',
+            border: 'none',
+            borderRadius: '8px',
+            color: '#FFFFFF',
+            fontWeight: 'bold',
+            cursor: 'not-allowed',
+            fontSize: '1.1rem',
+            marginTop: '1.5rem',
+            textTransform: 'uppercase',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem'
+        },
+        loadingSpinner: {
+            width: '20px',
+            height: '20px',
+            border: '2px solid #FFFFFF',
+            borderTop: '2px solid transparent',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
         }
     };
 
     return (
-        <div style={styles.mainContainer}>
+        <>
+            <style>
+                {`
+                    @keyframes spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+                `}
+            </style>
+            <div style={styles.mainContainer}>
             <div style={styles.backgroundOverlay}></div>
 
             <div style={styles.logo}>
-                <div style={styles.logoIcon}>🔑</div>
+                <div style={styles.logoIcon}>GK</div>
                 <span style={styles.logoText}>Gatekeep</span>
                 </div>
               
@@ -162,6 +244,13 @@ const Login = () => {
                 <div style={styles.titleUnderline}></div>
                 
                 <form onSubmit={handleLogin}>
+                    {/* Mostrar mensaje de error si existe */}
+                    {error && (
+                        <div style={styles.errorMessage}>
+                            {error}
+                        </div>
+                    )}
+
                     <div style={styles.inputGroup}>
                         <label htmlFor="email" style={styles.label}>Email</label>
                         <input
@@ -171,6 +260,7 @@ const Login = () => {
                             onChange={(e) => handleFieldChange('email', e.target.value)}
                             style={styles.input}
                             required
+                            disabled={isSubmitting}
                         />
                     </div>
 
@@ -183,14 +273,23 @@ const Login = () => {
                             onChange={(e) => handleFieldChange('password', e.target.value)}
                             style={styles.input}
                             required
+                            disabled={isSubmitting}
                         />
                     </div>
 
                     <button
                         type="submit"
-                        style={styles.loginButton}
+                        style={isSubmitting ? styles.loadingButton : styles.loginButton}
+                        disabled={isSubmitting}
                     >
-                        INICIAR
+                        {isSubmitting ? (
+                            <>
+                                <div style={styles.loadingSpinner}></div>
+                                INICIANDO...
+                            </>
+                        ) : (
+                            'INICIAR'
+                        )}
                     </button>
 
                     <div style={styles.separator}></div>
@@ -206,6 +305,7 @@ const Login = () => {
                 </form>
             </div>
         </div>
+        </>
     );
 };
 
