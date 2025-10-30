@@ -1,114 +1,80 @@
 "use client"
 
 import React, { useState } from 'react';
-import { useSearchParams } from 'next/navigation';
 import Header from '../../../components/Header';
 
 export default function listadoEventos() {
-  const searchParams = useSearchParams();
-  const eventos = JSON.parse(searchParams.get('eventos')) || []; // Recupera los eventos o usa un array vacío si no hay datos
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-
-  // Filtrar eventos según los filtros
-  const eventosFiltrados = eventos.filter((evento) => {
-    const matchesSearch = evento.title?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDateFrom = dateFrom ? new Date(evento.date) >= new Date(dateFrom) : true;
-    const matchesDateTo = dateTo ? new Date(evento.date) <= new Date(dateTo) : true;
-    return matchesSearch && matchesDateFrom && matchesDateTo;
-  });
-
-  // Divide los eventos en filas de 3
-  const filasDeEventos = [];
-  for (let i = 0; i < eventosFiltrados.length; i += 3) {
-    filasDeEventos.push(eventosFiltrados.slice(i, i + 3));
-  }
 
   return (
-    <div className="header-root">
+    <div className="container-nothing">
         <Header />
 
-        <div className="header-topbar">
-          <h1>Listado de Eventos</h1>
+        <p>ladlaodadkkad</p>
 
-          <div className="filtros">
-            <input
-              type="text"
-              placeholder="Buscar..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="filtro-input"
-            />
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="filtro-input"
-            />
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="filtro-input"
-            />
-          </div>
-
-          <div className="eventos-container">
-            {filasDeEventos.map((fila, index) => (
-              <div key={index} className="fila">
-                {fila.map((evento) => (
-                  <div key={evento.id} className="evento-item">
-                    {evento.title && <h3>{evento.title}</h3>}
-                    {evento.date && <p>{evento.date}</p>}
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
+        
 
         <style jsx>{`
-          .header-topbar {
+
+          .container-nothing {
+            margin: 0;
             width: 100%;
+            height: 100%;
           }
 
-          .filtros {
+          .filtros-container {
             display: flex;
-            gap: 16px;
-            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            padding: 12px;
+            margin: 16px 24px;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+            border: 1px solid rgba(0,0,0,0.06);
           }
 
-          .filtro-input {
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 20px;
-            background: white;
+          .filtros-container input[type="text"],
+          .filtros-container input[type="date"] {
+            height: 40px;
+            padding: 8px 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            background: #f8fafc;
+            font-size: 14px;
+            color: #111827;
+            outline: none;
+            transition: box-shadow 150ms ease, border-color 150ms ease, background 150ms ease;
+          }
+
+          .filtros-container input[type="text"] {
+            min-width: 220px;
             flex: 1;
           }
 
-          .eventos-container {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
+          .filtros-container input[type="date"] {
+            min-width: 150px;
           }
 
-          .fila {
-            display: flex;
-            justify-content: space-between;
-            gap: 16px;
+          .filtros-container input:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 4px rgba(37,99,235,0.08);
+            background: #ffffff;
           }
 
-          .evento-item {
-            flex: 1;
-            min-width: 28vw;
-            height: 500px;
-            padding: 16px;
-            background: #f37426;
-            border-radius: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+          @media (max-width: 600px) {
+            .filtros-container {
+              padding: 10px;
+              margin: 12px;
+            }
+            .filtros-container input[type="text"] {
+              min-width: 100%;
+              flex-basis: 100%;
+            }
+            .filtros-container input[type="date"] {
+              min-width: calc(50% - 6px);
+              flex: 1 1 48%;
+            }
           }
         `}</style>
     </div>
