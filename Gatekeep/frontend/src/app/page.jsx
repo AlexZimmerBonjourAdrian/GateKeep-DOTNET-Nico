@@ -36,9 +36,6 @@ export default function Home() {
 
   ];
 
-
-
-
   const handleVerMasEventos = () => {
     const encodedEventos = encodeURIComponent(JSON.stringify(eventos)); // Codifica los eventos
     router.push(`/evento/listadoEventos?eventos=${encodedEventos}`); // Pasa los eventos como parámetro en la URL
@@ -79,64 +76,70 @@ export default function Home() {
           <Carousel items={anuncios} />
         </div>
       </div>
-    </div>
-  )
+    
+
+    <style jsx>{`
+
+        .container-nothing {
+          margin: 0;
+          width: 100%;
+          height: 100%;
+        }
+        
+        .container {
+          width: 100%;
+          max-width: 100%;
+          height: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          padding: 0; /* ya no usa padding aquí */
+          box-sizing: border-box;
+        }
+
+        .container-header {
+          display: flex;
+          flex-direction: row;
+          width: auto; /* evitar que llene y haga parecer que no hay padding */
+          justify-content: space-between;
+          align-items: center;
+          padding: 0;
+          gap: 8px;
+        }
+
+        .container-header h2 {
+          margin: 0;
+        }
+
+        /* opcional: asegurar box-sizing global (styled-jsx :global) */
+        :global(*) {
+          box-sizing: border-box;
+        }
+
+        .carrusel-container {
+          display: flex;
+          overflow-x: auto;
+          gap: 16px;
+          padding: 10px;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          min-height: 150px; /* Asegura que tenga un tamaño visible */
+        }
+
+        .carrusel-container::-webkit-scrollbar {
+          height: 8px;
+        }
+
+        .carrusel-container::-webkit-scrollbar-thumb {
+          background: #ccc;
+          border-radius: 4px;
+        }
+
+        .carrusel-container::-webkit-scrollbar-track {
+          background: #f0f0f0;
+        }
+
+    `}</style>
+  </div>
+  );
 }
-
-  <style jsx>{`
-      
-
-      .container-nothing {
-        padding: 0 ;
-        margin: 0;
-        width: 100%;
-        height: 100%;
-      }
-      
-      .container {
-        width: 100%;
-        max-width: 100%;
-        height: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-        padding-left: 20px;
-        padding-right: 20px;
-        box-sizing: border-box; /* Incluye el padding en el ancho total */
-      }
-
-      .container-header {
-        display: flex;
-        flex-direction: column;
-        width: 100%;
-        height: auto;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0 20px;
-      }
-
-      .carrusel-container {
-        display: flex;
-        overflow-x: auto;
-        gap: 16px;
-        padding: 10px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        min-height: 150px; /* Asegura que tenga un tamaño visible */
-      }
-
-      .carrusel-container::-webkit-scrollbar {
-        height: 8px;
-      }
-
-      .carrusel-container::-webkit-scrollbar-thumb {
-        background: #ccc;
-        border-radius: 4px;
-      }
-
-      .carrusel-container::-webkit-scrollbar-track {
-        background: #f0f0f0;
-      }
-
-  `}</style>
