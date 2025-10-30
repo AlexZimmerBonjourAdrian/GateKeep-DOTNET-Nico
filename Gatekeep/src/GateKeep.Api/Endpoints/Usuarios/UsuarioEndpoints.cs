@@ -48,52 +48,17 @@ public static class UsuarioEndpoints
         .Produces(401)
         .Produces(403);
 
-        // POST /usuarios/estudiante - Solo administradores pueden crear estudiantes
-        group.MapPost("/estudiante", async (UsuarioDto dto, [FromServices] IUsuarioFactory factory, [FromServices] IUsuarioRepository repo, [FromServices] IPasswordService passwordService) =>
+        // POST /usuarios - Crear usuario con rol (Admin, Estudiante, Funcionario)
+        group.MapPost("/", async (UsuarioDto dto, [FromServices] IUsuarioFactory factory, [FromServices] IUsuarioRepository repo, [FromServices] IPasswordService passwordService) =>
         {
-            // Hashear la contraseña antes de crear el usuario
             var dtoConPasswordHasheada = dto with { Contrasenia = passwordService.HashPassword(dto.Contrasenia) };
-            var usuario = factory.CrearEstudiante(dtoConPasswordHasheada);
+            var usuario = factory.CrearUsuario(dtoConPasswordHasheada);
             await repo.AddAsync(usuario);
             return Results.Created($"/usuarios/{usuario.Id}", usuario);
         })
         .RequireAuthorization("AdminOnly")
-        .WithName("CreateEstudiante")
-        .WithSummary("Crear nuevo estudiante")
-        .Produces<Usuario>(201)
-        .Produces(400)
-        .Produces(401)
-        .Produces(403);
-
-        // POST /usuarios/funcionario - Solo administradores pueden crear funcionarios
-        group.MapPost("/funcionario", async (UsuarioDto dto, [FromServices] IUsuarioFactory factory, [FromServices] IUsuarioRepository repo, [FromServices] IPasswordService passwordService) =>
-        {
-            // Hashear la contraseña antes de crear el usuario
-            var dtoConPasswordHasheada = dto with { Contrasenia = passwordService.HashPassword(dto.Contrasenia) };
-            var usuario = factory.CrearFuncionario(dtoConPasswordHasheada);
-            await repo.AddAsync(usuario);
-            return Results.Created($"/usuarios/{usuario.Id}", usuario);
-        })
-        .RequireAuthorization("AdminOnly")
-        .WithName("CreateFuncionario")
-        .WithSummary("Crear nuevo funcionario")
-        .Produces<Usuario>(201)
-        .Produces(400)
-        .Produces(401)
-        .Produces(403);
-
-        // POST /usuarios/admin - Solo administradores pueden crear otros administradores
-        group.MapPost("/admin", async (UsuarioDto dto, [FromServices] IUsuarioFactory factory, [FromServices] IUsuarioRepository repo, [FromServices] IPasswordService passwordService) =>
-        {
-            // Hashear la contraseña antes de crear el usuario
-            var dtoConPasswordHasheada = dto with { Contrasenia = passwordService.HashPassword(dto.Contrasenia) };
-            var admin = factory.CrearAdmin(dtoConPasswordHasheada);
-            await repo.AddAsync(admin);
-            return Results.Created($"/usuarios/{admin.Id}", admin);
-        })
-        .RequireAuthorization("AdminOnly")
-        .WithName("CreateAdmin")
-        .WithSummary("Crear nuevo administrador")
+        .WithName("CreateUsuario")
+        .WithSummary("Crear nuevo usuario con rol")
         .Produces<Usuario>(201)
         .Produces(400)
         .Produces(401)

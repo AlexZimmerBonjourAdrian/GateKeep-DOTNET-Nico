@@ -62,7 +62,7 @@ public class AuthService : IAuthService
                 Email = usuario.Email,
                 Nombre = usuario.Nombre,
                 Apellido = usuario.Apellido,
-                TipoUsuario = Enum.Parse<TipoUsuario>(usuario.TipoUsuario),
+                TipoUsuario = usuario.TipoUsuario,
                 Telefono = usuario.Telefono,
                 FechaAlta = usuario.FechaAlta
             };
@@ -104,16 +104,11 @@ public class AuthService : IAuthService
                 Contrasenia = _passwordService.HashPassword(password),
                 Telefono = telefono,
                 FechaAlta = DateTime.UtcNow,
-                Credencial = TipoCredencial.Vigente
+                Credencial = TipoCredencial.Vigente,
+                TipoUsuario = tipoUsuario
             };
 
-            Usuario nuevoUsuario = tipoUsuario switch
-            {
-                TipoUsuario.Admin => _usuarioFactory.CrearAdmin(usuarioDto),
-                TipoUsuario.Estudiante => _usuarioFactory.CrearEstudiante(usuarioDto),
-                TipoUsuario.Funcionario => _usuarioFactory.CrearFuncionario(usuarioDto),
-                _ => throw new ArgumentException("Tipo de usuario no válido")
-            };
+            var nuevoUsuario = _usuarioFactory.CrearUsuario(usuarioDto);
 
             // Guardar usuario
             await _usuarioRepository.AddAsync(nuevoUsuario);
@@ -129,7 +124,7 @@ public class AuthService : IAuthService
                 Email = nuevoUsuario.Email,
                 Nombre = nuevoUsuario.Nombre,
                 Apellido = nuevoUsuario.Apellido,
-                TipoUsuario = Enum.Parse<TipoUsuario>(nuevoUsuario.TipoUsuario),
+                TipoUsuario = nuevoUsuario.TipoUsuario,
                 Telefono = nuevoUsuario.Telefono,
                 FechaAlta = nuevoUsuario.FechaAlta
             };
@@ -165,7 +160,7 @@ public class AuthService : IAuthService
                 Email = usuario.Email,
                 Nombre = usuario.Nombre,
                 Apellido = usuario.Apellido,
-                TipoUsuario = Enum.Parse<TipoUsuario>(usuario.TipoUsuario),
+                TipoUsuario = usuario.TipoUsuario,
                 Telefono = usuario.Telefono,
                 FechaAlta = usuario.FechaAlta
             };

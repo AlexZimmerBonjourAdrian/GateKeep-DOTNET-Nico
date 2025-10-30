@@ -103,16 +103,17 @@ public static class AuthEndpoints
                         Nombre = usuarioTest.Nombre,
                         Apellido = usuarioTest.Apellido,
                         Contrasenia = passwordService.HashPassword(usuarioTest.Password),
-                        Telefono = usuarioTest.Telefono
+                        Telefono = usuarioTest.Telefono,
+                        TipoUsuario = usuarioTest.Tipo switch
+                        {
+                            "Admin" => GateKeep.Api.Domain.Enums.TipoUsuario.Admin,
+                            "Estudiante" => GateKeep.Api.Domain.Enums.TipoUsuario.Estudiante,
+                            "Funcionario" => GateKeep.Api.Domain.Enums.TipoUsuario.Funcionario,
+                            _ => GateKeep.Api.Domain.Enums.TipoUsuario.Estudiante
+                        }
                     };
 
-                    var usuario = usuarioTest.Tipo switch
-                    {
-                        "Admin" => factory.CrearAdmin(usuarioDto),
-                        "Estudiante" => factory.CrearEstudiante(usuarioDto),
-                        "Funcionario" => factory.CrearFuncionario(usuarioDto),
-                        _ => throw new ArgumentException("Tipo de usuario no válido")
-                    };
+                    var usuario = factory.CrearUsuario(usuarioDto);
 
                     await repo.AddAsync(usuario);
                     usuariosCreados.Add(new { 
@@ -175,7 +176,7 @@ public static class AuthEndpoints
                 Nombre = u.Nombre,
                 Apellido = u.Apellido,
                 Telefono = u.Telefono,
-                TipoUsuario = u.GetType().Name,
+                TipoUsuario = u.TipoUsuario.ToString(),
                 FechaAlta = u.FechaAlta,
                 Credencial = u.Credencial,
                 // Contraseñas en texto plano para testing (solo para desarrollo)

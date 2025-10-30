@@ -2,7 +2,7 @@ using GateKeep.Api.Domain.Enums;
 
 namespace GateKeep.Api.Domain.Entities;
 
-public abstract record Usuario
+public sealed record Usuario
 (
     long Id,
     string Email,
@@ -12,7 +12,7 @@ public abstract record Usuario
     string? Telefono,
     DateTime FechaAlta,
     TipoCredencial Credencial,
-    string TipoUsuario
+    TipoUsuario TipoUsuario
 );
 
 

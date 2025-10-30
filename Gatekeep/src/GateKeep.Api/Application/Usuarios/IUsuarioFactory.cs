@@ -5,7 +5,5 @@ namespace GateKeep.Api.Application.Usuarios;
 
 public interface IUsuarioFactory
 {
-  Usuario CrearEstudiante(UsuarioDto dto);
-  Usuario CrearFuncionario(UsuarioDto dto);
-  Usuario CrearAdmin(UsuarioDto dto);
+  Usuario CrearUsuario(UsuarioDto dto);
 }

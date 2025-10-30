@@ -382,10 +382,11 @@ using (var scope = app.Services.CreateScope())
                 Contrasenia = passwordService.HashPassword("admin123"),
                 Telefono = "+1234567890",
                 FechaAlta = DateTime.UtcNow,
-                Credencial = TipoCredencial.Vigente
+                Credencial = TipoCredencial.Vigente,
+                TipoUsuario = TipoUsuario.Admin
             };
             
-            var admin = factory.CrearAdmin(adminDto);
+            var admin = factory.CrearUsuario(adminDto);
             db.Usuarios.Add(admin);
             
             // Crear estudiante de ejemplo
@@ -398,10 +399,11 @@ using (var scope = app.Services.CreateScope())
                 Contrasenia = passwordService.HashPassword("estudiante123"),
                 Telefono = "+1234567891",
                 FechaAlta = DateTime.UtcNow,
-                Credencial = TipoCredencial.Vigente
+                Credencial = TipoCredencial.Vigente,
+                TipoUsuario = TipoUsuario.Estudiante
             };
             
-            var estudiante = factory.CrearEstudiante(estudianteDto);
+            var estudiante = factory.CrearUsuario(estudianteDto);
             db.Usuarios.Add(estudiante);
             
             // Crear funcionario de ejemplo
@@ -414,10 +416,11 @@ using (var scope = app.Services.CreateScope())
                 Contrasenia = passwordService.HashPassword("funcionario123"),
                 Telefono = "+1234567892",
                 FechaAlta = DateTime.UtcNow,
-                Credencial = TipoCredencial.Vigente
+                Credencial = TipoCredencial.Vigente,
+                TipoUsuario = TipoUsuario.Funcionario
             };
             
-            var funcionario = factory.CrearFuncionario(funcionarioDto);
+            var funcionario = factory.CrearUsuario(funcionarioDto);
             db.Usuarios.Add(funcionario);
             
             await db.SaveChangesAsync();

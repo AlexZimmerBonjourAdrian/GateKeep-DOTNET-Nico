@@ -8,7 +8,6 @@ public sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
 {
     public void Configure(EntityTypeBuilder<Usuario> builder)
     {
-        // TPT: Solo mapear la tabla base con propiedades comunes
         builder.ToTable("usuarios");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
@@ -40,6 +39,10 @@ public sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
             .HasConversion<int>()
             .IsRequired();
 
+        builder.Property(x => x.TipoUsuario)
+            .HasConversion<int>()
+            .IsRequired();
+
         // Índices para optimizar consultas comunes
         builder.HasIndex(x => x.Email)
             .IsUnique()
@@ -47,6 +50,9 @@ public sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
             
         builder.HasIndex(x => x.Credencial)
             .HasDatabaseName("IX_usuarios_credencial");
+
+        builder.HasIndex(x => x.TipoUsuario)
+            .HasDatabaseName("IX_usuarios_tipo");
     }
 }
 
