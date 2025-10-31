@@ -56,13 +56,13 @@ export default function crearEvento() {
           <div className='button-container'>
             <button>Crear Evento</button>
           </div>
+          
 
         </form>
       </div>
     </div>
 
       <style jsx>{`
-      
         .header-root {
           width: 100%;
           display: block;

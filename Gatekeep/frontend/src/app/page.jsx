@@ -36,16 +36,6 @@ export default function Home() {
 
   ];
 
-  const handleVerMasEventos = () => {
-    const encodedEventos = encodeURIComponent(JSON.stringify(eventos)); // Codifica los eventos
-    router.push(`/evento/listadoEventos?eventos=${encodedEventos}`); // Pasa los eventos como parámetro en la URL
-  };
-
-  const handleVerMasAnuncios = () => {
-    const encodedAnuncios = encodeURIComponent(JSON.stringify(anuncios)); // Codifica los anuncios
-    router.push(`/anuncio/listadoAnuncios?anuncios=${encodedAnuncios}`); // Pasa los anuncios como parámetro en la URL
-  };
-
   return (
     <div className="container-nothing">
 
@@ -54,26 +44,20 @@ export default function Home() {
       <div className="container">
         <div className="container-header">
           <h2>Eventos</h2>
-          <h2 style={{ cursor: 'pointer' }} onClick={handleVerMasEventos}>
-            Ver más
-          </h2>
         </div>
         
         <div className="carrusel-container">
-          <Carousel items={eventos} />
+          <Carousel items={eventos} route="/evento/listadoEventos" />
         </div>
       </div>
 
       <div className="container">
         <div className="container-header">
           <h2>Anuncios</h2>
-          <h2 style={{ cursor: 'pointer' }} onClick={handleVerMasAnuncios}>
-            Ver más
-          </h2>
         </div>
         
         <div className="carrusel-container">
-          <Carousel items={anuncios} />
+          <Carousel items={anuncios} route="/anuncio/listadoAnuncios" />
         </div>
       </div>
     
@@ -92,23 +76,24 @@ export default function Home() {
           height: auto;
           display: flex;
           flex-direction: column;
-          gap: 16px;
-          padding: 0; /* ya no usa padding aquí */
+          gap: 0.313rem;
+          padding: 0; 
           box-sizing: border-box;
         }
 
         .container-header {
           display: flex;
           flex-direction: row;
-          width: auto; /* evitar que llene y haga parecer que no hay padding */
+          width: auto; 
           justify-content: space-between;
           align-items: center;
-          padding: 0;
-          gap: 8px;
+          padding: 0px;
         }
 
         .container-header h2 {
           margin: 0;
+          margin-left: 0.833vw;
+          margin-top: 16px;
         }
 
         /* opcional: asegurar box-sizing global (styled-jsx :global) */
@@ -119,11 +104,8 @@ export default function Home() {
         .carrusel-container {
           display: flex;
           overflow-x: auto;
-          gap: 16px;
-          padding: 10px;
-          border-radius: 8px;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-          min-height: 150px; /* Asegura que tenga un tamaño visible */
+          gap: 0.833vw;
+          min-height: 150px; 
         }
 
         .carrusel-container::-webkit-scrollbar {
