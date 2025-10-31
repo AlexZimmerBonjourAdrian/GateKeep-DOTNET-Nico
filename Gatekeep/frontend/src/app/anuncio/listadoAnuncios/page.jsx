@@ -3,9 +3,9 @@
 import React, { useState, useMemo, useRef } from 'react';
 import Header from '../../../components/Header';
 
-export default function listadoEventos() {
+export default function listadoAnuncios() {
 
-  const eventos = [
+  const anuncios = [
     { id: 1, title: 'Hockey Game', date: '2024-07-01' },
     { id: 2, title: 'Soccer Match', date: '2024-07-05' },
     { id: 3, title: 'Basketball Tournament', date: '2024-07-10' },
@@ -21,10 +21,10 @@ export default function listadoEventos() {
   const [dateTo, setDateTo] = useState('');
   const inputRef = useRef(null);
 
-  // Filter events based on search input (case-insensitive) and optional date range
-  const filteredEventos = useMemo(() => {
+  // Filter items based on search input (case-insensitive) and optional date range
+  const filteredItems = useMemo(() => {
     const q = searchInput.trim().toLowerCase();
-    return eventos.filter((ev) => {
+    return anuncios.filter((ev) => {
       // Filter by query on title
       if (q) {
         const title = ev.title ? ev.title.toLowerCase() : '';
@@ -58,7 +58,7 @@ export default function listadoEventos() {
 
         <div className="container">
           <div className="container-header">
-            <h2>Eventos</h2>
+            <h2>Anuncios</h2>
             <div className="filtros-container">
               <div className="field">
                 <label className="field-label" htmlFor="search-input">Buscar</label>
@@ -68,8 +68,8 @@ export default function listadoEventos() {
                     ref={inputRef}
                     className="search-input"
                     type="text"
-                    placeholder="Buscar eventos..."
-                    aria-label="Buscar eventos"
+                    placeholder="Buscar anuncios..."
+                    aria-label="Buscar anuncios"
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
                   />
@@ -110,15 +110,15 @@ export default function listadoEventos() {
             </div>
           </div>
 
-          {/* Eventos list - mostrar todas las tarjetas similar al Carousel */}
+          {/* items list - mostrar todas las tarjetas similar al Carousel */}
           <div className="events-grid">
-            {filteredEventos.length === 0 ? (
+            {filteredItems.length === 0 ? (
               <div className="event-card" style={{ background: '#fff6ee' }}>
-                <h3>No se encontraron eventos</h3>
+                <h3>No se encontraron anuncios</h3>
                 <p>Prueba otro término o rango de fecha.</p>
               </div>
             ) : (
-              filteredEventos.map((ev) => (
+              filteredItems.map((ev) => (
                 <div key={ev.id} className="event-card" tabIndex={0}>
                   {ev.title && <h3>{ev.title}</h3>}
                   {ev.date && <p>{ev.date}</p>}
@@ -299,7 +299,8 @@ export default function listadoEventos() {
             border: 2px solid rgba(37,99,235,0.12);
             z-index: 2;
           }
- 
+
+          
         `}</style>
     </div>
   );
