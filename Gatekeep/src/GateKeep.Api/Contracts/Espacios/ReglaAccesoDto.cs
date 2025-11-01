@@ -9,7 +9,7 @@ public record ReglaAccesoDto
     public DateTime HorarioCierre { get; init; }
     public DateTime VigenciaApertura { get; init; }
     public DateTime VigenciaCierre { get; init; }
-    public IReadOnlyList<TipoUsuario> TiposUsuarioPermitidos { get; init; } = Array.Empty<TipoUsuario>();
+    public IReadOnlyList<Rol> RolesPermitidos { get; init; } = Array.Empty<Rol>();
     public long EspacioId { get; init; }
 }
 

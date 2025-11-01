@@ -39,7 +39,7 @@ public sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
             .HasConversion<int>()
             .IsRequired();
 
-        builder.Property(x => x.TipoUsuario)
+        builder.Property(x => x.Rol)
             .HasConversion<int>()
             .IsRequired();
 
@@ -51,8 +51,8 @@ public sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
         builder.HasIndex(x => x.Credencial)
             .HasDatabaseName("IX_usuarios_credencial");
 
-        builder.HasIndex(x => x.TipoUsuario)
-            .HasDatabaseName("IX_usuarios_tipo");
+        builder.HasIndex(x => x.Rol)
+            .HasDatabaseName("IX_usuarios_rol");
     }
 }
 
