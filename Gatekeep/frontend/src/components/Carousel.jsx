@@ -108,10 +108,13 @@ const Carousel = ({ items, route }) => {
         }
 
         .carousel-item {
+          /* Keep 4 items visible but scale sizes responsively. */
           flex: 0 0 calc((100% - 4vw) / 4);
           max-width: 360px;
-          min-width: 220px;
-          height: 500px;
+          min-width: 120px;
+          /* Use aspect-ratio instead of fixed height so height scales with width */
+          aspect-ratio: 9 / 13;
+          height: auto;
           padding: 20px;
           background: #f37426;
           border-radius: 20px;
@@ -138,11 +141,29 @@ const Carousel = ({ items, route }) => {
 
         .carousel-item h3 {
           margin: 0 0 8px;
+          /* Fluid font size: small on phones, larger on desktop */
+          font-size: clamp(1rem, 1.6vw, 1.25rem);
+          line-height: 1.2;
+          margin-bottom: 0.5rem;
+          /* Limit title to two lines and gracefully truncate */
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .carousel-item p {
           margin: 0;
           color: #231F20;
+          font-size: clamp(0.85rem, 1.2vw, 1rem);
+          line-height: 1.35;
+          /* Allow paragraphs to take up to 3 lines then truncate */
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .carousel-button {
@@ -189,14 +210,14 @@ const Carousel = ({ items, route }) => {
         }
 
         .see-more-top {
-          font-size: 1rem;
+          font-size: clamp(0.9rem, 1.6vw, 1.05rem);
           font-weight: 700;
           margin-bottom: 8px;
           color: #231F20;
         }
 
         .see-more-arrow {
-          font-size: 2.6rem;
+          font-size: clamp(1.8rem, 3.2vw, 2.6rem);
           color: #231F20;
           transition: transform 0.18s ease;
           line-height: 1;
@@ -206,20 +227,80 @@ const Carousel = ({ items, route }) => {
           transform: translateY(-4px) scale(1.04);
         }
 
-        /* Smaller screens: reduce item size so layout stays usable */
-        @media (max-width: 640px) {
+        /* PHONE: <= 425px - keep 4 items but shrink them to fit and reduce heights */
+        @media (max-width: 425px) {
+          .carousel {
+            gap: 1.5vw;
+            padding: 6px 0;
+          }
+
           .carousel-item {
-            /* On small screens show one card almost full width */
-            flex: 0 0 80vw;
-            max-width: 80vw;
-            min-width: 60vw;
-            height: 360px;
+            flex: 0 0 calc((100% - 6vw) / 4);
+            max-width: none;
+            min-width: 16vw;
+            aspect-ratio: 9 / 13;
+            padding: 8px;
+            border-radius: 12px;
+          }
+
+          /* Reduce text sizes more aggressively on phones */
+          .carousel-item h3 {
+            font-size: clamp(0.8rem, 2.2vw, 1rem);
+            -webkit-line-clamp: 2;
+          }
+
+          .carousel-item p {
+            font-size: clamp(0.7rem, 1.8vw, 0.85rem);
+            -webkit-line-clamp: 2;
+          }
+
+          .see-more-top { font-size: clamp(0.75rem, 1.6vw, 0.9rem); }
+          .see-more-arrow { font-size: clamp(1.6rem, 2.6vw, 1.9rem); }
+
+          .carousel-button {
+            width: 32px;
+            height: 32px;
+            font-size: 0.95rem;
+          }
+        }
+
+        /* TABLET: 426px - 768px */
+        @media (min-width: 426px) and (max-width: 768px) {
+          .carousel {
+            gap: 2.5vw;
+            padding: 10px 0;
+          }
+
+          .carousel-item {
+            flex: 0 0 calc((100% - 5vw) / 4);
+            max-width: 300px;
+            min-width: 140px;
+            aspect-ratio: 9 / 13;
+            padding: 16px;
+            border-radius: 18px;
           }
 
           .carousel-button {
-            width: 40px;
-            height: 40px;
-            font-size: 1.2rem;
+            width: 42px;
+            height: 42px;
+            font-size: 1.1rem;
+          }
+        }
+
+        /* DESKTOP: >= 769px - original proportions (kept for large screens) */
+        @media (min-width: 769px) {
+          .carousel-item {
+            flex: 0 0 calc((100% - 4vw) / 4);
+            max-width: 360px;
+            min-width: 220px;
+            aspect-ratio: 9 / 13;
+            padding: 20px;
+          }
+
+          .carousel-button {
+            width: 2.292vw;
+            height: 2.292vw;
+            font-size: 1.4rem;
           }
         }
       `}</style>
