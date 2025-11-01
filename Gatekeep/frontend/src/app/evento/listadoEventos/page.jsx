@@ -43,6 +43,12 @@ export default function listadoEventos() {
     });
   }, [searchInput, dateFrom, dateTo]);
 
+  // Group filtered events in chunks of 4 so visual grouping of 4 is preserved
+  const groupedEventos = [];
+  for (let i = 0; i < filteredEventos.length; i += 4) {
+    groupedEventos.push(filteredEventos.slice(i, i + 4));
+  }
+
   // Called when the form is submitted (press Enter or click search)
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -118,10 +124,15 @@ export default function listadoEventos() {
                 <p>Prueba otro término o rango de fecha.</p>
               </div>
             ) : (
-              filteredEventos.map((ev) => (
-                <div key={ev.id} className="event-card" tabIndex={0}>
-                  {ev.title && <h3>{ev.title}</h3>}
-                  {ev.date && <p>{ev.date}</p>}
+              // Render each group as its own grid so groups of 4 stay together
+              groupedEventos.map((group, gi) => (
+                <div className="event-group" key={`group-${gi}`}>
+                  {group.map((ev) => (
+                    <div key={ev.id} className="event-card" tabIndex={0}>
+                      {ev.title && <h3>{ev.title}</h3>}
+                      {ev.date && <p>{ev.date}</p>}
+                    </div>
+                  ))}
                 </div>
               ))
             )}
@@ -131,177 +142,45 @@ export default function listadoEventos() {
 
         <style jsx>{`
 
-          .container-header{
-            padding-left: 1.111vw;
-            width: auto;
-          }
+          /* Base layout tweaks */
+          .container-header{ padding-left: 1.111vw; width: auto; }
+          .container-nothing { margin: 0; width: 100%; height: 100%; }
 
-          .container-nothing {
-            margin: 0;
-            width: 100%;
-            height: 100%;
-          }
+          /* Filters row */
+          .filtros-container{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+          .field{ display:flex; flex-direction:column; gap:6px; }
+          .field-label{ font-size:0.75rem; color:#e5e7ebf6; font-weight:600; letter-spacing:0.2px; margin-bottom:0; }
 
-          .event-card{
-            background: #f37426; /* mismo color que Carousel */
-            border-radius: 20px;
-            padding: 16px, 0.833vw;
-            min-height: 140px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.12);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            color: #231F20;
-            outline: none;
-          }
+          /* Search & date inputs */
+          .search-bar{ display:flex; align-items:center; gap:8px; background:#f8fafc; border:1px solid #e5e7eb; border-radius:20px; padding:6px 10px; height:40px; box-sizing:border-box; }
+          .search-input{ border:none; outline:none; background:transparent; font-size:0.95rem; color:#111827; padding:6px 8px; border-radius:20px; width:clamp(140px,22vw,360px); }
+          .search-button{ display:inline-flex; align-items:center; justify-content:center; background:#f37426; color:white; border:none; height:28px; width:36px; padding:0; border-radius:14px; cursor:pointer; }
+          .search-button:active{ transform:scale(0.98); }
+          .search-icon{ display:block; color:white; }
+          .date-input{ height:40px; padding:6px 10px; border:1px solid #e5e7eb; border-radius:20px; background:#f8fafc; font-size:0.95rem; color:#111827; outline:none; box-sizing:border-box; width:clamp(120px,14vw,220px); }
 
-          /* Match Carousel hover exactly */
-          .event-card:hover{
-            transform: translateY(-4px) scale(1.02);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.18);
-            z-index: 1;
-          }
+          /* Container that holds groups of 4 */
+          .events-grid{ display:flex; flex-direction:column; gap:18px; padding:16px; box-sizing:border-box; }
 
-          .event-card:focus,
-          .event-card:focus-visible{
-            transform: translateY(-4px) scale(1.02);
-            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
-            border: 2px solid rgba(37,99,235,0.15);
-            z-index: 2;
-          }
+          /* Each group keeps exactly the same 4 items together. Grid inside each group is responsive:
+             - desktop (>=769px): 4 columns (1 row)
+             - tablet (426-768px): 2 columns (2 rows)
+             - mobile (<=425px): 1 column (4 rows)
+          */
+          .event-group{ display:grid; grid-template-columns: repeat(1, 1fr); gap:12px; }
+          @media (min-width: 426px) and (max-width: 768px) { .event-group{ grid-template-columns: repeat(2, 1fr); gap:12px; } }
+          @media (min-width: 769px) { .event-group{ grid-template-columns: repeat(4, 1fr); gap:16px; } }
 
-          .filtros-container{
-            display: flex;
-            gap: 0.785vw; 
-            align-items: center;
-          }
+          /* Event card keeps proportions via aspect-ratio so height scales with width */
+          .event-card{ width:100%; aspect-ratio: 4 / 3; padding:12px; background:#f37426; border-radius:20px; box-shadow:0 2px 6px rgba(0,0,0,0.12); transition:transform 0.18s ease, box-shadow 0.18s ease; color:#231F20; box-sizing:border-box; display:flex; flex-direction:column; justify-content:center; }
+          .event-card:hover{ transform: translateY(-4px) scale(1.01); box-shadow:0 8px 18px rgba(0,0,0,0.18); z-index:1; }
+          .event-card:focus, .event-card:focus-visible{ transform: translateY(-4px) scale(1.01); box-shadow:0 10px 20px rgba(0,0,0,0.22); border:2px solid rgba(37,99,235,0.12); z-index:2; }
 
-          /* Field wrapper + label */
-          .field{
-            display: flex;
-            flex-direction: column;
-            gap: 0.313vw;
-          }
+          .event-card h3{ font-size: clamp(1rem, 1.6vw, 1.2rem); margin:0 0 6px 0; }
+          .event-card p{ font-size: clamp(0.85rem, 1.1vw, 1rem); margin:0; }
 
-          .field-label{
-            font-size: 0.75rem;
-            color: #e5e7ebf6; 
-            font-weight: 600;
-            letter-spacing: 0.2px;
-            margin-bottom: 0;
-          }
-
-          /* Search bar */
-          .search-bar{
-            display: flex;
-            align-items: center;
-            gap: 0.313vw;
-            background: #f8fafc;
-            border: 1px solid #e5e7eb;
-            border-radius: 20px; /* solicitado */
-            padding: 6px 0.417vw;
-            height: 40px;
-            box-sizing: border-box;
-            transition: box-shadow 150ms ease, border-color 150ms ease, background 150ms ease;
-          }
-
-          .search-input{
-            border: none;
-            outline: none;
-            background: transparent;
-            font-size: 0.875rem;
-            color: #111827;
-            padding: 6px 8px;
-            border-radius: 20px; /* también en input */
-            width: 220px;
-          }
-
-          .search-button{
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: #f37426; /* azul agradable */
-            color: white;
-            border: none;
-            height: 28px;
-            width: 1.771vw;
-            padding: 0;
-            border-radius: 14px;
-            cursor: pointer;
-          }
-
-          .search-button:active{
-            transform: scale(0.98);
-          }
-
-          .search-icon{
-            display: block;
-            color: white;
-          }
-
-          /* Date input matching search proportions */
-          .date-input{
-            height: 40px;
-            padding: 6px 0.625vw;
-            border: 1px solid #e5e7eb;
-            border-radius: 20px; /* igual que el search */
-            background: #f8fafc;
-            font-size: 0.875rem;
-            color: #111827;
-            outline: none;
-            box-sizing: border-box;
-            width: 14vw; /* proporción similar, ajustable */
-          }
-
-          /* Eventos grid (lista completa) */
-          .events-grid{
-            display: grid;
-            /* Forzar hasta 4 columnas teniendo en cuenta espacios/márgenes */
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 1.47vw;
-            padding: 16px;
-            width: 100%;
-            box-sizing: border-box;
-          }
-
-          /* Responsive: 3 / 2 / 1 columnas según ancho */
-          @media (max-width: 1200px) {
-            .events-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-          }
-          @media (max-width: 900px) {
-            .events-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-          }
-          @media (max-width: 600px) {
-            .events-grid { grid-template-columns: repeat(1, minmax(0, 1fr)); }
-          }
-
-          .event-card{
-            /* Allow the grid to size cards; use full column width */
-            width: 100%;
-            height: 360px; /* altura razonable; ajustar si hace falta */
-            padding: 10px 0.833vw;
-            background: #f37426;
-            border-radius: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            outline: none; /* remove default focus outline */
-            box-sizing: border-box;
-          }
-
-          .event-card:hover{
-            transform: translateY(-4px);
-            box-shadow: 0 8px 18px rgba(0,0,0,0.18);
-            z-index: 1;
-          }
-
-          .event-card:focus,
-          .event-card:focus-visible{
-            transform: translateY(-4px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.22);
-            border: 2px solid rgba(37,99,235,0.12);
-            z-index: 2;
-          }
- 
-        `}</style>
+      `}</style>
     </div>
-  );
+  )
 }
 

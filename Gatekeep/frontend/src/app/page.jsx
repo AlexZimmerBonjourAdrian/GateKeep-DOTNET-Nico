@@ -51,7 +51,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="container">
+      <div className="container container-anuncios">
         <div className="container-header">
           <h2>Anuncios</h2>
         </div>
@@ -63,6 +63,8 @@ export default function Home() {
     
 
     <style jsx>{`
+
+
 
         .container-nothing {
           margin: 0;
@@ -105,7 +107,61 @@ export default function Home() {
           display: flex;
           overflow-x: auto;
           gap: 0.833vw;
-          min-height: 150px; 
+          /* Base min-height that adapts via media queries below */
+          min-height: clamp(110px, 18vw, 220px);
+          padding: 6px 0;
+          align-items: center;
+        }
+
+        /* PHONE: <=425px - match Carousel small card sizing */
+        @media (max-width: 425px) {
+          .carrusel-container {
+            gap: 2vw;
+            /* Cards are around 16vw width with aspect-ratio, so container height ~23vw */
+            min-height: clamp(80px, 23vw, 110px);
+            padding-inline: 6px;
+          }
+
+          .container-header h2 {
+            font-size: 1rem;
+            margin-left: 6px;
+            margin-top: 12px;
+          }
+
+          .container-anuncios {
+
+          }
+        }
+
+        /* TABLET: 426px - 768px */
+        @media (min-width: 426px) and (max-width: 768px) {
+          .carrusel-container {
+            gap: 1.2vw;
+            /* Cards use min-width ~140px and aspect-ratio -> height around 180-220px */
+            min-height: clamp(140px, 28vw, 210px);
+            padding-inline: 8px;
+          }
+
+          .container-header h2 {
+            font-size: 1.05rem;
+            margin-left: 0.8vw;
+            margin-top: 14px;
+          }
+        }
+
+        /* DESKTOP: >=769px */
+        @media (min-width: 769px) {
+          .carrusel-container {
+            gap: 0.833vw;
+            min-height: clamp(160px, 22vw, 260px);
+            padding-inline: 12px;
+          }
+
+          .container-header h2 {
+            font-size: 1.05rem;
+            margin-left: 0.833vw;
+            margin-top: 16px;
+          }
         }
 
         .carrusel-container::-webkit-scrollbar {
@@ -119,6 +175,10 @@ export default function Home() {
 
         .carrusel-container::-webkit-scrollbar-track {
           background: #f0f0f0;
+        }
+
+        .container-anuncios {
+          padding-bottom: 90px;
         }
 
     `}</style>
