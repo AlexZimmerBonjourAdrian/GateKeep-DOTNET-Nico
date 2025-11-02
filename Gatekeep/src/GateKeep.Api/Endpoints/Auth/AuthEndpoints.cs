@@ -2,6 +2,7 @@ using GateKeep.Api.Contracts.Security;
 using GateKeep.Api.Contracts.Usuarios;
 using GateKeep.Api.Application.Security;
 using GateKeep.Api.Application.Usuarios;
+using GateKeep.Infrastructure.QrCodes;
 using System.Security.Claims;
 
 namespace GateKeep.Api.Endpoints.Auth;
@@ -57,6 +58,49 @@ public static class AuthEndpoints
         .Produces<AuthResponse>(200)
         .Produces(401)
         .Produces(400);
+
+        // Generar código QR con el JWT actual
+        group.MapGet("/qr", (
+            HttpContext httpContext,
+            QrCodeGenerator qr
+        ) =>
+        {
+            // 1) Permitir token explícito por query: /auth/qr?token=...
+            string? token = httpContext.Request.Query["token"];
+
+            // 2) Si no viene por query, intentar extraer del header Authorization: Bearer <token>
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                if (httpContext.Request.Headers.TryGetValue("Authorization", out var authHeader))
+                {
+                    var value = authHeader.ToString();
+                    const string prefix = "Bearer ";
+                    if (value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    {
+                        token = value.Substring(prefix.Length).Trim();
+                    }
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                return Results.BadRequest(new { message = "Falta el token JWT (use query 'token' o Authorization: Bearer ...)" });
+            }
+
+            // Generar PNG con el token (solo Windows por dependencia de System.Drawing)
+            if (!OperatingSystem.IsWindows())
+            {
+                return Results.Problem("Generación de QR no soportada en esta plataforma (requiere Windows)", statusCode: 501);
+            }
+            var pngBytes = qr.Generate(token);
+            return Results.File(pngBytes, contentType: "image/png", fileDownloadName: null, enableRangeProcessing: false);
+        })
+        .WithName("GetAuthTokenQr")
+        .WithSummary("Generar código QR del JWT")
+        .WithDescription("Devuelve una imagen PNG con el QR que contiene el token JWT. Acepta query 'token' o usa el header Authorization.")
+        .Produces(200)
+        .Produces(400)
+        .RequireAuthorization();
 
         // Crear usuarios de prueba - PÚBLICO (para testing)
         group.MapPost("/create-test-users", async (
