@@ -4,7 +4,7 @@ namespace GateKeep.Api.Application.Notificaciones;
 
 public interface INotificacionService
 {
-    Task<NotificacionDto> CrearNotificacionAsync(string mensaje, string tipo = "general");
+    Task<NotificacionDto> CrearNotificacionAsync(string mensaje, string tipo = "general", long? usuarioIdCreador = null);
     Task<IEnumerable<NotificacionDto>> ObtenerTodasAsync();
     Task<NotificacionDto?> ObtenerPorIdAsync(string id);
     Task<bool> EliminarNotificacionAsync(string id);

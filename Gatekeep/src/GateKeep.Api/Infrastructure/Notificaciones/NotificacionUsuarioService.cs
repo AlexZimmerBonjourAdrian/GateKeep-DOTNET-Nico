@@ -1,3 +1,4 @@
+using GateKeep.Api.Application.Auditoria;
 using GateKeep.Api.Application.Notificaciones;
 using GateKeep.Api.Application.Usuarios;
 using GateKeep.Api.Contracts.Notificaciones;
@@ -10,15 +11,18 @@ public sealed class NotificacionUsuarioService : INotificacionUsuarioService
     private readonly INotificacionUsuarioRepository _notificacionUsuarioRepository;
     private readonly INotificacionRepository _notificacionRepository;
     private readonly IUsuarioRepository _usuarioRepository;
+    private readonly IEventoHistoricoService? _eventoHistoricoService;
 
     public NotificacionUsuarioService(
         INotificacionUsuarioRepository notificacionUsuarioRepository,
         INotificacionRepository notificacionRepository,
-        IUsuarioRepository usuarioRepository)
+        IUsuarioRepository usuarioRepository,
+        IEventoHistoricoService? eventoHistoricoService = null)
     {
         _notificacionUsuarioRepository = notificacionUsuarioRepository;
         _notificacionRepository = notificacionRepository;
         _usuarioRepository = usuarioRepository;
+        _eventoHistoricoService = eventoHistoricoService;
     }
 
     public async Task<IEnumerable<NotificacionCompletaDto>> ObtenerNotificacionesPorUsuarioAsync(long usuarioId)
@@ -119,7 +123,28 @@ public sealed class NotificacionUsuarioService : INotificacionUsuarioService
 
     public async Task<bool> MarcarComoLeidaAsync(long usuarioId, string notificacionId)
     {
-        return await _notificacionUsuarioRepository.MarcarComoLeidaAsync(usuarioId, notificacionId);
+        var resultado = await _notificacionUsuarioRepository.MarcarComoLeidaAsync(usuarioId, notificacionId);
+        
+        if (resultado && _eventoHistoricoService != null)
+        {
+            try
+            {
+                var notificacion = await _notificacionRepository.ObtenerPorIdAsync(notificacionId);
+                if (notificacion != null)
+                {
+                    await _eventoHistoricoService.RegistrarNotificacionAsync(
+                        usuarioId,
+                        notificacion.Tipo,
+                        "Leida",
+                        new Dictionary<string, object> { { "notificacionId", notificacionId } });
+                }
+            }
+            catch
+            {
+            }
+        }
+        
+        return resultado;
     }
 
     public async Task<int> ContarNoLeidasAsync(long usuarioId)

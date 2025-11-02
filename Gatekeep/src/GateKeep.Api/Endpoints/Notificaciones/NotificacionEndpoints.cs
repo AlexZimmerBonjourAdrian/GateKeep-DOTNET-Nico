@@ -21,7 +21,7 @@ public static class NotificacionEndpoints
         {
             var userId = long.Parse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
             
-            var notificacion = await service.CrearNotificacionAsync(request.Mensaje, request.Tipo);
+            var notificacion = await service.CrearNotificacionAsync(request.Mensaje, request.Tipo, userId);
             return Results.Created($"/api/notificaciones/{notificacion.Id}", notificacion);
         })
         .RequireAuthorization("FuncionarioOrAdmin")

@@ -1,3 +1,4 @@
+using GateKeep.Api.Application.Auditoria;
 using GateKeep.Api.Application.Notificaciones;
 using GateKeep.Api.Domain.Entities;
 using MongoDB.Driver;
@@ -9,22 +10,27 @@ public sealed class NotificacionTransactionService : INotificacionTransactionSer
     private readonly INotificacionUsuarioRepository _notificacionUsuarioRepository;
     private readonly INotificacionUsuarioValidationService _validationService;
     private readonly IMongoCollection<NotificacionUsuario> _collection;
+    private readonly IEventoHistoricoService? _eventoHistoricoService;
+    private readonly INotificacionRepository? _notificacionRepository;
 
     public NotificacionTransactionService(
         INotificacionUsuarioRepository notificacionUsuarioRepository,
         INotificacionUsuarioValidationService validationService,
-        IMongoDatabase mongoDatabase)
+        IMongoDatabase mongoDatabase,
+        IEventoHistoricoService? eventoHistoricoService = null,
+        INotificacionRepository? notificacionRepository = null)
     {
         _notificacionUsuarioRepository = notificacionUsuarioRepository;
         _validationService = validationService;
         _collection = mongoDatabase.GetCollection<NotificacionUsuario>("notificaciones_usuarios");
+        _eventoHistoricoService = eventoHistoricoService;
+        _notificacionRepository = notificacionRepository;
     }
 
     public async Task<NotificacionUsuario> CrearNotificacionUsuarioConCompensacionAsync(
         long usuarioId, 
         string notificacionId)
     {
-        // Validar integridad referencial antes de crear
         await _validationService.ValidarIntegridadReferencialAsync(usuarioId, notificacionId);
 
         try
@@ -41,15 +47,31 @@ public sealed class NotificacionTransactionService : INotificacionTransactionSer
             var notificacionUsuarioCreado = await _notificacionUsuarioRepository.CrearAsync(notificacionUsuario);
             
             Console.WriteLine($"NotificacionUsuario creado exitosamente: UsuarioId={usuarioId}, NotificacionId={notificacionId}");
+            
+            if (_eventoHistoricoService != null && _notificacionRepository != null)
+            {
+                try
+                {
+                    var notificacion = await _notificacionRepository.ObtenerPorIdAsync(notificacionId);
+                    if (notificacion != null)
+                    {
+                        await _eventoHistoricoService.RegistrarNotificacionAsync(
+                            usuarioId,
+                            notificacion.Tipo,
+                            "Enviada",
+                            new Dictionary<string, object> { { "notificacionId", notificacionId } });
+                    }
+                }
+                catch
+                {
+                }
+            }
+            
             return notificacionUsuarioCreado;
         }
         catch (Exception ex)
         {
-            // Log del error
             Console.WriteLine($"Error al crear NotificacionUsuario: {ex.Message}");
-            
-            // No hay compensación necesaria aquí porque la creación es idempotente
-            // Si falla, simplemente no se crea nada
             throw;
         }
     }

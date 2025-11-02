@@ -1,3 +1,4 @@
+using GateKeep.Api.Application.Auditoria;
 using GateKeep.Api.Application.Notificaciones;
 using GateKeep.Api.Contracts.Notificaciones;
 using GateKeep.Api.Domain.Entities;
@@ -7,13 +8,17 @@ namespace GateKeep.Api.Application.Notificaciones;
 public class NotificacionService : INotificacionService
 {
     private readonly INotificacionRepository _notificacionRepository;
+    private readonly IEventoHistoricoService? _eventoHistoricoService;
 
-    public NotificacionService(INotificacionRepository notificacionRepository)
+    public NotificacionService(
+        INotificacionRepository notificacionRepository,
+        IEventoHistoricoService? eventoHistoricoService = null)
     {
         _notificacionRepository = notificacionRepository;
+        _eventoHistoricoService = eventoHistoricoService;
     }
 
-    public async Task<NotificacionDto> CrearNotificacionAsync(string mensaje, string tipo = "general")
+    public async Task<NotificacionDto> CrearNotificacionAsync(string mensaje, string tipo = "general", long? usuarioIdCreador = null)
     {
         var notificacion = new Notificacion
         {
@@ -24,6 +29,22 @@ public class NotificacionService : INotificacionService
         };
 
         var notificacionCreada = await _notificacionRepository.CrearAsync(notificacion);
+        
+        if (_eventoHistoricoService != null && usuarioIdCreador.HasValue)
+        {
+            try
+            {
+                await _eventoHistoricoService.RegistrarNotificacionAsync(
+                    usuarioIdCreador.Value,
+                    tipo,
+                    "Creada",
+                    new Dictionary<string, object> { { "notificacionId", notificacionCreada.Id } });
+            }
+            catch
+            {
+            }
+        }
+        
         return MapToDto(notificacionCreada);
     }
 

@@ -1,3 +1,4 @@
+using GateKeep.Api.Application.Auditoria;
 using GateKeep.Api.Contracts.Usuarios;
 using GateKeep.Api.Domain.Entities;
 using GateKeep.Api.Application.Usuarios;
@@ -49,11 +50,35 @@ public static class UsuarioEndpoints
         .Produces(403);
 
         // POST /usuarios - Crear usuario con rol (Admin, Estudiante, Funcionario)
-        group.MapPost("/", async (UsuarioDto dto, [FromServices] IUsuarioFactory factory, [FromServices] IUsuarioRepository repo, [FromServices] IPasswordService passwordService) =>
+        group.MapPost("/", async (
+            UsuarioDto dto,
+            ClaimsPrincipal user,
+            [FromServices] IUsuarioFactory factory,
+            [FromServices] IUsuarioRepository repo,
+            [FromServices] IPasswordService passwordService,
+            [FromServices] IEventoHistoricoService? eventoHistoricoService) =>
         {
             var dtoConPasswordHasheada = dto with { Contrasenia = passwordService.HashPassword(dto.Contrasenia) };
             var usuario = factory.CrearUsuario(dtoConPasswordHasheada);
             await repo.AddAsync(usuario);
+            
+            if (eventoHistoricoService != null)
+            {
+                try
+                {
+                    var modificadoPor = long.Parse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                    await eventoHistoricoService.RegistrarCambioRolAsync(
+                        usuario.Id,
+                        "Nuevo",
+                        dto.Rol.ToString(),
+                        modificadoPor,
+                        new Dictionary<string, object> { { "accion", "CreacionUsuario" } });
+                }
+                catch
+                {
+                }
+            }
+            
             return Results.Created($"/usuarios/{usuario.Id}", usuario);
         })
         .RequireAuthorization("AdminOnly")
@@ -61,6 +86,52 @@ public static class UsuarioEndpoints
         .WithSummary("Crear nuevo usuario con rol")
         .Produces<Usuario>(201)
         .Produces(400)
+        .Produces(401)
+        .Produces(403);
+
+        // PUT /usuarios/{id}/rol - Solo administradores pueden actualizar el rol de un usuario
+        group.MapPut("/{id:long}/rol", async (
+            long id,
+            [FromBody] ActualizarRolRequest request,
+            ClaimsPrincipal user,
+            [FromServices] IUsuarioRepository repo,
+            [FromServices] IEventoHistoricoService? eventoHistoricoService) =>
+        {
+            var usuarioActual = await repo.GetByIdAsync(id);
+            if (usuarioActual is null)
+                return Results.NotFound();
+
+            var rolAnterior = usuarioActual.Rol;
+            if (rolAnterior == request.Rol)
+                return Results.Ok(usuarioActual);
+
+            var usuarioActualizado = usuarioActual with { Rol = request.Rol };
+            await repo.UpdateAsync(usuarioActualizado);
+
+            if (eventoHistoricoService != null)
+            {
+                try
+                {
+                    var modificadoPor = long.Parse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                    await eventoHistoricoService.RegistrarCambioRolAsync(
+                        id,
+                        rolAnterior.ToString(),
+                        request.Rol.ToString(),
+                        modificadoPor,
+                        new Dictionary<string, object> { { "accion", "ActualizacionRol" } });
+                }
+                catch
+                {
+                }
+            }
+
+            return Results.Ok(usuarioActualizado);
+        })
+        .RequireAuthorization("AdminOnly")
+        .WithName("ActualizarRolUsuario")
+        .WithSummary("Actualizar el rol de un usuario")
+        .Produces<Usuario>(200)
+        .Produces(404)
         .Produces(401)
         .Produces(403);
 
