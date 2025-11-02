@@ -17,6 +17,7 @@ using GateKeep.Api.Infrastructure.Notificaciones;
 using GateKeep.Api.Infrastructure.Persistence;
 using GateKeep.Api.Infrastructure.Security;
 using GateKeep.Api.Infrastructure.Usuarios;
+using GateKeep.Infrastructure.QrCodes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
@@ -203,6 +204,9 @@ builder.Services.AddScoped<IUsuarioFactory, UsuarioFactory>();
 // Servicios de Seguridad
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+
+// Utilidades
+builder.Services.AddSingleton<QrCodeGenerator>();
 
 // Servicios de Notificaciones MongoDB
 builder.Services.AddScoped<INotificacionRepository, NotificacionRepository>();
