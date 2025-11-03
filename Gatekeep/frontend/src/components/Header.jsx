@@ -15,9 +15,9 @@ export default function Header() {
   return (
     <div className="header-root">
       <div className="header-hero">
-  <Image src={harvard} alt="Harvard" fill className="harvard-image" priority />
-  <div className="header-overlay" />
-  <div className="harvard-placeholder" />
+      <Image src={harvard} alt="Harvard" fill className="harvard-image" priority />
+        <div className="header-overlay" />
+        <div className="harvard-placeholder" />
           <div className="header-topbar">
             <div className="icon-group">
               <Link href="/">
@@ -108,6 +108,19 @@ export default function Header() {
       </div>
 
       <style jsx>{`
+        /* Global layout fixes to avoid viewport-width shifts when scrollbars appear/disappear
+           and to ensure consistent box-sizing. */
+        :global(html), :global(body) {
+          box-sizing: border-box;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+          /* Reserve vertical scrollbar space to avoid horizontal layout shifts */
+          overflow-y: scroll;
+        }
+
+        :global(*), :global(*::before), :global(*::after) {
+          box-sizing: inherit;
+        }
         .header-root {
           width: 100%;
           display: block;
@@ -163,6 +176,7 @@ export default function Header() {
           display: inline-flex;
           align-items: center;
           gap: 10px;
+          
         }
         .item-card {
           height: 56px;
@@ -220,17 +234,20 @@ export default function Header() {
           box-sizing: border-box;
         }
 
-        .text-card {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            width: 42.97vw; /* 825px to vw assuming 1920px width */
-            height: 246px;
-            background-color: #231F20;
-            opacity: 0.9;
-            padding: 0.52vw; /* 10px to vw assuming 1920px width */
-            border-radius: 20px;
-        }
+    .text-card {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      width: 42.97vw; /* 825px to vw assuming 1920px width */
+      max-width: 900px;
+      min-width: 280px;
+      height: 246px;
+      background-color: #231F20;
+      opacity: 0.9;
+      padding: 0.52vw; /* 10px to vw assuming 1920px width */
+      border-radius: 20px;
+      box-sizing: border-box;
+    }
 
         .header-middle-bar {
           position: relative;
@@ -322,7 +339,9 @@ export default function Header() {
             }
 
             .header-bottom-bar .item-card {
-              width: 64px;
+              /* Use a clamped width so items don't reflow abruptly on very narrow viewports
+              (original designs used fixed px or vw which caused shifts under ~345px). */
+              width: clamp(56px, 18vw, 70px);
               height: 64px;
               background-color: #F37426;
               border-radius: 16px;
@@ -334,6 +353,7 @@ export default function Header() {
               opacity: 0.95;
               transition: transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
               padding: 6px;
+              box-sizing: border-box;
             }
 
             /* Responsive tweaks for icons and labels in the bottom bar */
@@ -360,29 +380,30 @@ export default function Header() {
             /* Very small screens: make buttons slightly smaller */
             @media (max-width: 360px) {
               .header-bottom-bar .item-card {
-                width: 56px;
-                height: 56px;
-                border-radius: 14px;
-                padding: 4px;
-              }
+                    width: 56px;
+                    height: 56px;
+                    border-radius: 14px;
+                    padding: 4px;
+                  }
 
-              .header-bottom-bar .item-icon {
-                font-size: 1.4rem;
-              }
+                  .header-bottom-bar .item-icon {
+                    font-size: 1.4rem;
+                  }
 
-              .header-bottom-bar .item-card svg {
-                width: 24px;
-                height: 24px;
-              }
+                  .header-bottom-bar .item-card svg {
+                    width: 24px;
+                    height: 24px;
+                  }
 
-              .header-bottom-bar .item-text {
-                font-size: 0.65rem;
-                margin-top: 4px;
-              }
-            }
-             :global(.harvard-image) {
-                display: none;
-            }
+                  .header-bottom-bar .item-text {
+                    font-size: 0.65rem;
+                    margin-top: 4px;
+                  }
+                }
+                :global(.harvard-image) {
+                  display: none;
+                  box-shadow: none;
+                }
     }
 
     /* Tablet/layout tweaks: 426px - 768px */
