@@ -4,6 +4,7 @@ using GateKeep.Api.Application.Auditoria;
 using GateKeep.Api.Application.Beneficios;
 using GateKeep.Api.Application.Espacios;
 using GateKeep.Api.Application.Notificaciones;
+using GateKeep.Api.Application.Events;
 using GateKeep.Api.Application.Security;
 using GateKeep.Api.Application.Usuarios;
 using GateKeep.Api.Contracts.Usuarios;
@@ -20,6 +21,7 @@ using GateKeep.Api.Infrastructure.Espacios;
 using GateKeep.Api.Infrastructure.Acceso;
 using GateKeep.Api.Infrastructure.Auditoria;
 using GateKeep.Api.Infrastructure.Notificaciones;
+using GateKeep.Api.Infrastructure.Events;
 using GateKeep.Api.Infrastructure.Persistence;
 using GateKeep.Api.Infrastructure.Security;
 using GateKeep.Api.Infrastructure.Usuarios;
@@ -227,6 +229,12 @@ builder.Services.AddScoped<INotificacionSincronizacionService, NotificacionSincr
 builder.Services.AddScoped<INotificacionUsuarioService, NotificacionUsuarioService>();
 builder.Services.AddScoped<INotificacionTransactionService, NotificacionTransactionService>();
 
+// Observer Pattern - Event Publisher y Observers
+builder.Services.AddSingleton<IEventPublisher, EventPublisher>();
+builder.Services.AddScoped<IEventObserver, NotificacionObserver>();
+builder.Services.AddScoped<IEventObserver, EmailObserver>();
+builder.Services.AddScoped<IEventObserver, LoggingObserver>();
+
 // Servicios de Auditoría MongoDB
 builder.Services.AddScoped<IEventoHistoricoRepository, EventoHistoricoRepository>();
 builder.Services.AddScoped<IEventoHistoricoService, EventoHistoricoService>();
@@ -395,6 +403,29 @@ using (var scope = app.Services.CreateScope())
     {
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "Error al inicializar índices de auditoría MongoDB");
+    }
+}
+
+// Suscribir observers al Event Publisher (Observer Pattern)
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var eventPublisher = scope.ServiceProvider.GetRequiredService<IEventPublisher>();
+        var observers = scope.ServiceProvider.GetServices<IEventObserver>();
+        
+        foreach (var observer in observers)
+        {
+            eventPublisher.Subscribe(observer);
+        }
+        
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogInformation($"Se suscribieron {observers.Count()} observers al Event Publisher");
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Error al suscribir observers al Event Publisher");
     }
 }
 

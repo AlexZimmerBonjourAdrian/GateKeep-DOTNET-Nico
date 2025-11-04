@@ -1,5 +1,6 @@
 using GateKeep.Api.Application.Beneficios;
 using GateKeep.Api.Contracts.Beneficios;
+using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
 namespace GateKeep.Api.Endpoints.Beneficios;
@@ -101,6 +102,74 @@ public static class BeneficioEndpoints
         .WithSummary("Eliminar beneficio (borrado lógico)")
         .Produces<string>(200)
         .Produces(404)
+        .Produces(401)
+        .Produces(403);
+
+        // Endpoints para asignación de beneficios a usuarios
+        var usuarioBeneficioGroup = app.MapGroup("/api/usuarios/{usuarioId:long}/beneficios")
+            .WithTags("Beneficios")
+            .WithOpenApi();
+
+        // GET /api/usuarios/{usuarioId}/beneficios - Obtener beneficios de un usuario
+        usuarioBeneficioGroup.MapGet("/", async (
+            long usuarioId,
+            [FromServices] IBeneficioUsuarioService beneficioUsuarioService) =>
+        {
+            var beneficios = await beneficioUsuarioService.ObtenerBeneficiosPorUsuarioAsync(usuarioId);
+            return Results.Ok(beneficios);
+        })
+        .RequireAuthorization("AllUsers")
+        .WithName("GetBeneficiosPorUsuario")
+        .WithSummary("Obtener beneficios de un usuario")
+        .Produces<IEnumerable<BeneficioUsuarioDto>>(200)
+        .Produces(401)
+        .Produces(403);
+
+        // POST /api/usuarios/{usuarioId}/beneficios/{beneficioId} - Asignar beneficio a usuario
+        usuarioBeneficioGroup.MapPost("/{beneficioId:long}", async (
+            long usuarioId,
+            long beneficioId,
+            [FromServices] IBeneficioUsuarioService beneficioUsuarioService) =>
+        {
+            try
+            {
+                var resultado = await beneficioUsuarioService.AsignarBeneficioAsync(usuarioId, beneficioId);
+                return Results.Created($"/api/usuarios/{usuarioId}/beneficios/{beneficioId}", resultado);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        })
+        .RequireAuthorization("FuncionarioOrAdmin")
+        .WithName("AsignarBeneficio")
+        .WithSummary("Asignar un beneficio a un usuario (dispara evento BeneficioAsignado)")
+        .Produces<BeneficioUsuarioDto>(201)
+        .Produces(400)
+        .Produces(401)
+        .Produces(403);
+
+        // DELETE /api/usuarios/{usuarioId}/beneficios/{beneficioId} - Desasignar beneficio de usuario
+        usuarioBeneficioGroup.MapDelete("/{beneficioId:long}", async (
+            long usuarioId,
+            long beneficioId,
+            [FromServices] IBeneficioUsuarioService beneficioUsuarioService) =>
+        {
+            try
+            {
+                await beneficioUsuarioService.DesasignarBeneficioAsync(usuarioId, beneficioId);
+                return Results.NoContent();
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        })
+        .RequireAuthorization("FuncionarioOrAdmin")
+        .WithName("DesasignarBeneficio")
+        .WithSummary("Desasignar un beneficio de un usuario (dispara evento BeneficioDesasignado)")
+        .Produces(204)
+        .Produces(400)
         .Produces(401)
         .Produces(403);
 

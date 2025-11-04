@@ -1,4 +1,5 @@
 using GateKeep.Api.Application.Auditoria;
+using GateKeep.Api.Application.Events;
 using GateKeep.Api.Contracts.Usuarios;
 using GateKeep.Api.Domain.Entities;
 using GateKeep.Api.Application.Usuarios;
@@ -56,11 +57,14 @@ public static class UsuarioEndpoints
             [FromServices] IUsuarioFactory factory,
             [FromServices] IUsuarioRepository repo,
             [FromServices] IPasswordService passwordService,
-            [FromServices] IEventoHistoricoService? eventoHistoricoService) =>
+            [FromServices] IEventoHistoricoService? eventoHistoricoService,
+            [FromServices] IEventPublisher? eventPublisher) =>
         {
             var dtoConPasswordHasheada = dto with { Contrasenia = passwordService.HashPassword(dto.Contrasenia) };
             var usuario = factory.CrearUsuario(dtoConPasswordHasheada);
             await repo.AddAsync(usuario);
+            
+            var fecha = DateTime.UtcNow;
             
             if (eventoHistoricoService != null)
             {
@@ -76,6 +80,25 @@ public static class UsuarioEndpoints
                 }
                 catch
                 {
+                }
+            }
+
+            // Notificar a observers (Observer Pattern)
+            if (eventPublisher != null)
+            {
+                try
+                {
+                    await eventPublisher.NotifyUsuarioCreadoAsync(
+                        usuario.Id,
+                        usuario.Email,
+                        usuario.Nombre,
+                        usuario.Apellido,
+                        usuario.Rol.ToString(),
+                        fecha);
+                }
+                catch
+                {
+                    // Log error pero no romper el flujo principal
                 }
             }
             
@@ -95,7 +118,8 @@ public static class UsuarioEndpoints
             [FromBody] ActualizarRolRequest request,
             ClaimsPrincipal user,
             [FromServices] IUsuarioRepository repo,
-            [FromServices] IEventoHistoricoService? eventoHistoricoService) =>
+            [FromServices] IEventoHistoricoService? eventoHistoricoService,
+            [FromServices] IEventPublisher? eventPublisher) =>
         {
             var usuarioActual = await repo.GetByIdAsync(id);
             if (usuarioActual is null)
@@ -108,11 +132,13 @@ public static class UsuarioEndpoints
             var usuarioActualizado = usuarioActual with { Rol = request.Rol };
             await repo.UpdateAsync(usuarioActualizado);
 
+            var fecha = DateTime.UtcNow;
+            var modificadoPor = long.Parse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+
             if (eventoHistoricoService != null)
             {
                 try
                 {
-                    var modificadoPor = long.Parse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
                     await eventoHistoricoService.RegistrarCambioRolAsync(
                         id,
                         rolAnterior.ToString(),
@@ -122,6 +148,24 @@ public static class UsuarioEndpoints
                 }
                 catch
                 {
+                }
+            }
+
+            // Notificar a observers (Observer Pattern)
+            if (eventPublisher != null)
+            {
+                try
+                {
+                    await eventPublisher.NotifyCambioRolAsync(
+                        id,
+                        rolAnterior.ToString(),
+                        request.Rol.ToString(),
+                        modificadoPor,
+                        fecha);
+                }
+                catch
+                {
+                    // Log error pero no romper el flujo principal
                 }
             }
 

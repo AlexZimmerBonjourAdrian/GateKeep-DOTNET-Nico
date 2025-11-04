@@ -2,6 +2,7 @@ using GateKeep.Api.Application.Acceso;
 using GateKeep.Api.Application.Auditoria;
 using GateKeep.Api.Application.Usuarios;
 using GateKeep.Api.Application.Espacios;
+using GateKeep.Api.Application.Events;
 using GateKeep.Api.Domain.Entities;
 using GateKeep.Api.Domain.Enums;
 using GateKeep.Api.Infrastructure.Persistence;
@@ -16,19 +17,22 @@ public class AccesoService : IAccesoService
     private readonly IEspacioRepository _espacioRepository;
     private readonly GateKeepDbContext _context;
     private readonly IEventoHistoricoService? _eventoHistoricoService;
+    private readonly IEventPublisher? _eventPublisher;
 
     public AccesoService(
         IReglaAccesoRepository reglaAccesoRepository,
         IUsuarioRepository usuarioRepository,
         IEspacioRepository espacioRepository,
         GateKeepDbContext context,
-        IEventoHistoricoService? eventoHistoricoService = null)
+        IEventoHistoricoService? eventoHistoricoService = null,
+        IEventPublisher? eventPublisher = null)
     {
         _reglaAccesoRepository = reglaAccesoRepository;
         _usuarioRepository = usuarioRepository;
         _espacioRepository = espacioRepository;
         _context = context;
         _eventoHistoricoService = eventoHistoricoService;
+        _eventPublisher = eventPublisher;
     }
 
     public async Task<ResultadoValidacionAcceso> ValidarAccesoAsync(
@@ -185,10 +189,11 @@ public class AccesoService : IAccesoService
 
     private async Task RegistrarAccesoAsync(long usuarioId, long espacioId, string puntoControl)
     {
+        var fecha = DateTime.UtcNow;
         var eventoAcceso = new EventoAcceso(
             Id: 0,
             Nombre: $"Acceso a espacio {espacioId}",
-            Fecha: DateTime.UtcNow,
+            Fecha: fecha,
             Resultado: "Permitido",
             PuntoControl: puntoControl,
             UsuarioId: usuarioId,
@@ -212,14 +217,28 @@ public class AccesoService : IAccesoService
             {
             }
         }
+
+        // Notificar a observers (Observer Pattern)
+        if (_eventPublisher != null)
+        {
+            try
+            {
+                await _eventPublisher.NotifyAccesoPermitidoAsync(usuarioId, espacioId, puntoControl, fecha);
+            }
+            catch
+            {
+                // Log error pero no romper el flujo principal
+            }
+        }
     }
 
     private async Task RegistrarRechazoAsync(long usuarioId, long espacioId, string puntoControl, string razon)
     {
+        var fecha = DateTime.UtcNow;
         var eventoAcceso = new EventoAcceso(
             Id: 0,
             Nombre: $"Intento de acceso a espacio {espacioId}",
-            Fecha: DateTime.UtcNow,
+            Fecha: fecha,
             Resultado: "Rechazado",
             PuntoControl: puntoControl,
             UsuarioId: usuarioId,
@@ -241,6 +260,19 @@ public class AccesoService : IAccesoService
             }
             catch
             {
+            }
+        }
+
+        // Notificar a observers (Observer Pattern)
+        if (_eventPublisher != null)
+        {
+            try
+            {
+                await _eventPublisher.NotifyAccesoRechazadoAsync(usuarioId, espacioId, razon, puntoControl, fecha);
+            }
+            catch
+            {
+                // Log error pero no romper el flujo principal
             }
         }
     }
