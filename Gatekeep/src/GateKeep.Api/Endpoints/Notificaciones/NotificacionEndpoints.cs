@@ -105,5 +105,101 @@ public static class NotificacionEndpoints
         .Produces(404)
         .Produces(401)
         .Produces(403);
+
+        // Endpoints para notificaciones de usuario (combinando PostgreSQL y MongoDB)
+        var usuarioGroup = app.MapGroup("/api/usuarios/{usuarioId}/notificaciones")
+            .WithTags("Notificaciones")
+            .WithOpenApi();
+
+        // GET - Obtener todas las notificaciones de un usuario
+        usuarioGroup.MapGet("/", async (
+            long usuarioId,
+            INotificacionUsuarioService notificacionUsuarioService) =>
+        {
+            try
+            {
+                var notificaciones = await notificacionUsuarioService.ObtenerNotificacionesPorUsuarioAsync(usuarioId);
+                return Results.Ok(notificaciones);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+        })
+        .RequireAuthorization("AllUsers")
+        .WithName("ObtenerNotificacionesPorUsuario")
+        .WithSummary("Obtener todas las notificaciones de un usuario")
+        .Produces<IEnumerable<NotificacionCompletaDto>>(200)
+        .Produces(404)
+        .Produces(401);
+
+        // GET - Obtener una notificación específica de un usuario
+        usuarioGroup.MapGet("/{notificacionId}", async (
+            long usuarioId,
+            string notificacionId,
+            INotificacionUsuarioService notificacionUsuarioService) =>
+        {
+            try
+            {
+                var notificacion = await notificacionUsuarioService.ObtenerNotificacionCompletaAsync(usuarioId, notificacionId);
+                return notificacion != null ? Results.Ok(notificacion) : Results.NotFound();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+        })
+        .RequireAuthorization("AllUsers")
+        .WithName("ObtenerNotificacionPorUsuario")
+        .WithSummary("Obtener una notificación específica de un usuario")
+        .Produces<NotificacionCompletaDto>(200)
+        .Produces(404)
+        .Produces(401);
+
+        // PUT - Marcar notificación como leída
+        usuarioGroup.MapPut("/{notificacionId}/leer", async (
+            long usuarioId,
+            string notificacionId,
+            INotificacionUsuarioService notificacionUsuarioService) =>
+        {
+            try
+            {
+                var resultado = await notificacionUsuarioService.MarcarComoLeidaAsync(usuarioId, notificacionId);
+                return resultado ? Results.Ok(new { success = true }) : Results.NotFound();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        })
+        .RequireAuthorization("AllUsers")
+        .WithName("MarcarNotificacionComoLeida")
+        .WithSummary("Marcar una notificación como leída")
+        .Produces(200)
+        .Produces(404)
+        .Produces(400)
+        .Produces(401);
+
+        // GET - Contar notificaciones no leídas
+        usuarioGroup.MapGet("/no-leidas/count", async (
+            long usuarioId,
+            INotificacionUsuarioService notificacionUsuarioService) =>
+        {
+            try
+            {
+                var count = await notificacionUsuarioService.ContarNoLeidasAsync(usuarioId);
+                return Results.Ok(new { count });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+        })
+        .RequireAuthorization("AllUsers")
+        .WithName("ContarNotificacionesNoLeidas")
+        .WithSummary("Contar notificaciones no leídas de un usuario")
+        .Produces(200)
+        .Produces(404)
+        .Produces(401);
     }
 }
