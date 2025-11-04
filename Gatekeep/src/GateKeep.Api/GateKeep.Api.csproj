@@ -8,6 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="MassTransit" Version="8.2.5" />
+    <PackageReference Include="MassTransit.RabbitMQ" Version="8.2.5" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.*">
@@ -21,8 +23,12 @@
     <!-- Paquetes de Seguridad -->
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.*" />
     <PackageReference Include="Microsoft.AspNetCore.Authorization" Version="8.*" />
+    <PackageReference Include="System.Drawing.Common" Version="9.0.10" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.*" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.*" />
+    <PackageReference Include="ZXing.Net" Version="0.16.11" />
+    <!-- Binding para soporte de System.Drawing (BitmapRenderer, BarcodeWriter<Bitmap>) -->
+    <PackageReference Include="ZXing.Net.Bindings.Windows.Compatibility" Version="0.16.14" />
   </ItemGroup>
 
   <ItemGroup>
@@ -30,7 +36,6 @@
     <Folder Include="Contacts\" />
     <Folder Include="Domain\" />
     <Folder Include="Endpoints\" />
-    <Folder Include="Infrastructure\" />
   </ItemGroup>
 
 </Project>

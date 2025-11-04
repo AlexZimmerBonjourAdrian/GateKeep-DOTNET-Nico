@@ -16,7 +16,7 @@ public class RegisterRequest
     public string Nombre { get; set; } = string.Empty;
     public string Apellido { get; set; } = string.Empty;
     public string? Telefono { get; set; }
-    public TipoUsuario TipoUsuario { get; set; }
+    public Rol Rol { get; set; }
 }
 
 public class RefreshTokenRequest

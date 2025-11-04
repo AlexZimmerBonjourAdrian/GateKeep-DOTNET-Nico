@@ -12,7 +12,7 @@ public record UsuarioDto
     public string? Telefono { get; init; }
     public DateTime FechaAlta { get; init; } = DateTime.UtcNow;
     public TipoCredencial Credencial { get; init; } = TipoCredencial.Vigente;
-    public TipoUsuario TipoUsuario { get; init; } = TipoUsuario.Estudiante;
+    public Rol Rol { get; init; } = Rol.Estudiante;
 }
 
 

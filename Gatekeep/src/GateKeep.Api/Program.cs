@@ -1,4 +1,6 @@
 using System.Text.Json.Serialization;
+using GateKeep.Api.Application.Acceso;
+using GateKeep.Api.Application.Auditoria;
 using GateKeep.Api.Application.Beneficios;
 using GateKeep.Api.Application.Espacios;
 using GateKeep.Api.Application.Notificaciones;
@@ -9,14 +11,19 @@ using GateKeep.Api.Domain.Enums;
 using GateKeep.Api.Endpoints.Auth;
 using GateKeep.Api.Endpoints.Beneficios;
 using GateKeep.Api.Endpoints.Espacios;
+using GateKeep.Api.Endpoints.Acceso;
+using GateKeep.Api.Endpoints.Auditoria;
 using GateKeep.Api.Endpoints.Notificaciones;
 using GateKeep.Api.Endpoints.Usuarios;
 using GateKeep.Api.Infrastructure.Beneficios;
 using GateKeep.Api.Infrastructure.Espacios;
+using GateKeep.Api.Infrastructure.Acceso;
+using GateKeep.Api.Infrastructure.Auditoria;
 using GateKeep.Api.Infrastructure.Notificaciones;
 using GateKeep.Api.Infrastructure.Persistence;
 using GateKeep.Api.Infrastructure.Security;
 using GateKeep.Api.Infrastructure.Usuarios;
+using GateKeep.Infrastructure.QrCodes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
@@ -190,6 +197,10 @@ builder.Services.AddDbContext<GateKeepDbContext>(options =>
 builder.Services.AddScoped<IEspacioRepository, EspacioRepository>();
 builder.Services.AddScoped<IEspacioFactory, EspacioFactory>();
 
+// Servicios de Acceso
+builder.Services.AddScoped<IReglaAccesoRepository, ReglaAccesoRepository>();
+builder.Services.AddScoped<IAccesoService, AccesoService>();
+
 // Servicios de Beneficios
 builder.Services.AddScoped<IBeneficioRepository, BeneficioRepository>();
 builder.Services.AddScoped<IBeneficioService, BeneficioService>();
@@ -204,9 +215,24 @@ builder.Services.AddScoped<IUsuarioFactory, UsuarioFactory>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
+// Utilidades
+builder.Services.AddSingleton<QrCodeGenerator>();
+
 // Servicios de Notificaciones MongoDB
 builder.Services.AddScoped<INotificacionRepository, NotificacionRepository>();
 builder.Services.AddScoped<INotificacionService, NotificacionService>();
+builder.Services.AddScoped<INotificacionUsuarioRepository, NotificacionUsuarioRepository>();
+builder.Services.AddScoped<INotificacionUsuarioValidationService, NotificacionUsuarioValidationService>();
+builder.Services.AddScoped<INotificacionSincronizacionService, NotificacionSincronizacionService>();
+builder.Services.AddScoped<INotificacionUsuarioService, NotificacionUsuarioService>();
+builder.Services.AddScoped<INotificacionTransactionService, NotificacionTransactionService>();
+
+// Servicios de Auditoría MongoDB
+builder.Services.AddScoped<IEventoHistoricoRepository, EventoHistoricoRepository>();
+builder.Services.AddScoped<IEventoHistoricoService, EventoHistoricoService>();
+
+// Servicios de Sincronización de Usuarios
+builder.Services.AddScoped<IUsuarioSincronizacionService, UsuarioSincronizacionService>();
 
 // MongoDB - Configuración con Atlas y API estable
 builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
@@ -354,6 +380,23 @@ app.MapBeneficioEndpoints();
 app.MapNotificacionEndpoints();
 app.MapUsuarioEndpoints();
 app.MapUsuarioProfileEndpoints();
+app.MapAccesoEndpoints();
+app.MapEventoHistoricoEndpoints();
+
+// Inicializar índices MongoDB para auditoría
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var eventoHistoricoRepo = scope.ServiceProvider.GetRequiredService<IEventoHistoricoRepository>();
+        await eventoHistoricoRepo.InicializarIndicesAsync();
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Error al inicializar índices de auditoría MongoDB");
+    }
+}
 
 // Auto-aplicar migraciones al iniciar
 using (var scope = app.Services.CreateScope())
@@ -383,7 +426,7 @@ using (var scope = app.Services.CreateScope())
                 Telefono = "+1234567890",
                 FechaAlta = DateTime.UtcNow,
                 Credencial = TipoCredencial.Vigente,
-                TipoUsuario = TipoUsuario.Admin
+                Rol = Rol.Admin
             };
             
             var admin = factory.CrearUsuario(adminDto);
@@ -400,7 +443,7 @@ using (var scope = app.Services.CreateScope())
                 Telefono = "+1234567891",
                 FechaAlta = DateTime.UtcNow,
                 Credencial = TipoCredencial.Vigente,
-                TipoUsuario = TipoUsuario.Estudiante
+                Rol = Rol.Estudiante
             };
             
             var estudiante = factory.CrearUsuario(estudianteDto);
@@ -417,7 +460,7 @@ using (var scope = app.Services.CreateScope())
                 Telefono = "+1234567892",
                 FechaAlta = DateTime.UtcNow,
                 Credencial = TipoCredencial.Vigente,
-                TipoUsuario = TipoUsuario.Funcionario
+                Rol = Rol.Funcionario
             };
             
             var funcionario = factory.CrearUsuario(funcionarioDto);
