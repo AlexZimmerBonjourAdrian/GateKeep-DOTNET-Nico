@@ -19,10 +19,22 @@ public static class NotificacionEndpoints
             ClaimsPrincipal user,
             INotificacionService service) =>
         {
+            if (string.IsNullOrWhiteSpace(request.Mensaje))
+            {
+                return Results.BadRequest(new { error = "El mensaje de la notificación es requerido y no puede estar vacío" });
+            }
+
             var userId = long.Parse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
             
-            var notificacion = await service.CrearNotificacionAsync(request.Mensaje, request.Tipo, userId);
-            return Results.Created($"/api/notificaciones/{notificacion.Id}", notificacion);
+            try
+            {
+                var notificacion = await service.CrearNotificacionAsync(request.Mensaje, request.Tipo, userId);
+                return Results.Created($"/api/notificaciones/{notificacion.Id}", notificacion);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = $"Error al crear la notificación: {ex.Message}" });
+            }
         })
         .RequireAuthorization("FuncionarioOrAdmin")
         .WithName("CrearNotificacion")
@@ -48,13 +60,24 @@ public static class NotificacionEndpoints
         // GET - Todos los usuarios autenticados pueden ver una notificación específica
         group.MapGet("/{id}", async (string id, INotificacionService service) =>
         {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                return Results.BadRequest(new { error = "El ID de notificación es requerido y no puede estar vacío" });
+            }
+
             var notificacion = await service.ObtenerPorIdAsync(id);
-            return notificacion != null ? Results.Ok(notificacion) : Results.NotFound();
+            if (notificacion == null)
+            {
+                return Results.NotFound(new { error = $"La notificación con ID {id} no existe en el sistema" });
+            }
+            
+            return Results.Ok(notificacion);
         })
         .RequireAuthorization("AllUsers")
         .WithName("ObtenerNotificacionPorId")
         .WithSummary("Obtener notificación por ID")
         .Produces<NotificacionDto>(200)
+        .Produces(400)
         .Produces(404)
         .Produces(401)
         .Produces(403);
@@ -66,11 +89,18 @@ public static class NotificacionEndpoints
             ClaimsPrincipal user,
             INotificacionService service) =>
         {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                return Results.BadRequest(new { error = "El ID de notificación es requerido y no puede estar vacío" });
+            }
+
             var userId = long.Parse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
             
             var notificacionExistente = await service.ObtenerPorIdAsync(id);
             if (notificacionExistente == null)
-                return Results.NotFound();
+            {
+                return Results.NotFound(new { error = $"La notificación con ID {id} no existe en el sistema" });
+            }
 
             // Crear nueva notificación con los datos actualizados
             var notificacionActualizada = new NotificacionDto
@@ -88,6 +118,7 @@ public static class NotificacionEndpoints
         .WithName("ActualizarNotificacion")
         .WithSummary("Actualizar notificación")
         .Produces<NotificacionDto>(200)
+        .Produces(400)
         .Produces(404)
         .Produces(401)
         .Produces(403);
@@ -95,13 +126,24 @@ public static class NotificacionEndpoints
         // DELETE - Solo administradores pueden eliminar notificaciones
         group.MapDelete("/{id}", async (string id, INotificacionService service) =>
         {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                return Results.BadRequest(new { error = "El ID de notificación es requerido y no puede estar vacío" });
+            }
+
             var resultado = await service.EliminarNotificacionAsync(id);
-            return resultado ? Results.NoContent() : Results.NotFound();
+            if (!resultado)
+            {
+                return Results.NotFound(new { error = $"La notificación con ID {id} no existe en el sistema" });
+            }
+            
+            return Results.NoContent();
         })
         .RequireAuthorization("AdminOnly")
         .WithName("EliminarNotificacion")
         .WithSummary("Eliminar notificación")
         .Produces(204)
+        .Produces(400)
         .Produces(404)
         .Produces(401)
         .Produces(403);
@@ -116,6 +158,11 @@ public static class NotificacionEndpoints
             long usuarioId,
             INotificacionUsuarioService notificacionUsuarioService) =>
         {
+            if (usuarioId <= 0)
+            {
+                return Results.BadRequest(new { error = "El ID de usuario debe ser mayor a 0" });
+            }
+
             try
             {
                 var notificaciones = await notificacionUsuarioService.ObtenerNotificacionesPorUsuarioAsync(usuarioId);
@@ -130,6 +177,7 @@ public static class NotificacionEndpoints
         .WithName("ObtenerNotificacionesPorUsuario")
         .WithSummary("Obtener todas las notificaciones de un usuario")
         .Produces<IEnumerable<NotificacionCompletaDto>>(200)
+        .Produces(400)
         .Produces(404)
         .Produces(401);
 
@@ -139,10 +187,28 @@ public static class NotificacionEndpoints
             string notificacionId,
             INotificacionUsuarioService notificacionUsuarioService) =>
         {
+            if (usuarioId <= 0)
+            {
+                return Results.BadRequest(new { error = "El ID de usuario debe ser mayor a 0" });
+            }
+
+            if (string.IsNullOrWhiteSpace(notificacionId))
+            {
+                return Results.BadRequest(new { error = "El ID de notificación es requerido y no puede estar vacío" });
+            }
+
             try
             {
                 var notificacion = await notificacionUsuarioService.ObtenerNotificacionCompletaAsync(usuarioId, notificacionId);
-                return notificacion != null ? Results.Ok(notificacion) : Results.NotFound();
+                if (notificacion == null)
+                {
+                    return Results.NotFound(new 
+                    { 
+                        error = $"La notificación con ID {notificacionId} no existe o no está asignada al usuario {usuarioId}" 
+                    });
+                }
+                
+                return Results.Ok(notificacion);
             }
             catch (InvalidOperationException ex)
             {
@@ -153,6 +219,7 @@ public static class NotificacionEndpoints
         .WithName("ObtenerNotificacionPorUsuario")
         .WithSummary("Obtener una notificación específica de un usuario")
         .Produces<NotificacionCompletaDto>(200)
+        .Produces(400)
         .Produces(404)
         .Produces(401);
 
@@ -162,10 +229,28 @@ public static class NotificacionEndpoints
             string notificacionId,
             INotificacionUsuarioService notificacionUsuarioService) =>
         {
+            if (usuarioId <= 0)
+            {
+                return Results.BadRequest(new { error = "El ID de usuario debe ser mayor a 0" });
+            }
+
+            if (string.IsNullOrWhiteSpace(notificacionId))
+            {
+                return Results.BadRequest(new { error = "El ID de notificación es requerido y no puede estar vacío" });
+            }
+
             try
             {
                 var resultado = await notificacionUsuarioService.MarcarComoLeidaAsync(usuarioId, notificacionId);
-                return resultado ? Results.Ok(new { success = true }) : Results.NotFound();
+                if (!resultado)
+                {
+                    return Results.NotFound(new 
+                    { 
+                        error = $"La notificación con ID {notificacionId} no existe o no está asignada al usuario {usuarioId}" 
+                    });
+                }
+                
+                return Results.Ok(new { success = true, message = "Notificación marcada como leída exitosamente" });
             }
             catch (InvalidOperationException ex)
             {
@@ -185,10 +270,15 @@ public static class NotificacionEndpoints
             long usuarioId,
             INotificacionUsuarioService notificacionUsuarioService) =>
         {
+            if (usuarioId <= 0)
+            {
+                return Results.BadRequest(new { error = "El ID de usuario debe ser mayor a 0" });
+            }
+
             try
             {
                 var count = await notificacionUsuarioService.ContarNoLeidasAsync(usuarioId);
-                return Results.Ok(new { count });
+                return Results.Ok(new { count, usuarioId });
             }
             catch (InvalidOperationException ex)
             {
@@ -199,6 +289,7 @@ public static class NotificacionEndpoints
         .WithName("ContarNotificacionesNoLeidas")
         .WithSummary("Contar notificaciones no leídas de un usuario")
         .Produces(200)
+        .Produces(400)
         .Produces(404)
         .Produces(401);
     }
