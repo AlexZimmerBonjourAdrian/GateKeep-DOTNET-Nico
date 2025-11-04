@@ -7,14 +7,10 @@ namespace GateKeep.Api.Infrastructure.Notificaciones;
 public class NotificacionUsuarioRepository : INotificacionUsuarioRepository
 {
     private readonly IMongoCollection<NotificacionUsuario> _collection;
-    private readonly INotificacionUsuarioValidationService _validationService;
 
-    public NotificacionUsuarioRepository(
-        IMongoDatabase database,
-        INotificacionUsuarioValidationService validationService)
+    public NotificacionUsuarioRepository(IMongoDatabase database)
     {
         _collection = database.GetCollection<NotificacionUsuario>("notificaciones_usuarios");
-        _validationService = validationService;
     }
 
     public async Task<IEnumerable<NotificacionUsuario>> ObtenerPorUsuarioAsync(long usuarioId)
@@ -29,11 +25,6 @@ public class NotificacionUsuarioRepository : INotificacionUsuarioRepository
 
     public async Task<NotificacionUsuario> CrearAsync(NotificacionUsuario notificacionUsuario)
     {
-        // Validar integridad referencial antes de crear
-        await _validationService.ValidarIntegridadReferencialAsync(
-            notificacionUsuario.UsuarioId, 
-            notificacionUsuario.NotificacionId);
-
         notificacionUsuario.CreatedAt = DateTime.UtcNow;
         notificacionUsuario.UpdatedAt = DateTime.UtcNow;
         await _collection.InsertOneAsync(notificacionUsuario);
@@ -49,9 +40,6 @@ public class NotificacionUsuarioRepository : INotificacionUsuarioRepository
 
     public async Task<bool> MarcarComoLeidaAsync(long usuarioId, string notificacionId)
     {
-        // Validar que la relación existe antes de actualizar
-        await _validationService.ValidarIntegridadReferencialAsync(usuarioId, notificacionId);
-
         var filter = Builders<NotificacionUsuario>.Filter.And(
             Builders<NotificacionUsuario>.Filter.Eq(nu => nu.UsuarioId, usuarioId),
             Builders<NotificacionUsuario>.Filter.Eq(nu => nu.NotificacionId, notificacionId)

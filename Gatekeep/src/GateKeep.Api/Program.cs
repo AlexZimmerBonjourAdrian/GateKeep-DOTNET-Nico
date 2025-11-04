@@ -207,14 +207,6 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 // Servicios de Notificaciones MongoDB
 builder.Services.AddScoped<INotificacionRepository, NotificacionRepository>();
 builder.Services.AddScoped<INotificacionService, NotificacionService>();
-builder.Services.AddScoped<INotificacionUsuarioRepository, NotificacionUsuarioRepository>();
-builder.Services.AddScoped<INotificacionUsuarioValidationService, NotificacionUsuarioValidationService>();
-builder.Services.AddScoped<INotificacionSincronizacionService, NotificacionSincronizacionService>();
-builder.Services.AddScoped<INotificacionUsuarioService, NotificacionUsuarioService>();
-builder.Services.AddScoped<INotificacionTransactionService, NotificacionTransactionService>();
-
-// Servicios de Sincronización de Usuarios
-builder.Services.AddScoped<IUsuarioSincronizacionService, UsuarioSincronizacionService>();
 
 // MongoDB - Configuración con Atlas y API estable
 builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
@@ -391,7 +383,7 @@ using (var scope = app.Services.CreateScope())
                 Telefono = "+1234567890",
                 FechaAlta = DateTime.UtcNow,
                 Credencial = TipoCredencial.Vigente,
-                Rol = Rol.Admin
+                TipoUsuario = TipoUsuario.Admin
             };
             
             var admin = factory.CrearUsuario(adminDto);
@@ -408,7 +400,7 @@ using (var scope = app.Services.CreateScope())
                 Telefono = "+1234567891",
                 FechaAlta = DateTime.UtcNow,
                 Credencial = TipoCredencial.Vigente,
-                Rol = Rol.Estudiante
+                TipoUsuario = TipoUsuario.Estudiante
             };
             
             var estudiante = factory.CrearUsuario(estudianteDto);
@@ -425,7 +417,7 @@ using (var scope = app.Services.CreateScope())
                 Telefono = "+1234567892",
                 FechaAlta = DateTime.UtcNow,
                 Credencial = TipoCredencial.Vigente,
-                Rol = Rol.Funcionario
+                TipoUsuario = TipoUsuario.Funcionario
             };
             
             var funcionario = factory.CrearUsuario(funcionarioDto);

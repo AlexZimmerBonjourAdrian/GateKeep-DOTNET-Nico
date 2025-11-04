@@ -12,7 +12,7 @@ public sealed record Usuario
     string? Telefono,
     DateTime FechaAlta,
     TipoCredencial Credencial,
-    Rol Rol
+    TipoUsuario TipoUsuario
 );
 
 

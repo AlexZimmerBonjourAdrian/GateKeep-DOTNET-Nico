@@ -62,7 +62,7 @@ public class AuthService : IAuthService
                 Email = usuario.Email,
                 Nombre = usuario.Nombre,
                 Apellido = usuario.Apellido,
-                Rol = usuario.Rol,
+                TipoUsuario = usuario.TipoUsuario,
                 Telefono = usuario.Telefono,
                 FechaAlta = usuario.FechaAlta
             };
@@ -76,7 +76,7 @@ public class AuthService : IAuthService
         }
     }
 
-    public async Task<AuthResult> RegisterAsync(string email, string password, string nombre, string apellido, string? telefono, Rol rol)
+    public async Task<AuthResult> RegisterAsync(string email, string password, string nombre, string apellido, string? telefono, TipoUsuario tipoUsuario)
     {
         try
         {
@@ -105,7 +105,7 @@ public class AuthService : IAuthService
                 Telefono = telefono,
                 FechaAlta = DateTime.UtcNow,
                 Credencial = TipoCredencial.Vigente,
-                Rol = rol
+                TipoUsuario = tipoUsuario
             };
 
             var nuevoUsuario = _usuarioFactory.CrearUsuario(usuarioDto);
@@ -124,7 +124,7 @@ public class AuthService : IAuthService
                 Email = nuevoUsuario.Email,
                 Nombre = nuevoUsuario.Nombre,
                 Apellido = nuevoUsuario.Apellido,
-                Rol = nuevoUsuario.Rol,
+                TipoUsuario = nuevoUsuario.TipoUsuario,
                 Telefono = nuevoUsuario.Telefono,
                 FechaAlta = nuevoUsuario.FechaAlta
             };
@@ -160,7 +160,7 @@ public class AuthService : IAuthService
                 Email = usuario.Email,
                 Nombre = usuario.Nombre,
                 Apellido = usuario.Apellido,
-                Rol = usuario.Rol,
+                TipoUsuario = usuario.TipoUsuario,
                 Telefono = usuario.Telefono,
                 FechaAlta = usuario.FechaAlta
             };
@@ -201,7 +201,7 @@ public class AuthService : IAuthService
                 new Claim(ClaimTypes.Email, "user@example.com"), // En producción, usar el email real
                 new Claim(ClaimTypes.Name, "Usuario"),
                 new Claim(ClaimTypes.Role, "Estudiante"),
-                new Claim("Rol", "Estudiante"),
+                new Claim("TipoUsuario", "Estudiante"),
                 new Claim("Telefono", ""),
                 new Claim("FechaAlta", DateTime.UtcNow.ToString("O"))
             };
@@ -244,8 +244,8 @@ public class AuthService : IAuthService
             new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
             new Claim(ClaimTypes.Email, usuario.Email),
             new Claim(ClaimTypes.Name, $"{usuario.Nombre} {usuario.Apellido}"),
-            new Claim(ClaimTypes.Role, usuario.Rol.ToString()),
-            new Claim("Rol", usuario.Rol.ToString()),
+            new Claim(ClaimTypes.Role, usuario.TipoUsuario.ToString()),
+            new Claim("TipoUsuario", usuario.TipoUsuario.ToString()),
             new Claim("Telefono", usuario.Telefono ?? ""),
             new Claim("FechaAlta", usuario.FechaAlta.ToString("O"))
         };

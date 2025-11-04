@@ -9,7 +9,7 @@ public sealed record ReglaAcceso
     DateTime HorarioCierre,
     DateTime VigenciaApertura,
     DateTime VigenciaCierre,
-    IReadOnlyList<Rol> RolesPermitidos,
+    IReadOnlyList<TipoUsuario> TiposUsuarioPermitidos,
     long EspacioId
 );
 

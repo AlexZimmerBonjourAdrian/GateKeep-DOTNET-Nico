@@ -39,7 +39,7 @@ public class UserInfo
     public string Email { get; set; } = string.Empty;
     public string Nombre { get; set; } = string.Empty;
     public string Apellido { get; set; } = string.Empty;
-    public Rol Rol { get; set; }
+    public TipoUsuario TipoUsuario { get; set; }
     public string? Telefono { get; set; }
     public DateTime FechaAlta { get; set; }
 }

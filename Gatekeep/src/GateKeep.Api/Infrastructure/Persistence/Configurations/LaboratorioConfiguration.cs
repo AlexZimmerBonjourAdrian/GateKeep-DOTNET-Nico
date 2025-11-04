@@ -9,9 +9,8 @@ public sealed class LaboratorioConfiguration : IEntityTypeConfiguration<Laborato
     public void Configure(EntityTypeBuilder<Laboratorio> builder)
     {
         builder.ToTable("laboratorios");
-        builder.HasBaseType<Espacio>();
         
-        // TPT: La clave se hereda de la tabla base Espacio
+        // TPT: No configurar clave aquí, se hereda de la tabla base
         
         // Propiedades específicas de Laboratorio
         builder.Property(x => x.EdificioId)

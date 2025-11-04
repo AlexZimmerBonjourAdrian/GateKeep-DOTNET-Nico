@@ -16,7 +16,7 @@ public class UsuarioFactory : IUsuarioFactory
       dto.Telefono,
       dto.FechaAlta,
       dto.Credencial,
-      dto.Rol
+      dto.TipoUsuario
     );
   }
 }

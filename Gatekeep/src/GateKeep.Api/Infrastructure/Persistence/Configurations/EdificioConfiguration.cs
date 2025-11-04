@@ -9,9 +9,8 @@ public sealed class EdificioConfiguration : IEntityTypeConfiguration<Edificio>
     public void Configure(EntityTypeBuilder<Edificio> builder)
     {
         builder.ToTable("edificios");
-        builder.HasBaseType<Espacio>();
         
-        // TPT: La clave se hereda de la tabla base Espacio
+        // TPT: No configurar clave aquí, se hereda de la tabla base
         
         // Propiedades específicas de Edificio
         builder.Property(x => x.NumeroPisos)
