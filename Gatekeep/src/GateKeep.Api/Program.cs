@@ -2,6 +2,8 @@ using System.Text.Json.Serialization;
 using GateKeep.Api.Application.Acceso;
 using GateKeep.Api.Application.Auditoria;
 using GateKeep.Api.Application.Beneficios;
+using GateKeep.Api.Application.Anuncios;
+using GateKeep.Api.Application.Eventos;
 using GateKeep.Api.Application.Espacios;
 using GateKeep.Api.Application.Notificaciones;
 using GateKeep.Api.Application.Events;
@@ -11,12 +13,16 @@ using GateKeep.Api.Contracts.Usuarios;
 using GateKeep.Api.Domain.Enums;
 using GateKeep.Api.Endpoints.Auth;
 using GateKeep.Api.Endpoints.Beneficios;
+using GateKeep.Api.Endpoints.Anuncios;
+using GateKeep.Api.Endpoints.Eventos;
 using GateKeep.Api.Endpoints.Espacios;
 using GateKeep.Api.Endpoints.Acceso;
 using GateKeep.Api.Endpoints.Auditoria;
 using GateKeep.Api.Endpoints.Notificaciones;
 using GateKeep.Api.Endpoints.Usuarios;
 using GateKeep.Api.Infrastructure.Beneficios;
+using GateKeep.Api.Infrastructure.Anuncios;
+using GateKeep.Api.Infrastructure.Eventos;
 using GateKeep.Api.Infrastructure.Espacios;
 using GateKeep.Api.Infrastructure.Acceso;
 using GateKeep.Api.Infrastructure.Auditoria;
@@ -209,6 +215,14 @@ builder.Services.AddScoped<IBeneficioService, BeneficioService>();
 builder.Services.AddScoped<IBeneficioUsuarioRepository, BeneficioUsuarioRepository>();
 builder.Services.AddScoped<IBeneficioUsuarioService, BeneficioUsuarioService>();
 
+// Servicios de Eventos
+builder.Services.AddScoped<IEventoRepository, EventoRepository>();
+builder.Services.AddScoped<IEventoService, EventoService>();
+
+// Servicios de Anuncios
+builder.Services.AddScoped<IAnuncioRepository, AnuncioRepository>();
+builder.Services.AddScoped<IAnuncioService, AnuncioService>();
+
 // Servicios de Usuarios
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IUsuarioFactory, UsuarioFactory>();
@@ -387,6 +401,8 @@ app.MapSalonEndpoints();
 app.MapBeneficioEndpoints();
 app.MapNotificacionEndpoints();
 app.MapUsuarioEndpoints();
+app.MapEventoEndpoints();
+app.MapAnuncioEndpoints();
 app.MapUsuarioProfileEndpoints();
 app.MapAccesoEndpoints();
 app.MapEventoHistoricoEndpoints();
