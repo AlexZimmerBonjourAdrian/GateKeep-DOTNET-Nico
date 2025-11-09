@@ -4,3 +4,4 @@ obj/
 *.user
 *.suo
 .env
+src/GateKeep.Api/config.json

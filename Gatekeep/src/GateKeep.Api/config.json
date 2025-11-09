@@ -1,41 +1,29 @@
-﻿{
-    "database":  {
-                     "host":  "localhost",
-                     "port":  "5432",
-                     "name":  "Gatekeep",
-                     "user":  "postgres",
-                     "password":  "897888fg2"
-                 },
-    "mongodb":  {
-                    "connectionString":  "mongodb+srv://adriambonjour2015_db_user:XRvJsYWO51XK8vvW@gatekeepmongo.py5i1x4.mongodb.net/?appName=GateKeepMongo",
-                    "databaseName":  "GateKeepMongo",
-                    "useStableApi":  true
-                },
-    "application":  {
-                        "environment":  "Development",
-                        "urls":  "http://localhost:5011"
-                    },
-    "jwt":  {
-                "key":  "GateKeep-Secret-Key-Very-Long-And-Secure-256-Bits-Minimum-Length-Required",
-                "issuer":  "GateKeep",
-                "audience":  "GateKeepUsers",
-                "expirationHours":  8
-            },
-    "security":  {
-                     "passwordMinLength":  8,
-                     "maxLoginAttempts":  5,
-                     "lockoutDurationMinutes":  15
-                 },
-    "rabbitmq":  {
-                     "port":  "5672",
-                     "host":  "localhost",
-                     "virtualHost":  "/",
-                     "username":  "guest",
-                     "password":  "guest",
-                     "connectionName":  "GateKeep.Api"
-                 },
-    "auditoria":  {
-                     "retentionDays":  365,
-                     "enabled":  true
-                 }
+{
+    "database": {
+        "host": "localhost",
+        "port": "5432",
+        "name": "Gatekeep",
+        "user": "postgres",
+        "password": "1234"
+    },
+    "mongodb": {
+        "connectionString": "mongodb+srv://adriambonjour2015_db_user:XRvJsYWO51XK8vvW@gatekeepmongo.py5i1x4.mongodb.net/?appName=GateKeepMongo",
+        "databaseName": "GateKeepMongo",
+        "useStableApi": true
+    },
+    "application": {
+        "environment": "Development",
+        "urls": "http://localhost:5011"
+    },
+    "jwt": {
+        "key": "GateKeep-Secret-Key-Very-Long-And-Secure-256-Bits-Minimum-Length-Required",
+        "issuer": "GateKeep",
+        "audience": "GateKeepUsers",
+        "expirationHours": 8
+    },
+    "security": {
+        "passwordMinLength": 8,
+        "maxLoginAttempts": 5,
+        "lockoutDurationMinutes": 15
+    }
 }
