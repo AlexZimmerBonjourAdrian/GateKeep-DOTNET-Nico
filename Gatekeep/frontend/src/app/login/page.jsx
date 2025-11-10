@@ -6,8 +6,8 @@ import Link from 'next/link'
 import logo from '/public/assets/LogoGateKeep.webp'
 import harvard from '/public/assets/Harvard.webp'
 import BasketballIcon from '/public/assets/basketball-icon.svg'
-import { UsuarioService } from '../../services/UsuarioService'
-import { SecurityService } from '../../services/securityService'
+import { UsuarioService } from '@/services/UsuarioService'
+import { SecurityService } from '@/services/securityService'
 
 export default function Login() {
   
@@ -116,8 +116,12 @@ export default function Login() {
             <button type="submit" className="save-btn">Login</button>
           </div>
 
-   
-        
+          <div className="divider-row" role="separator" aria-hidden="true">
+            <hr />
+            <span className="pi pi-circle " aria-hidden="true"></span>
+            <hr />
+          </div>
+          
           
           
         </form>

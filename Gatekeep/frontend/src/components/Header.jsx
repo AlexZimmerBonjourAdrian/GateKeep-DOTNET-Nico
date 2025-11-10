@@ -7,23 +7,27 @@ import { useRouter, usePathname } from 'next/navigation'
 import logo from '/public/assets/LogoGateKeep.webp'
 import harvard from '/public/assets/Harvard.webp'
 import BasketballIcon from '/public/assets/basketball-icon.svg'
-import { UsuarioService } from '../services/UsuarioService'
+import { UsuarioService } from '@/services/UsuarioService'
 import { SecurityService } from '../services/securityService'
 
 export default function Header() {
-  const pathname = usePathname();
-  SecurityService.checkAuthAndRedirect(pathname);
   const router = useRouter();
+  const pathname = usePathname();
   const [notificaciones, setNotificaciones] = useState(0);
 
   useEffect(() => {
-    const storedUserId = SecurityService.getUserId();
+ 
+    const isAuthenticated = SecurityService.checkAuthAndRedirect(pathname);
+
+    // Si está autenticado, obtener datos del usuario y notificaciones
+    if (isAuthenticated) {
+      const storedUserId = SecurityService.getUserId();
       
-    if (storedUserId) {
-      const notifs = UsuarioService.getNotificacionesSinLeer(storedUserId);
-      setNotificaciones(notifs);
+      if (storedUserId) {
+        const notifs = UsuarioService.getNotificacionesSinLeer(storedUserId);
+        setNotificaciones(notifs);
+      }
     }
-    
   }, [pathname, router]);
 
   const handleLogout = (e) => {
