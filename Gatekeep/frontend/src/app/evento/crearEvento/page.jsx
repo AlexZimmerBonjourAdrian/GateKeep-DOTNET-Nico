@@ -3,6 +3,7 @@
 import React from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import logo from '/public/assets/LogoGateKeep.webp'
 import harvard from '/public/assets/Harvard.webp'
 import BasketballIcon from '/public/assets/basketball-icon.svg'
