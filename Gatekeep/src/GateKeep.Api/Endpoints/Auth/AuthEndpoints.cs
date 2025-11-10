@@ -13,7 +13,7 @@ public static class AuthEndpoints
     {
         var group = app.MapGroup("/auth").WithTags("Authentication");
 
-        // Login endpoint - PÚBLICO
+        // Login endpoint - PÚBLICO (sin restricciones de seguridad)
         group.MapPost("/login", async (LoginRequest request, IAuthService authService) =>
         {
             if (string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Password))
@@ -54,10 +54,78 @@ public static class AuthEndpoints
         })
         .WithName("Login")
         .WithSummary("Iniciar sesión")
-        .WithDescription("Autentica un usuario y retorna un token JWT")
+        .WithDescription("Autentica un usuario y retorna un token JWT. Endpoint público sin restricciones de seguridad.")
         .Produces<AuthResponse>(200)
         .Produces(401)
         .Produces(400);
+
+        // Register endpoint - SOLO ADMINS
+        group.MapPost("/register", async (RegisterRequest request, IAuthService authService) =>
+        {
+            if (string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Password) ||
+                string.IsNullOrEmpty(request.Nombre) || string.IsNullOrEmpty(request.Apellido))
+            {
+                return Results.BadRequest(new AuthResponse
+                {
+                    IsSuccess = false,
+                    ErrorMessage = "Email, contraseña, nombre y apellido son requeridos"
+                });
+            }
+
+            if (request.Password != request.ConfirmPassword)
+            {
+                return Results.BadRequest(new AuthResponse
+                {
+                    IsSuccess = false,
+                    ErrorMessage = "Las contraseñas no coinciden"
+                });
+            }
+
+            var result = await authService.RegisterAsync(
+                request.Email,
+                request.Password,
+                request.Nombre,
+                request.Apellido,
+                request.Telefono,
+                request.Rol
+            );
+            
+            if (!result.IsSuccess)
+            {
+                return Results.BadRequest(new AuthResponse
+                {
+                    IsSuccess = false,
+                    ErrorMessage = result.ErrorMessage ?? "Error al registrar el usuario"
+                });
+            }
+
+            var response = new AuthResponse
+            {
+                IsSuccess = true,
+                Token = result.Token,
+                RefreshToken = result.RefreshToken,
+                ExpiresAt = result.ExpiresAt,
+                User = new UserInfoResponse
+                {
+                    Id = result.User!.Id,
+                    Email = result.User.Email,
+                    Nombre = result.User.Nombre,
+                    Apellido = result.User.Apellido,
+                    TipoUsuario = result.User.Rol.ToString(),
+                    Telefono = result.User.Telefono,
+                    FechaAlta = result.User.FechaAlta
+                }
+            };
+
+            return Results.Ok(response);
+        })
+        .WithName("Register")
+        .WithSummary("Registrar nuevo usuario")
+        .WithDescription("Registra un nuevo usuario en el sistema. Solo accesible por Administradores.")
+        .Produces<AuthResponse>(200)
+        .Produces(400)
+        .Produces(401)
+        .RequireAuthorization("AdminOnly");
 
         // Generar código QR con el JWT actual
         group.MapGet("/qr", (
