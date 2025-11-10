@@ -7,10 +7,16 @@ import logo from '/public/assets/LogoGateKeep.webp'
 import harvard from '/public/assets/Harvard.webp'
 import BasketballIcon from '/public/assets/basketball-icon.svg'
 import UsuarioService from '../../services/UsuarioService'
+import { usePathname } from 'next/navigation'
+import { SecurityService } from '../../services/securityService'
 
 export default function Perfil() {
-  SecurityService.checkAuthAndRedirect(pathname);
-
+  const pathname = usePathname();
+  // Verificación de autenticación en cliente
+ /* useEffect(() => {
+    SecurityService.checkAuthAndRedirect(pathname);
+  }, [pathname]);
+*/
   const [name, setName] = useState('')
   const [dob, setDob] = useState('')
   const [role, setRole] = useState('Usuario')
