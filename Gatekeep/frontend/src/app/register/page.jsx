@@ -8,6 +8,8 @@ import harvard from '/public/assets/Harvard.webp'
 import BasketballIcon from '/public/assets/basketball-icon.svg'
 
 export default function Register() {
+  SecurityService.checkAuthAndRedirect(pathname);
+
   const [nombre, setNombre] = useState('')
   const [apellido, setApellido] = useState('')
   const [email, setEmail] = useState('')
@@ -123,24 +125,13 @@ export default function Register() {
                     <option value="ESTUDIANTE">Estudiante</option>
                   </select>
                 </label>
-              </div>
-
-            
-
+              </div>   
           </div>
 
           <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 8 }}>
             <button type="submit" className="save-btn">Registrarse</button>
           </div>
 
-          <div className="divider-row" role="separator" aria-hidden="true">
-            <hr />
-            <span className="pi pi-circle " aria-hidden="true"></span>
-            <hr />
-          </div>
-          
-          
-          
         </form>
         </div>
       </div>

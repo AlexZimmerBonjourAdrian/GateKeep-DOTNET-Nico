@@ -1,40 +1,54 @@
 "use client"
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation'; // Importa el hook para la navegación
 import Header from '../components/Header';
 import Carousel from '../components/Carousel';
+import { EventoService } from '../services/EventoService';
+import { AnuncioService } from '../services/AnuncioService';
 
 export default function Home() {
+  
   const router = useRouter(); // Inicializa el hook useRouter
 
-  const eventos = [
-    { id: 1, title: 'Evento 1', date: '2024-07-01' },
-    { id: 2, title: 'Evento 2', date: '2024-07-05' },
-    { id: 3, title: 'Evento 3', date: '2024-07-10' },
-    { id: 4, title: 'Evento 4', date: '2024-07-01' },
-    { id: 5, title: 'Evento 5', date: '2024-07-05' },
-    { id: 6, title: 'Evento 6', date: '2024-07-10' },
-    { id: 7, title: 'Evento 7', date: '2024-07-01' },
-    { id: 8, title: 'Evento 8', date: '2024-07-05' },
-    { id: 9, title: 'Evento 9', date: '2024-07-10' },
-    { id: 10, title: 'Evento 10', date: '2024-07-10' },
+  const [eventos, setEventos] = useState([]);
+  const [anuncios, setAnuncios] = useState([]);
+  const [loadingEventos, setLoadingEventos] = useState(true);
+  const [loadingAnuncios, setLoadingAnuncios] = useState(true);
 
-  ];
+  // Cargar eventos al montar el componente
+  useEffect(() => {
+    const fetchEventos = async () => {
+      try {
+        const response = await EventoService.getEventos();
+        setEventos(response.data || []);
+      } catch (error) {
+        console.error('Error al cargar eventos:', error);
+        setEventos([]);
+      } finally {
+        setLoadingEventos(false);
+      }
+    };
 
-  const anuncios = [
-    { id: 1, title: 'Evento 1', date: '2024-07-01' },
-    { id: 2, title: 'Evento 2', date: '2024-07-05' },
-    { id: 3, title: 'Evento 3', date: '2024-07-10' },
-    { id: 4, title: 'Evento 4', date: '2024-07-01' },
-    { id: 5, title: 'Evento 5', date: '2024-07-05' },
-    { id: 6, title: 'Evento 6', date: '2024-07-10' },
-    { id: 7, title: 'Evento 7', date: '2024-07-01' },
-    { id: 8, title: 'Evento 8', date: '2024-07-05' },
-    { id: 9, title: 'Evento 9', date: '2024-07-10' },
-    { id: 10, title: 'Evento 10', date: '2024-07-10' },
+    fetchEventos();
+  }, []);
 
-  ];
+  // Cargar anuncios al montar el componente
+  useEffect(() => {
+    const fetchAnuncios = async () => {
+      try {
+        const response = await AnuncioService.getAnuncios();
+        setAnuncios(response.data || []);
+      } catch (error) {
+        console.error('Error al cargar anuncios:', error);
+        setAnuncios([]);
+      } finally {
+        setLoadingAnuncios(false);
+      }
+    };
+
+    fetchAnuncios();
+  }, []);
 
   return (
     <div className="container-nothing">

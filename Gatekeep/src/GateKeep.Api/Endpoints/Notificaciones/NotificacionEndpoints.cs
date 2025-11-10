@@ -156,7 +156,7 @@ public static class NotificacionEndpoints
         // GET - Obtener todas las notificaciones de un usuario
         usuarioGroup.MapGet("/", async (
             long usuarioId,
-            INotificacionUsuarioService notificacionUsuarioService) =>
+            [FromServices] INotificacionUsuarioService notificacionUsuarioService) =>
         {
             if (usuarioId <= 0)
             {
@@ -185,7 +185,7 @@ public static class NotificacionEndpoints
         usuarioGroup.MapGet("/{notificacionId}", async (
             long usuarioId,
             string notificacionId,
-            INotificacionUsuarioService notificacionUsuarioService) =>
+            [FromServices] INotificacionUsuarioService notificacionUsuarioService) =>
         {
             if (usuarioId <= 0)
             {
@@ -227,7 +227,7 @@ public static class NotificacionEndpoints
         usuarioGroup.MapPut("/{notificacionId}/leer", async (
             long usuarioId,
             string notificacionId,
-            INotificacionUsuarioService notificacionUsuarioService) =>
+            [FromServices] INotificacionUsuarioService notificacionUsuarioService) =>
         {
             if (usuarioId <= 0)
             {
@@ -268,7 +268,7 @@ public static class NotificacionEndpoints
         // GET - Contar notificaciones no leídas
         usuarioGroup.MapGet("/no-leidas/count", async (
             long usuarioId,
-            INotificacionUsuarioService notificacionUsuarioService) =>
+            [FromServices] INotificacionUsuarioService notificacionUsuarioService) =>
         {
             if (usuarioId <= 0)
             {
