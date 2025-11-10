@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation'
 import logo from '/public/assets/LogoGateKeep.webp'
 import harvard from '/public/assets/Harvard.webp'
 import BasketballIcon from '/public/assets/basketball-icon.svg'
-import { SecurityService } from '@/services/securityService'
+import { SecurityService } from '../../services/securityService'
 
 export default function crearAnuncio() {
 

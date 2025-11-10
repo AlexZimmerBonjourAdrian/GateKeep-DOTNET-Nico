@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import logo from '/public/assets/LogoGateKeep.webp'
 import harvard from '/public/assets/Harvard.webp'
-import { SecurityService } from '@/services/securityService'
+import { SecurityService } from '../../../services/securityService'
 
 export default function crearReglaAcceso() {
 
