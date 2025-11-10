@@ -8,6 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="MassTransit" Version="8.2.5" />
+    <PackageReference Include="MassTransit.RabbitMQ" Version="8.2.5" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.*">
@@ -35,5 +37,16 @@
     <Folder Include="Domain\" />
     <Folder Include="Endpoints\" />
   </ItemGroup>
+
+  <!-- Target para limpiar antes del build (solo en Debug) -->
+  <!-- Nota: Este target limpia los archivos de salida antes de compilar -->
+  <Target Name="PreBuildClean" BeforeTargets="BeforeBuild" Condition="'$(Configuration)' == 'Debug'">
+    <Message Text="Limpiando archivos de salida antes del build..." Importance="high" />
+    <ItemGroup>
+      <FilesToDelete Include="$(OutputPath)**\*.*" />
+    </ItemGroup>
+    <Delete Files="@(FilesToDelete)" ContinueOnError="true" />
+    <Message Text="Clean completado. Iniciando build..." Importance="high" />
+  </Target>
 
 </Project>

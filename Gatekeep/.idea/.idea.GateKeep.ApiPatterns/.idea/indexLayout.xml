@@ -5,6 +5,8 @@
       <Path>../../GateKeep-DOTNET-Nico</Path>
     </attachedFolders>
     <explicitIncludes />
-    <explicitExcludes />
+    <explicitExcludes>
+      <Path>../../GateKeep-DOTNET-Nico</Path>
+    </explicitExcludes>
   </component>
 </project>
