@@ -63,9 +63,21 @@ const Carousel = ({ items, route }) => {
           }
 
           return (
-            <div key={index} className="carousel-item" tabIndex={0}>
-              {item.title && <h3>{item.title}</h3>}
-              {item.date && <p>{item.date}</p>}
+            <div key={item.Id || item.id || index} className="carousel-item" tabIndex={0}>
+              {/* Soportar tanto el modelo Evento (Nombre, Fecha) como anuncios (title, date) */}
+              {(item.Nombre || item.title) && <h3>{item.Nombre || item.title}</h3>}
+              {(item.Fecha || item.date) && (
+                <p>
+                  {item.Fecha 
+                    ? new Date(item.Fecha).toLocaleDateString('es-ES', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })
+                    : item.date
+                  }
+                </p>
+              )}
             </div>
           );
         })}

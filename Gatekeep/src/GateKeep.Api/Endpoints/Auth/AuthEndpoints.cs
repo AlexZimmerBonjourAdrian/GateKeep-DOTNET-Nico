@@ -16,8 +16,11 @@ public static class AuthEndpoints
         // Login endpoint - PÚBLICO (sin restricciones de seguridad)
         group.MapPost("/login", async (LoginRequest request, IAuthService authService) =>
         {
+            Console.WriteLine($"[LOGIN] Intento de login para email: {request.Email}");
+            
             if (string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Password))
             {
+                Console.WriteLine("[LOGIN] Error: Email o contraseña vacíos");
                 return Results.BadRequest(new AuthResponse
                 {
                     IsSuccess = false,
@@ -29,9 +32,15 @@ public static class AuthEndpoints
             
             if (!result.IsSuccess)
             {
-                return Results.Unauthorized();
+                Console.WriteLine($"[LOGIN] Login fallido para {request.Email}: {result.ErrorMessage}");
+                return Results.Json(new AuthResponse
+                {
+                    IsSuccess = false,
+                    ErrorMessage = result.ErrorMessage ?? "Credenciales inválidas"
+                }, statusCode: 401);
             }
 
+            Console.WriteLine($"[LOGIN] Login exitoso para {request.Email}");
             var response = new AuthResponse
             {
                 IsSuccess = true,
@@ -57,7 +66,8 @@ public static class AuthEndpoints
         .WithDescription("Autentica un usuario y retorna un token JWT. Endpoint público sin restricciones de seguridad.")
         .Produces<AuthResponse>(200)
         .Produces(401)
-        .Produces(400);
+        .Produces(400)
+        .AllowAnonymous();
 
         // Register endpoint - SOLO ADMINS
         group.MapPost("/register", async (RegisterRequest request, IAuthService authService) =>

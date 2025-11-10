@@ -7,11 +7,8 @@ import { SecurityService } from '@/services/securityService';
 export default function listadoEventos() {
 
   const pathname = usePathname();
-  const isAuthenticated = SecurityService.checkAuthAndRedirect(pathname);
+  SecurityService.checkAuthAndRedirect(pathname);
 
-  if (isAuthenticated){
-    
-  }
 
   const initial = [
     { id: 1, subject: 'Hola amigo', date: '2024-07-01', visto: false, mensaje: 'You have a new notification for the Hockey Game.' },

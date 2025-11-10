@@ -1,19 +1,36 @@
 "use client"
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import Header from '../../../components/Header';
+import { EventoService } from '@services/EventoService';
+import { SecurityService } from '@/services/securityService';
 
 export default function listadoEventos() {
 
-  const eventos = [
-    { id: 1, title: 'Hockey Game', date: '2024-07-01' },
-    { id: 2, title: 'Soccer Match', date: '2024-07-05' },
-    { id: 3, title: 'Basketball Tournament', date: '2024-07-10' },
-    { id: 4, title: 'Tennis Finals', date: '2024-07-15' },
-    { id: 5, title: 'Swimming Competition', date: '2024-07-20' },
-    { id: 6, title: 'Marathon', date: '2024-07-25' },
-    { id: 7, title: 'Cycling Race', date: '2024-07-30' },
-  ]
+  const pathname = usePathname();
+  SecurityService.checkAuthAndRedirect(pathname);
+
+  const [eventos, setEventos] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch eventos al montar el componente
+  useEffect(() => {
+    const fetchEventos = async () => {
+      try {
+        const response = await EventoService.getEventos();
+        setEventos(response.data || []);
+      } catch (error) {
+        console.error('Error al cargar eventos:', error);
+        setEventos([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEventos();
+  }, []);
+
 
   // Controlled states for search and date filters
   const [searchInput, setSearchInput] = useState('');
@@ -25,23 +42,25 @@ export default function listadoEventos() {
   const filteredEventos = useMemo(() => {
     const q = searchInput.trim().toLowerCase();
     return eventos.filter((ev) => {
-      // Filter by query on title
+      // Filter by query on Nombre (name)
       if (q) {
-        const title = ev.title ? ev.title.toLowerCase() : '';
-        if (!title.includes(q)) return false;
+        const nombre = ev.Nombre ? ev.Nombre.toLowerCase() : '';
+        if (!nombre.includes(q)) return false;
       }
 
       // Filter by date range if provided
       if (dateFrom) {
-        if (!ev.date || ev.date < dateFrom) return false;
+        const evFecha = ev.Fecha ? new Date(ev.Fecha).toISOString().split('T')[0] : '';
+        if (!evFecha || evFecha < dateFrom) return false;
       }
       if (dateTo) {
-        if (!ev.date || ev.date > dateTo) return false;
+        const evFecha = ev.Fecha ? new Date(ev.Fecha).toISOString().split('T')[0] : '';
+        if (!evFecha || evFecha > dateTo) return false;
       }
 
       return true;
     });
-  }, [searchInput, dateFrom, dateTo]);
+  }, [eventos, searchInput, dateFrom, dateTo]);
 
   // Group filtered events in chunks of 4 so visual grouping of 4 is preserved
   const groupedEventos = [];
@@ -118,7 +137,11 @@ export default function listadoEventos() {
 
           {/* Eventos list - mostrar todas las tarjetas similar al Carousel */}
           <div className="events-grid">
-            {filteredEventos.length === 0 ? (
+            {loading ? (
+              <div className="event-card" style={{ background: '#fff6ee' }}>
+                <h3>Cargando eventos...</h3>
+              </div>
+            ) : filteredEventos.length === 0 ? (
               <div className="event-card" style={{ background: '#fff6ee' }}>
                 <h3>No se encontraron eventos</h3>
                 <p>Prueba otro término o rango de fecha.</p>
@@ -128,9 +151,15 @@ export default function listadoEventos() {
               groupedEventos.map((group, gi) => (
                 <div className="event-group" key={`group-${gi}`}>
                   {group.map((ev) => (
-                    <div key={ev.id} className="event-card" tabIndex={0}>
-                      {ev.title && <h3>{ev.title}</h3>}
-                      {ev.date && <p>{ev.date}</p>}
+                    <div key={ev.Id} className="event-card" tabIndex={0}>
+                      {ev.Nombre && <h3>{ev.Nombre}</h3>}
+                      {ev.Fecha && <p>{new Date(ev.Fecha).toLocaleDateString('es-ES', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}</p>}
+                      {ev.PuntoControl && <p><strong>Punto Control:</strong> {ev.PuntoControl}</p>}
+                      {ev.Resultado && <p><strong>Resultado:</strong> {ev.Resultado}</p>}
                     </div>
                   ))}
                 </div>

@@ -8,7 +8,9 @@ import harvard from '/public/assets/Harvard.webp'
 import BasketballIcon from '/public/assets/basketball-icon.svg'
 import UsuarioService from '../../services/UsuarioService'
 
-export default function Login() {
+export default function Perfil() {
+  SecurityService.checkAuthAndRedirect(pathname);
+
   const [name, setName] = useState('')
   const [dob, setDob] = useState('')
   const [role, setRole] = useState('Usuario')
@@ -16,7 +18,6 @@ export default function Login() {
   const [preview, setPreview] = useState(null)
   const [qrUrl, setQrUrl] = useState(null)
   const [loading, setLoading] = useState(true)
-
 
   useEffect(() => {
     if (!profileImage) {
