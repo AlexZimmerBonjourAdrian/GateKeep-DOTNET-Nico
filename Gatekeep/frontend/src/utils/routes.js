@@ -9,6 +9,11 @@ export const ROUTES = {
         crearEvento: '/evento/crearEvento',
         listadoEventos: '/evento/listadoEventos',
     },
+    reglasAcceso: {
+        crearReglaAcceso: '/reglas-acceso/crearReglaAcceso',
+        listadoReglasAcceso: '/reglas-acceso/listadoReglasAcceso',
+        editarReglaAcceso: (id) => `/reglas-acceso/editarReglaAcceso/${id}`,
+    },
     crearEvento: '/crear-evento',
     crearBeneficio: '/crear-beneficio',
 };
@@ -20,6 +25,9 @@ export const path = {
     register: () => ROUTES.auth.register,
     crearEvento: () => ROUTES.evento.crearEvento,
     listadoEventos: () => ROUTES.evento.listadoEventos,
+    crearReglaAcceso: () => ROUTES.reglasAcceso.crearReglaAcceso,
+    listadoReglasAcceso: () => ROUTES.reglasAcceso.listadoReglasAcceso,
+    editarReglaAcceso: (id) => ROUTES.reglasAcceso.editarReglaAcceso(id),
     crearBeneficio: () => ROUTES.crearBeneficio,
 };
 

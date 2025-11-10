@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 set -euo pipefail
-dotnet run --project ./src/Demo1.Api/Demo1.Api.csproj
+dotnet run --project ./src/GateKeep.Api/GateKeep.Api.csproj

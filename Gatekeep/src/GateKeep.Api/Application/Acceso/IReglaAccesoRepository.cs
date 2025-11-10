@@ -4,6 +4,7 @@ namespace GateKeep.Api.Application.Acceso;
 
 public interface IReglaAccesoRepository
 {
+    Task<ReglaAcceso?> ObtenerPorIdAsync(long id);
     Task<ReglaAcceso?> ObtenerPorEspacioIdAsync(long espacioId);
     Task<ReglaAcceso> CrearAsync(ReglaAcceso reglaAcceso);
     Task<ReglaAcceso> ActualizarAsync(ReglaAcceso reglaAcceso);
