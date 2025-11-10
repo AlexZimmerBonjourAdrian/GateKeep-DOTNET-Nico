@@ -8,31 +8,32 @@ import logo from '/public/assets/LogoGateKeep.webp'
 import harvard from '/public/assets/Harvard.webp'
 import BasketballIcon from '/public/assets/basketball-icon.svg'
 import { UsuarioService } from '@/services/UsuarioService'
+import { SecurityService } from '../services/securityService'
 
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const [notificaciones, setNotificaciones] = useState(0);
-  const [userId, setUserId] = useState(null);
 
   useEffect(() => {
-    // Verificar si el usuario está autenticado
-    const storedUserId = localStorage.getItem('userId');
-    const token = localStorage.getItem('token');
-    
-    // Si no hay userId o token, redirigir al login (excepto si ya está en login o register)
-    if ((!storedUserId || !token) && pathname !== '/login' && pathname !== '/register') {
-      router.push('/login');
-      return;
-    }
-    
-    // Si hay userId, obtener notificaciones
-    if (storedUserId) {
-      setUserId(storedUserId);
-      const notifs = UsuarioService.getNotificacionesSinLeer(storedUserId);
-      setNotificaciones(notifs);
+ 
+    const isAuthenticated = SecurityService.checkAuthAndRedirect(pathname);
+
+    // Si está autenticado, obtener datos del usuario y notificaciones
+    if (isAuthenticated) {
+      const storedUserId = SecurityService.getUserId();
+      
+      if (storedUserId) {
+        const notifs = UsuarioService.getNotificacionesSinLeer(storedUserId);
+        setNotificaciones(notifs);
+      }
     }
   }, [pathname, router]);
+
+  const handleLogout = (e) => {
+    e.preventDefault();
+    SecurityService.logout();
+  };
 
   return (
     <div className="header-root">
@@ -83,11 +84,19 @@ export default function Header() {
               </div>
             </Link>
 
-            <Link href="/" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Salir" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
+            <div 
+              onClick={handleLogout} 
+              style={{ textDecoration: 'none', outline: 'none', cursor: 'pointer' }} 
+              aria-label="Salir" 
+              onFocus={(e) => e.currentTarget.style.outline = 'none'}
+              role="button"
+              tabIndex={0}
+              onKeyPress={(e) => { if (e.key === 'Enter' || e.key === ' ') handleLogout(e); }}
+            >
               <div className="item-card logout-card">
                 <i className="pi pi-sign-out item-icon" aria-hidden={true}></i>
               </div>
-            </Link>
+            </div>
           </div>
         </div>
         

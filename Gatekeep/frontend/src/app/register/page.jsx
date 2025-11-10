@@ -138,12 +138,7 @@ export default function Register() {
             <span className="pi pi-circle " aria-hidden="true"></span>
             <hr />
           </div>
-          <div className="auth-redirect">
-            <span>¿Tienes una cuenta?</span>
-            <Link href="/login" style={{ textDecoration: 'none', marginLeft: 6 }}>
-              <p style={{ color: '#f37426' }}>Inicia sesión</p>
-            </Link>
-          </div>
+          
           
           
         </form>

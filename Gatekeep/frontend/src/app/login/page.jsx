@@ -7,6 +7,7 @@ import logo from '/public/assets/LogoGateKeep.webp'
 import harvard from '/public/assets/Harvard.webp'
 import BasketballIcon from '/public/assets/basketball-icon.svg'
 import { UsuarioService } from '@/services/UsuarioService'
+import { SecurityService } from '@/services/securityService'
 
 export default function Login() {
   
@@ -20,15 +21,14 @@ export default function Login() {
       .then(response => {
         console.log('Login successful:', response.data);
         
-        // Guardar userId y tipoUsuario en localStorage
+        // Guardar datos de autenticación usando SecurityService
         if (response.data.isSuccess && response.data.user) {
-          localStorage.setItem('userId', response.data.user.id);
-          localStorage.setItem('tipoUsuario', response.data.user.tipoUsuario);
-          
-          // También puedes guardar el token si lo necesitas
-          if (response.data.token) {
-            localStorage.setItem('token', response.data.token);
-          }
+          SecurityService.saveAuthData(
+            response.data.user.id,
+            response.data.user.tipoUsuario,
+            response.data.token,
+            response.data.refreshToken
+          );
           
           // Redirigir al usuario después del login exitoso
           window.location.href = '/';
@@ -121,12 +121,7 @@ export default function Login() {
             <span className="pi pi-circle " aria-hidden="true"></span>
             <hr />
           </div>
-          <div className="auth-redirect">
-            <span>¿No tienes una cuenta?</span>
-            <Link href="/register" style={{ textDecoration: 'none', marginLeft: 6 }}>
-              <p style={{ color: '#f37426' }}>Registrate</p>
-            </Link>
-          </div>
+          
           
           
         </form>

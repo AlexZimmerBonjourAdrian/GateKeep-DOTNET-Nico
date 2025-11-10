@@ -2,18 +2,25 @@
 
 import React, { useState } from 'react';
 import Header from '../../components/Header';
+import { SecurityService } from '@/services/securityService';
 
 export default function listadoEventos() {
 
-    const initial = [
-        { id: 1, subject: 'Hola amigo', date: '2024-07-01', visto: false, mensaje: 'You have a new notification for the Hockey Game.' },
-        { id: 2, subject: 'Hey', date: '2024-07-05', visto: false, mensaje: 'You have a new notification for the Soccer Match.You have a new notification for the Soccer MatchYou have a new notification for the Soccer MatchYou have a new notification for the Soccer MatchYou have a new notification for the Soccer MatchYou have a new notification for the Soccer MatchYou have a new notification for the Soccer MatchYou have a new notification for the Soccer MatchYou have a new notification for the Soccer Match' },
-        { id: 3, subject: 'Hi', date: '2024-07-10', visto: false, mensaje: 'You have a new notification for the Basketball Tournament.' },
-        { id: 4, subject: 'Todo bien?', date: '2024-07-15', visto: false, mensaje: 'You have a new notification for the Tennis Finals.' },
-        { id: 5, subject: 'Que tal?', date: '2024-07-20', visto: true, mensaje: 'You have a new notification for the Baseball Series.' },
-        { id: 6, subject: 'Saludos', date: '2024-07-25', visto: true, mensaje: 'You have a new notification for the Swimming Championship.' },
-        { id: 7, subject: 'Buenas', date: '2024-07-30', visto: false, mensaje: 'You have a new notification for the Marathon Event.' },
-    ];
+  const pathname = usePathname();
+  const isAuthenticated = SecurityService.checkAuthAndRedirect(pathname);
+
+  if (isAuthenticated){
+    
+  }
+
+  const initial = [
+    { id: 1, subject: 'Hola amigo', date: '2024-07-01', visto: false, mensaje: 'You have a new notification for the Hockey Game.' },
+    { id: 2, subject: 'Hey', date: '2024-07-05', visto: false, mensaje: 'You have a new notification for the Soccer Match.You have a new notification for the Soccer MatchYou have a new notification for the Soccer MatchYou have a new notification for the Soccer MatchYou have a new notification for the Soccer MatchYou have a new notification for the Soccer MatchYou have a new notification for the Soccer MatchYou have a new notification for the Soccer MatchYou have a new notification for the Soccer Match' },
+    { id: 3, subject: 'Hi', date: '2024-07-10', visto: false, mensaje: 'You have a new notification for the Basketball Tournament.' },
+    { id: 4, subject: 'Todo bien?', date: '2024-07-15', visto: false, mensaje: 'You have a new notification for the Tennis Finals.' },
+    { id: 5, subject: 'Que tal?', date: '2024-07-20', visto: true, mensaje: 'You have a new notification for the Baseball Series.' },      { id: 6, subject: 'Saludos', date: '2024-07-25', visto: true, mensaje: 'You have a new notification for the Swimming Championship.' },
+    { id: 7, subject: 'Buenas', date: '2024-07-30', visto: false, mensaje: 'You have a new notification for the Marathon Event.' },
+  ];
 
     const [notificaciones, setNotificaciones] = useState(initial);
     const [openId, setOpenId] = useState(null);

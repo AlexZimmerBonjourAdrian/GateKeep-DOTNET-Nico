@@ -6,8 +6,16 @@ import Link from 'next/link'
 import logo from '/public/assets/LogoGateKeep.webp'
 import harvard from '/public/assets/Harvard.webp'
 import BasketballIcon from '/public/assets/basketball-icon.svg'
+import { SecurityService } from '@/services/securityService'
 
 export default function crearEvento() {
+
+  const pathname = usePathname();
+  const isAuthenticated = SecurityService.checkAuthAndRedirect(pathname);
+
+  if (isAuthenticated){
+    
+  }
 
   return (
     <div className="header-root">
