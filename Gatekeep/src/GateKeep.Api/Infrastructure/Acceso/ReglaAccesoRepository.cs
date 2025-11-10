@@ -14,6 +14,11 @@ public class ReglaAccesoRepository : IReglaAccesoRepository
         _context = context;
     }
 
+    public async Task<ReglaAcceso?> ObtenerPorIdAsync(long id)
+    {
+        return await _context.ReglasAcceso.FindAsync(id);
+    }
+
     public async Task<ReglaAcceso?> ObtenerPorEspacioIdAsync(long espacioId)
     {
         return await _context.ReglasAcceso

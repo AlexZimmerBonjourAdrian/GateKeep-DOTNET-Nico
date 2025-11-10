@@ -1,6 +1,6 @@
 using GateKeep.Api.Domain.Enums;
 
-namespace GateKeep.Api.Contracts.Espacios;
+namespace GateKeep.Api.Contracts.Acceso;
 
 public record ReglaAccesoDto
 {
@@ -12,5 +12,4 @@ public record ReglaAccesoDto
     public IReadOnlyList<Rol> RolesPermitidos { get; init; } = Array.Empty<Rol>();
     public long EspacioId { get; init; }
 }
-
 
