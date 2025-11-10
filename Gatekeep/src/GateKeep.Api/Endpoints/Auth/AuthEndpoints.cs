@@ -44,7 +44,7 @@ public static class AuthEndpoints
                     Email = result.User.Email,
                     Nombre = result.User.Nombre,
                     Apellido = result.User.Apellido,
-                    TipoUsuario = result.User.TipoUsuario.ToString(),
+                    TipoUsuario = result.User.Rol.ToString(),
                     Telefono = result.User.Telefono,
                     FechaAlta = result.User.FechaAlta
                 }
@@ -92,7 +92,20 @@ public static class AuthEndpoints
             {
                 return Results.Problem("Generación de QR no soportada en esta plataforma (requiere Windows)", statusCode: 501);
             }
-            var pngBytes = qr.Generate(token);
+
+            // Tamaño opcional del QR: ?w=250&h=250
+            int w = 250;
+            int h = 250;
+            if (int.TryParse(httpContext.Request.Query["w"], out var wParsed) && wParsed > 0)
+            {
+                w = wParsed;
+            }
+            if (int.TryParse(httpContext.Request.Query["h"], out var hParsed) && hParsed > 0)
+            {
+                h = hParsed;
+            }
+
+            var pngBytes = qr.Generate(token, w, h);
             return Results.File(pngBytes, contentType: "image/png", fileDownloadName: null, enableRangeProcessing: false);
         })
         .WithName("GetAuthTokenQr")
@@ -148,12 +161,12 @@ public static class AuthEndpoints
                         Apellido = usuarioTest.Apellido,
                         Contrasenia = passwordService.HashPassword(usuarioTest.Password),
                         Telefono = usuarioTest.Telefono,
-                        TipoUsuario = usuarioTest.Tipo switch
+                        Rol = usuarioTest.Tipo switch
                         {
-                            "Admin" => GateKeep.Api.Domain.Enums.TipoUsuario.Admin,
-                            "Estudiante" => GateKeep.Api.Domain.Enums.TipoUsuario.Estudiante,
-                            "Funcionario" => GateKeep.Api.Domain.Enums.TipoUsuario.Funcionario,
-                            _ => GateKeep.Api.Domain.Enums.TipoUsuario.Estudiante
+                            "Admin" => GateKeep.Api.Domain.Enums.Rol.Admin,
+                            "Estudiante" => GateKeep.Api.Domain.Enums.Rol.Estudiante,
+                            "Funcionario" => GateKeep.Api.Domain.Enums.Rol.Funcionario,
+                            _ => GateKeep.Api.Domain.Enums.Rol.Estudiante
                         }
                     };
 
@@ -220,7 +233,7 @@ public static class AuthEndpoints
                 Nombre = u.Nombre,
                 Apellido = u.Apellido,
                 Telefono = u.Telefono,
-                TipoUsuario = u.TipoUsuario.ToString(),
+                TipoUsuario = u.Rol.ToString(),
                 FechaAlta = u.FechaAlta,
                 Credencial = u.Credencial,
                 // Contraseñas en texto plano para testing (solo para desarrollo)

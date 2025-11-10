@@ -387,7 +387,7 @@ using (var scope = app.Services.CreateScope())
                 Telefono = "+1234567890",
                 FechaAlta = DateTime.UtcNow,
                 Credencial = TipoCredencial.Vigente,
-                TipoUsuario = TipoUsuario.Admin
+                Rol = Rol.Admin
             };
             
             var admin = factory.CrearUsuario(adminDto);
@@ -404,7 +404,7 @@ using (var scope = app.Services.CreateScope())
                 Telefono = "+1234567891",
                 FechaAlta = DateTime.UtcNow,
                 Credencial = TipoCredencial.Vigente,
-                TipoUsuario = TipoUsuario.Estudiante
+                Rol = Rol.Estudiante
             };
             
             var estudiante = factory.CrearUsuario(estudianteDto);
@@ -421,7 +421,7 @@ using (var scope = app.Services.CreateScope())
                 Telefono = "+1234567892",
                 FechaAlta = DateTime.UtcNow,
                 Credencial = TipoCredencial.Vigente,
-                TipoUsuario = TipoUsuario.Funcionario
+                Rol = Rol.Funcionario
             };
             
             var funcionario = factory.CrearUsuario(funcionarioDto);
