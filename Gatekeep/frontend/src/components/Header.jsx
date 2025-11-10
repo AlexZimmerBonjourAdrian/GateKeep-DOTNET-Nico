@@ -1,16 +1,38 @@
 "use client"
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter, usePathname } from 'next/navigation'
 import logo from '/public/assets/LogoGateKeep.webp'
 import harvard from '/public/assets/Harvard.webp'
 import BasketballIcon from '/public/assets/basketball-icon.svg'
+import { UsuarioService } from '@/services/UsuarioService'
 
 export default function Header() {
-  const notificaciones = [
-    { id: 1 }
-  ]
+  const router = useRouter();
+  const pathname = usePathname();
+  const [notificaciones, setNotificaciones] = useState(0);
+  const [userId, setUserId] = useState(null);
+
+  useEffect(() => {
+    // Verificar si el usuario está autenticado
+    const storedUserId = localStorage.getItem('userId');
+    const token = localStorage.getItem('token');
+    
+    // Si no hay userId o token, redirigir al login (excepto si ya está en login o register)
+    if ((!storedUserId || !token) && pathname !== '/login' && pathname !== '/register') {
+      router.push('/login');
+      return;
+    }
+    
+    // Si hay userId, obtener notificaciones
+    if (storedUserId) {
+      setUserId(storedUserId);
+      const notifs = UsuarioService.getNotificacionesSinLeer(storedUserId);
+      setNotificaciones(notifs);
+    }
+  }, [pathname, router]);
 
   return (
     <div className="header-root">
@@ -27,9 +49,9 @@ export default function Header() {
               <Link href="/notificaciones" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Notificaciones" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
                 <div className="item-card notification-card">
                   <i className="pi pi-bell item-icon" aria-hidden={true}></i>
-                    {notificaciones.length > 0 && (
+                    {notificaciones > 0 && (
                       <div className="notification-badge">
-                        {notificaciones.length}
+                        {notificaciones}
                       </div>
                     )}
                 </div>

@@ -16,10 +16,6 @@ export default function Register() {
   const [password, setPassword] = useState('')
   const [repeatPassword, setRepeatPassword] = useState('')
 
-  const notificaciones = [
-    { id: 1,}
-  ]
-
   const handleSubmit = (e) => {
     e.preventDefault()
     // Aquí puedes integrar el envío al servidor o contexto de auth
@@ -37,17 +33,6 @@ export default function Register() {
             <div className="icon-group">
               <Link href="/">
                 <Image src={logo} alt="Logo GateKeep" width={160} priority className="logo-image" />
-              </Link>
-
-              <Link href="/notificaciones" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Notificaciones" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
-                <div className="item-card notification-card">
-                  <i className="pi pi-bell item-icon" aria-hidden={true}></i>
-                    {notificaciones.length > 0 && (
-                      <div className="notification-badge">
-                        {notificaciones.length}
-                      </div>
-                    )}
-                </div>
               </Link>
             </div>
 

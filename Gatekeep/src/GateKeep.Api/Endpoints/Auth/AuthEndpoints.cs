@@ -52,6 +52,7 @@ public static class AuthEndpoints
 
             return Results.Ok(response);
         })
+        .AllowAnonymous()
         .WithName("Login")
         .WithSummary("Iniciar sesión")
         .WithDescription("Autentica un usuario y retorna un token JWT")
