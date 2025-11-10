@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import Header from '../../../components/Header';
-import { SecurityService } from '@/services/securityService';
+import { SecurityService } from '../../../services/securityService';
 
 export default function listadoReglasAcceso() {
 

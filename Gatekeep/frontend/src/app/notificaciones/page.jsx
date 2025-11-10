@@ -1,8 +1,9 @@
 "use client"
 
 import React, { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import Header from '../../components/Header';
-import { SecurityService } from '@/services/securityService';
+import { SecurityService } from '../../services/securityService';
 
 export default function listadoEventos() {
 
