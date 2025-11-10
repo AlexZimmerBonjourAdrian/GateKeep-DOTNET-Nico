@@ -11,12 +11,7 @@ import { SecurityService } from '@/services/securityService';
 export default function crearEvento() {
 
   const pathname = usePathname();
-  const isAuthenticated = SecurityService.checkAuthAndRedirect(pathname);
-
-  if (isAuthenticated){
-    
-  }
-
+  SecurityService.checkAuthAndRedirect(pathname);
 
   return (
     <div className="header-root">

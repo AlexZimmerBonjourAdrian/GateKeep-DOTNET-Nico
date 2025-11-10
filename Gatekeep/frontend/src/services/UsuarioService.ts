@@ -5,7 +5,7 @@ import { URLService } from "./urlService";
 // Base URL del backend y recursos específicos
 const API_URL = URLService.getLink(); // p.ej. http://localhost:5011/api/
 const USUARIOS_URL = API_URL + "usuarios/";
-const AUTH_URL = API_URL + "auth/";
+const AUTH_URL = "http://localhost:5011/auth/";
 
 // Instancia Axios para usuarios (reutiliza token si existe)
 const api: AxiosInstance = axios.create({
@@ -30,6 +30,13 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 });
 
 export class UsuarioService {
+  /**
+   * Login de usuario con email y contraseña
+   */
+  static login(credentials: { email: string; password: string }) {
+    return axios.post(AUTH_URL + "login", credentials);
+  }
+
   /**
    * Obtiene un usuario por ID (valida que el backend autorice si no es el propio).
    */
