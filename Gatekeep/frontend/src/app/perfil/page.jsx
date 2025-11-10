@@ -6,13 +6,16 @@ import Link from 'next/link'
 import logo from '/public/assets/LogoGateKeep.webp'
 import harvard from '/public/assets/Harvard.webp'
 import BasketballIcon from '/public/assets/basketball-icon.svg'
+import UsuarioService from '../../services/UsuarioService'
 
 export default function Login() {
   const [name, setName] = useState('')
   const [dob, setDob] = useState('')
-  const [role] = useState('Usuario')
+  const [role, setRole] = useState('Usuario')
   const [profileImage, setProfileImage] = useState(null)
   const [preview, setPreview] = useState(null)
+  const [qrUrl, setQrUrl] = useState(null)
+  const [loading, setLoading] = useState(true)
 
 
   useEffect(() => {
@@ -27,6 +30,34 @@ export default function Login() {
     return () => URL.revokeObjectURL(objectUrl)
   }, [profileImage])
 
+  // Cargar datos reales del usuario y QR desde el backend
+  useEffect(() => {
+    let revokedUrl = null
+    const load = async () => {
+      try {
+        const usuario = await UsuarioService.getUsuarioActual({ refresh: true })
+        if (usuario) {
+          setName(`${usuario.nombre ?? ''} ${usuario.apellido ?? ''}`.trim())
+          // rol viene como string por JsonStringEnumConverter
+          if (usuario.rol) setRole(usuario.rol)
+        }
+
+        // Obtener QR del token actual como blob url
+        const url = await UsuarioService.getAuthQrUrl({ width: 220, height: 220 })
+        setQrUrl(url)
+        revokedUrl = url
+      } catch (e) {
+        console.error('Error cargando perfil/QR:', e)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+    return () => {
+      if (revokedUrl) URL.revokeObjectURL(revokedUrl)
+    }
+  }, [])
+
   const handleImageChange = (e) => {
     const file = e.target.files && e.target.files[0]
     if (file) setProfileImage(file)
@@ -39,8 +70,7 @@ export default function Login() {
     alert('Perfil guardado (demo)')
   }
 
-  const qrContent = `name:${name || 'demo'};dob:${dob || ''}`
-  const qrSrc = `https://chart.googleapis.com/chart?cht=qr&chs=220x220&chl=${encodeURIComponent(qrContent)}`
+  // El QR ahora proviene del backend (/auth/qr) a través de un blob URL en qrUrl
 
   return (
     <div className="header-root">
@@ -99,10 +129,14 @@ export default function Login() {
             </div>
           </div>
           <div className="qr-section">
-            <h3 className="qr-title">Muestra QR</h3>
+            <h3 className="qr-title">Mi QR de acceso</h3>
             <div className="qr-card">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qrSrc} alt="QR sample" className="qr-img" />
+              {qrUrl ? (
+                <img src={qrUrl} alt="QR token" className="qr-img" />
+              ) : (
+                <span className="qr-caption">{loading ? 'Generando QR…' : 'No se pudo generar el QR'}</span>
+              )}
             </div>
           </div>
         </form>
