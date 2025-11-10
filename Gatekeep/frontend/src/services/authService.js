@@ -27,7 +27,7 @@ api.interceptors.request.use(
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response ? .status === 401) {
+        if (error.response?.status === 401) {
             // Token expirado o inválido
             localStorage.removeItem('token');
             localStorage.removeItem('refreshToken');
@@ -73,7 +73,7 @@ class AuthService {
             console.error('Error en login:', error);
             return {
                 success: false,
-                error: error.response ? .data ? .message || 'Error de conexión',
+                error: error.response?.data?.message || 'Error de conexión',
             };
         }
     }
@@ -215,7 +215,7 @@ class AuthService {
             console.error('Error al crear usuarios de prueba:', error);
             return {
                 success: false,
-                error: error.response ? .data ? .message || 'Error al crear usuarios de prueba',
+                error: error.response?.data?.message || 'Error al crear usuarios de prueba',
             };
         }
     }
@@ -235,7 +235,7 @@ class AuthService {
             console.error('Error al listar usuarios:', error);
             return {
                 success: false,
-                error: error.response ? .data ? .message || 'Error al listar usuarios',
+                error: error.response?.data?.message || 'Error al listar usuarios',
             };
         }
     }
@@ -255,7 +255,7 @@ class AuthService {
             console.error('Error al obtener usuario actual:', error);
             return {
                 success: false,
-                error: error.response ? .data ? .message || 'Error al obtener usuario actual',
+                error: error.response?.data?.message || 'Error al obtener usuario actual',
             };
         }
     }

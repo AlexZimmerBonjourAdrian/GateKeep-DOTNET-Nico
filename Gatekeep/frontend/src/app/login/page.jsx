@@ -6,8 +6,8 @@ import Link from 'next/link'
 import logo from '/public/assets/LogoGateKeep.webp'
 import harvard from '/public/assets/Harvard.webp'
 import BasketballIcon from '/public/assets/basketball-icon.svg'
-import { UsuarioService } from '@/services/UsuarioService'
-import { SecurityService } from '@/services/securityService'
+import { UsuarioService } from '../..//services/UsuarioService'
+import { SecurityService } from '../..//services/securityService'
 
 export default function Login() {
   
@@ -48,42 +48,12 @@ export default function Login() {
         <div className="harvard-placeholder" />
           <div className="header-topbar">
             <div className="icon-group">
-              <Link href="/">
+              <Link href="/login">
                 <Image src={logo} alt="Logo GateKeep" width={160} priority className="logo-image" />
               </Link>
             </div>
 
-          <div className="icon-group">
-            <Link href="/" style={{ textDecoration: 'none', outline: 'none'}} aria-label="Home" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
-              <div className="item-card">
-                <i className="pi pi-home item-icon" aria-hidden={true}></i>
-              </div>
-            </Link>
-
-            <Link href="/evento/listadoEventos" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Eventos" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
-              <div className="item-card">
-                <BasketballIcon style={{ color: '#231F20', width: 30, height: 30 }} />
-              </div>
-            </Link>
-
-            <Link href="/anuncio/listadoAnuncios" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Anuncios" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
-              <div className="item-card">
-                <i className="pi pi-megaphone item-icon" aria-hidden={true}></i>
-              </div>
-            </Link>
-
-            <Link href="/perfil" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Perfil" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
-              <div className="item-card">
-                <i className="pi pi-user item-icon" aria-hidden={true}></i>
-              </div>
-            </Link>
-
-            <Link href="/" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Salir" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
-              <div className="item-card logout-card">
-                <i className="pi pi-sign-out item-icon" aria-hidden={true}></i>
-              </div>
-            </Link>
-          </div>
+          
         </div>
         
         <div className="header-middle-bar">
@@ -128,35 +98,7 @@ export default function Login() {
         </div>
       </div>
 
-      <div className="header-bottom-bar">
-        <Link href="/" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Home" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
-          <div className="item-card">
-            <i className="pi pi-home item-icon" aria-hidden={true}></i>
-            <p className="item-text">Home</p>
-          </div>
-        </Link>
-
-        <Link href="/evento/listadoEventos" style={{ textDecoration: 'none', outline: 'none'}} aria-label="Eventos" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
-          <div className="item-card">
-            <BasketballIcon style={{ color: '#231F20', width: 30, height: 30 }} />
-            <p className="item-text">Eventos</p>
-          </div>
-        </Link>
-
-        <Link href="/anuncio/listadoAnuncios" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Anuncios" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
-          <div className="item-card">
-            <i className="pi pi-megaphone item-icon" aria-hidden={true}></i>
-            <p className="item-text">Anuncios</p>
-          </div>
-        </Link>
-
-        <Link href="/perfil" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Perfil" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
-          <div className="item-card">
-            <i className="pi pi-user item-icon" aria-hidden={true}></i>
-            <p className="item-text">Perfil</p>
-          </div>
-        </Link>
-      </div>
+      
     
       <style jsx>{`
 
@@ -230,82 +172,6 @@ export default function Login() {
           cursor: pointer;
           opacity: 0.9;
         }
-        .icon-group {
-          display: inline-flex;
-          align-items: center;
-          gap: 10px;
-        }
-        .item-card {
-          height: 56px;
-          min-width: 56px; /* ensure tappable size */
-          padding: 0 12px; /* allow some horizontal breathing room for icons/text */
-          background-color: #f37426;
-          border-radius: 20px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          opacity: 0.9;
-          transition: transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
-          z-index: 2; /* Ensure item cards are above the bottom bar */
-          box-sizing: border-box;
-        }
-        .item-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 8px 20px rgba(0,0,0,0.12);
-        }
-        
-        .item-card:active {
-          transform: translateY(-1px);
-        }
-        .item-card:focus-visible {
-          outline: none;
-          box-shadow: 0 0 0 4px rgba(243,116,38,0.16);
-        }
-
-        .item-icon {
-          display: block;
-          font-size: 1.875rem; /* default 30px */
-          color: #231F20;
-          line-height: 1;
-        }
-
-        .notification-card {
-          position: relative;
-        }
-
-        .notification-badge {
-          position: absolute;
-          top: -8px;
-          right: -8px;
-          background-color: #F62D2D;
-          color: white;
-          border-radius: 50%;
-          width: 28px;
-          height: 28px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 0.875rem; /* 14px */
-          font-weight: bold;
-          box-sizing: border-box;
-        }
-
-        .text-card {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          /* Increase width by 100px while keeping responsive vw behavior */
-          width: calc(42.97vw + 100px); /* base VW plus 100px */
-          max-width: 980px; /* increased 100px from 880px */
-          min-width: 280px;
-          background-color: #231F20;
-          opacity: 0.9;
-          padding: 0.52vw; /* 10px to vw assuming 1920px width */
-          border-radius: 20px;
-          box-sizing: border-box;
-          border: 2px solid #f37426;
-        }
 
         .header-middle-bar {
           position: relative;
@@ -314,50 +180,10 @@ export default function Login() {
           justify-content: flex-start;
         }
 
-        .item-card {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .item-text {
-          margin-top: 8px;
-          font-size: 1.2rem; /* 16px to rem */
-          font-weight: bold;
-          color: white;
-          text-align: center;
-          width: 100%;
-        }
-
         @media (max-width: 425px) {
 
           .header-root {
             padding-bottom: 90px;
-          }
-
-          .header-bottom-bar {
-            width: 100%;
-            height: 80px; 
-            background-color: #7e4928;
-            display: flex;
-            justify-content: space-evenly; /* Ensures equal spacing between items */
-            align-items: center;
-            position: fixed; /* Make the bottom bar fixed */
-            bottom: 0; /* Stick to the bottom of the viewport */
-            z-index: 4; /* Place the bottom bar above other elements */
-            padding: 7px; /* Add padding for better spacing */
-          }
-
-          /* Ocultar los botones del topbar en pantallas <= 425px
-          Mantener visibles las notificaciones (.notification-card) y logout (.logout-card) */
-          .header-topbar .item-card:not(.notification-card):not(.logout-card) {
-            display: none;
-            box-shadow: none;
-          }
-
-          .header-bottom-bar .item-icon {
-            font-size: 2.1rem;
           }
 
           :global(.harvard-image) {
@@ -404,115 +230,15 @@ export default function Login() {
               box-shadow: none !important;
             }
 
-            .header-bottom-bar .item-text {
-              font-size: 0.7rem; /* 12px to rem */
-              font-weight: 250; /* Cambiado a un peso de fuente más fino */
-            }
+           
 
-            .header-bottom-bar .item-card {
-              width: 64px;
-              height: 64px;
-              background-color: #f37426;
-              border-radius: 16px;
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              justify-content: center;
-              cursor: pointer;
-              opacity: 0.95;
-              transition: transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
-              padding: 6px;
-            }
-
-            /* Responsive tweaks for icons and labels in the bottom bar */
-            .header-bottom-bar .item-icon {
-              font-size: 1.6rem; /* default for mobile */
-              line-height: 1;
-            }
-
-                .header-bottom-bar .item-card svg {
-                  width: 28px;
-                  height: 28px;
-                }
-
-                .header-bottom-bar .item-text {
-                  font-size: 0.7rem;
-                  margin-top: 6px;
-                }
-
-                .header-bottom-bar .item-card:hover {
-                  transform: none;
-                  box-shadow: none;
-                }
-
-                /* Very small screens: make buttons slightly smaller */
-                @media (max-width: 360px) {
-                  .header-bottom-bar .item-card {
-                    width: 56px;
-                    height: 56px;
-                    border-radius: 14px;
-                    padding: 4px;
-                  }
-
-                  .header-bottom-bar .item-icon {
-                    font-size: 1.4rem;
-                  }
-
-                  .header-bottom-bar .item-card svg {
-                    width: 24px;
-                    height: 24px;
-                  }
-
-                  .header-bottom-bar .item-text {
-                    font-size: 0.65rem;
-                    margin-top: 4px;
-                  }
-                }
+           
+           
+      
                 :global(.harvard-image) {
                   display: none;
                   box-shadow: none;
                 }
-        }
-
-        /* Tablet/layout tweaks: 426px - 768px */
-        @media (min-width: 426px) and (max-width: 768px) {
-          .item-card {
-            height: 52px;
-            min-width: 52px;
-            padding: 0 10px;
-            border-radius: 16px;
-          }
-
-          .item-icon {
-            font-size: 1.6rem; /* slightly smaller on tablet */
-          }
-
-          .notification-badge {
-            width: 24px;
-            height: 24px;
-            font-size: 0.75rem;
-            top: -6px;
-            right: -6px;
-          }
-
-          .header-bottom-bar{
-            display: none; /* tablet uses topbar */
-            box-shadow: none;
-          }
-        }
-
-        @media (min-width: 769px) {
-          /* Desktop: keep original large spacing but avoid vw-based widths */
-          .item-card {
-            height: 56px;
-            min-width: 56px;
-            padding: 0 14px;
-          }
-          
-          .header-bottom-bar{
-            display: none; /* tablet uses topbar */
-            box-shadow: none;
-          }
         }
 
         .header-root {
@@ -584,11 +310,6 @@ export default function Login() {
           }
         }
 
-        .icon-group {
-          display: inline-flex;
-          align-items: center;
-          gap: 10px;
-        }
 
         span {
           font-size: 0.8rem;
@@ -631,59 +352,6 @@ export default function Login() {
           width: 100%;
         }
 
-        @media (max-width: 425px) {
-          .header-bottom-bar {
-            width: 100%;
-            height: 80px;
-            background-color: #7e4928;
-            display: flex;
-            justify-content: space-evenly;
-            align-items: center;
-            position: fixed;
-            bottom: 0;
-            z-index: 4;
-            padding: 7px;
-          }
-
-          .header-bottom-bar .item-icon {
-            font-size: 2.1rem;
-          }
-
-          .header-bottom-bar .item-text {
-            font-size: 0.7rem;
-            font-weight: 250;
-          }
-
-          .header-bottom-bar .item-card {
-            /* Use a clamped width so items don't reflow abruptly on very narrow viewports
-               (original used 18vw which causes large relative changes under ~345px). */
-            width: clamp(56px, 18vw, 70px);
-            height: 70px;
-            background-color: #f37426;
-            border-radius: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            opacity: 0.9;
-            transition: transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
-            box-sizing: border-box;
-          }
-
-          .header-bottom-bar .item-card:hover {
-            transform: none;
-            box-shadow: none;
-          }
-        }
-
-        @media (min-width: 426px) {
-          .header-bottom-bar {
-            display: none;
-            box-shadow: none;
-          }
-        }
-
         /* Perfil form styles */
         .profile-form {
           display: flex;
@@ -692,7 +360,6 @@ export default function Login() {
           width: 100%;
           box-sizing: border-box;
         }
-
 
         .preview-img {
           width: 100%;
@@ -877,6 +544,22 @@ export default function Login() {
 
         .auth-redirect a {
           text-decoration: none;
+        }
+
+        .text-card {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          /* Increase width by 100px while keeping responsive vw behavior */
+          width: calc(42.97vw + 100px); /* base VW plus 100px */
+          max-width: 980px; /* increased 100px from 880px */
+          min-width: 280px;
+          background-color: #231F20;
+          opacity: 0.9;
+          padding: 0.52vw; /* 10px to vw assuming 1920px width */
+          border-radius: 20px;
+          box-sizing: border-box;
+          border: 2px solid #f37426;
         }
 
         /* Mobile: stack the form like the rest of the page (<=425px) */
