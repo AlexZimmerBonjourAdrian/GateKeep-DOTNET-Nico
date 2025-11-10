@@ -46,18 +46,6 @@ var builder = WebApplication.CreateBuilder(args);
 // Cargar config.json
 builder.Configuration.AddJsonFile("config.json", optional: false, reloadOnChange: true);
 
-// Configuración de CORS
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowFrontend", policy =>
-    {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:3001")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
-    });
-});
-
 // Swagger (exploración y documentación)
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -248,9 +236,6 @@ builder.Services.AddSingleton<QrCodeGenerator>();
 // Servicios de Notificaciones MongoDB
 builder.Services.AddScoped<INotificacionRepository, NotificacionRepository>();
 builder.Services.AddScoped<INotificacionService, NotificacionService>();
-builder.Services.AddScoped<INotificacionUsuarioValidationService, NotificacionUsuarioValidationService>();
-builder.Services.AddScoped<INotificacionUsuarioRepository, NotificacionUsuarioRepository>();
-builder.Services.AddScoped<INotificacionUsuarioService, NotificacionUsuarioService>();
 
 // Servicios de Auditoria MongoDB
 builder.Services.AddScoped<IEventoHistoricoRepository, EventoHistoricoRepository>();
@@ -311,9 +296,6 @@ if (app.Environment.IsDevelopment())
         c.EnableValidator();
     });
 }
-
-// Middleware de CORS (debe ir antes de autenticación y autorización)
-app.UseCors("AllowFrontend");
 
 // Middleware de Seguridad
 app.UseAuthentication();
@@ -490,3 +472,4 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+

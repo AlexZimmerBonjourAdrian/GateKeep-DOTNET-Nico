@@ -7,9 +7,6 @@ import { SecurityService } from '../../../services/securityService';
 
 export default function listadoAnuncios() {
 
-  const pathname = usePathname();
-  SecurityService.checkAuthAndRedirect(pathname);
-
   const anuncios = [
     { id: 1, title: 'Hockey Game', date: '2024-07-01' },
     { id: 2, title: 'Soccer Match', date: '2024-07-05' },
