@@ -15,7 +15,16 @@ public class ObservabilityService : IObservabilityService
     private readonly Counter<long> _erroresCounter;
     private readonly Counter<long> _cacheOperationsCounter;
     private readonly Histogram<double> _databaseOperationDuration;
+    private readonly Gauge<long> _sincronizacionesEnProceso;
+    private readonly Gauge<long> _eventosConError;
+    private readonly Gauge<long> _sincronizacionesPendientes;
+    private readonly Gauge<long> _eventosPendientes;
     private readonly ILogger<ObservabilityService> _logger;
+    private readonly Dictionary<string, long> _sincronizacionesCount = new();
+    private readonly Dictionary<string, long> _eventosErrorCount = new();
+    private readonly Dictionary<string, long> _sincronizacionesPendientesCount = new();
+    private readonly Dictionary<string, long> _eventosPendientesCount = new();
+    private readonly object _lock = new();
 
     public ObservabilityService(ILogger<ObservabilityService> logger)
     {
@@ -53,6 +62,27 @@ public class ObservabilityService : IObservabilityService
             "gatekeep.database.duration",
             unit: "ms",
             description: "Duración de operaciones de base de datos");
+
+        // Gauges
+        _sincronizacionesEnProceso = _meter.CreateGauge<long>(
+            "gatekeep.sincronizaciones.en_proceso",
+            unit: "sincronizaciones",
+            description: "Número de sincronizaciones actualmente en proceso");
+
+        _eventosConError = _meter.CreateGauge<long>(
+            "gatekeep.eventos.con_error",
+            unit: "eventos",
+            description: "Número de eventos que fallaron al procesarse");
+
+        _sincronizacionesPendientes = _meter.CreateGauge<long>(
+            "gatekeep.sincronizaciones.pendientes",
+            unit: "sincronizaciones",
+            description: "Número de sincronizaciones pendientes en la cola");
+
+        _eventosPendientes = _meter.CreateGauge<long>(
+            "gatekeep.eventos.pendientes",
+            unit: "eventos",
+            description: "Número de eventos pendientes en la cola");
     }
 
     public void RecordAcceso(string tipoAcceso, bool exitoso)
@@ -139,6 +169,75 @@ public class ObservabilityService : IObservabilityService
         _logger.LogError(
             "Error registrado: Component={Component}, ErrorType={ErrorType}",
             component, errorType);
+    }
+
+    public void RecordSincronizacionIniciada(string tipo)
+    {
+        lock (_lock)
+        {
+            _sincronizacionesCount.TryGetValue(tipo, out var current);
+            _sincronizacionesCount[tipo] = current + 1;
+            
+            var tags = new TagList { { "tipo", tipo } };
+            _sincronizacionesEnProceso.Record(_sincronizacionesCount[tipo], tags);
+        }
+        
+        _logger.LogDebug("Sincronización iniciada: Tipo={Tipo}", tipo);
+    }
+
+    public void RecordSincronizacionCompletada(string tipo)
+    {
+        lock (_lock)
+        {
+            if (_sincronizacionesCount.TryGetValue(tipo, out var current) && current > 0)
+            {
+                _sincronizacionesCount[tipo] = current - 1;
+                
+                var tags = new TagList { { "tipo", tipo } };
+                _sincronizacionesEnProceso.Record(_sincronizacionesCount[tipo], tags);
+            }
+        }
+        
+        _logger.LogDebug("Sincronización completada: Tipo={Tipo}", tipo);
+    }
+
+    public void RecordEventoError(string tipoEvento)
+    {
+        lock (_lock)
+        {
+            _eventosErrorCount.TryGetValue(tipoEvento, out var current);
+            _eventosErrorCount[tipoEvento] = current + 1;
+            
+            var tags = new TagList { { "tipo", tipoEvento } };
+            _eventosConError.Record(_eventosErrorCount[tipoEvento], tags);
+        }
+        
+        // También registrar como error general
+        RecordError("EventPublisher", $"evento_{tipoEvento}_error");
+        
+        _logger.LogWarning("Evento con error al procesarse: Tipo={TipoEvento}", tipoEvento);
+    }
+
+    public void UpdateSincronizacionesPendientes(string tipo, int cantidad)
+    {
+        lock (_lock)
+        {
+            _sincronizacionesPendientesCount[tipo] = cantidad;
+            
+            var tags = new TagList { { "tipo", tipo } };
+            _sincronizacionesPendientes.Record(cantidad, tags);
+        }
+    }
+
+    public void UpdateEventosPendientes(string tipoEvento, int cantidad)
+    {
+        lock (_lock)
+        {
+            _eventosPendientesCount[tipoEvento] = cantidad;
+            
+            var tags = new TagList { { "tipo", tipoEvento } };
+            _eventosPendientes.Record(cantidad, tags);
+        }
     }
 }
 

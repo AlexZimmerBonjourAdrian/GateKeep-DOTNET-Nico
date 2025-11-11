@@ -7,6 +7,7 @@ using GateKeep.Api.Application.Espacios;
 using GateKeep.Api.Application.Eventos;
 using GateKeep.Api.Application.Notificaciones;
 using GateKeep.Api.Application.Security;
+using GateKeep.Api.Application.Events;
 using GateKeep.Api.Application.Usuarios;
 using GateKeep.Api.Contracts.Usuarios;
 using GateKeep.Api.Domain.Enums;
@@ -27,7 +28,10 @@ using GateKeep.Api.Infrastructure.Beneficios;
 using GateKeep.Api.Infrastructure.Caching;
 using GateKeep.Api.Infrastructure.Espacios;
 using GateKeep.Api.Infrastructure.Eventos;
+using GateKeep.Api.Infrastructure.Events;
 using GateKeep.Api.Infrastructure.Notificaciones;
+using GateKeep.Api.Infrastructure.Queues;
+using GateKeep.Api.Application.Queues;
 using GateKeep.Api.Infrastructure.Persistence;
 using GateKeep.Api.Infrastructure.Security;
 using GateKeep.Api.Infrastructure.Usuarios;
@@ -436,6 +440,18 @@ builder.Services.AddScoped<ICachedBeneficioService, CachedBeneficioService>();
 // Servicios de Observabilidad
 builder.Services.AddSingleton<ICorrelationIdProvider, CorrelationIdProvider>();
 builder.Services.AddSingleton<IObservabilityService, ObservabilityService>();
+
+// Servicios de Eventos (Observer Pattern)
+builder.Services.AddSingleton<IEventPublisher, EventPublisher>();
+
+// Servicios de Colas
+builder.Services.AddSingleton<ISincronizacionQueue, SincronizacionQueue>();
+builder.Services.AddSingleton<IEventoQueue, EventoQueue>();
+
+// Servicios de Background para procesar colas
+builder.Services.AddHostedService<SincronizacionQueueProcessor>();
+builder.Services.AddHostedService<EventoQueueProcessor>();
+builder.Services.AddHostedService<BacklogMetricsUpdater>();
 
 // Configuración de OpenTelemetry
 builder.Services.AddOpenTelemetry()

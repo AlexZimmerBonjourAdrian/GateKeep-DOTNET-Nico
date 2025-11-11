@@ -34,5 +34,30 @@ public interface IObservabilityService
     /// Registra un error en el sistema
     /// </summary>
     void RecordError(string component, string errorType);
+
+    /// <summary>
+    /// Registra el inicio de una sincronización
+    /// </summary>
+    void RecordSincronizacionIniciada(string tipo);
+
+    /// <summary>
+    /// Registra la finalización de una sincronización
+    /// </summary>
+    void RecordSincronizacionCompletada(string tipo);
+
+    /// <summary>
+    /// Registra un evento que falló al procesarse
+    /// </summary>
+    void RecordEventoError(string tipoEvento);
+
+    /// <summary>
+    /// Actualiza la métrica de sincronizaciones pendientes
+    /// </summary>
+    void UpdateSincronizacionesPendientes(string tipo, int cantidad);
+
+    /// <summary>
+    /// Actualiza la métrica de eventos pendientes
+    /// </summary>
+    void UpdateEventosPendientes(string tipoEvento, int cantidad);
 }
 
