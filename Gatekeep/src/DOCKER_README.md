@@ -12,11 +12,29 @@
 - Docker Desktop instalado
 - Docker Compose instalado
 
+### 🔨 Build de Docker
+
+Para construir la imagen de Docker de la API:
+
+```powershell
+# Construir solo la imagen de la API (sin iniciar)
+docker-compose build api
+
+# Construir sin usar cache (útil si hay problemas)
+docker-compose build --no-cache api
+
+# Construir todas las imágenes
+docker-compose build
+```
+
 ### Levantar todos los servicios
 
 ```powershell
-# Construir y levantar todos los servicios
+# Construir y levantar todos los servicios en un solo comando
 docker-compose up -d --build
+
+# Solo levantar (sin reconstruir)
+docker-compose up -d
 
 # Ver logs
 docker-compose logs -f
@@ -69,7 +87,7 @@ docker-compose logs -f
 docker-compose logs -f api
 
 # Ver logs de PostgreSQL
-docker-compose logs -f postgres
+docker-compose logs -f db
 
 # Ver últimas 100 líneas
 docker-compose logs --tail=100 api
@@ -82,7 +100,7 @@ docker-compose logs --tail=100 api
 docker exec -it gatekeep-api bash
 
 # Acceder a PostgreSQL
-docker exec -it gatekeep-postgres psql -U postgres -d Gatekeep
+docker exec -it gatekeep-postgres psql -U postgres -d GateKeep
 
 # Acceder a Redis CLI
 docker exec -it gatekeep-redis redis-cli
@@ -94,11 +112,11 @@ docker exec -it gatekeep-redis redis-cli
 
 Las configuraciones se encuentran en:
 - `src/GateKeep.Api/config.Production.json` - Configuración para Docker
-- `docker-compose.yaml` - Variables de entorno de los contenedores
+- `docker-compose.yml` - Variables de entorno de los contenedores
 
 ### Cambiar Puertos
 
-Edita `docker-compose.yaml`:
+Edita `docker-compose.yml`:
 
 ```yaml
 services:
@@ -109,22 +127,20 @@ services:
 
 ### Cambiar Credenciales de PostgreSQL
 
-Edita `docker-compose.yaml`:
+Edita `docker-compose.yml`:
 
 ```yaml
-postgres:
+db:
   environment:
     POSTGRES_PASSWORD: tu_nueva_password
 ```
 
-Y actualiza `config.Production.json`:
+Y actualiza las variables de entorno del servicio `api` en `docker-compose.yml`:
 
-```json
-{
-  "database": {
-    "password": "tu_nueva_password"
-  }
-}
+```yaml
+api:
+  environment:
+    DATABASE__PASSWORD: "tu_nueva_password"
 ```
 
 ## 🗄️ Gestión de Datos
@@ -133,10 +149,10 @@ Y actualiza `config.Production.json`:
 
 ```powershell
 # Crear backup
-docker exec gatekeep-postgres pg_dump -U postgres Gatekeep > backup.sql
+docker exec gatekeep-postgres pg_dump -U postgres GateKeep > backup.sql
 
 # Restaurar backup
-type backup.sql | docker exec -i gatekeep-postgres psql -U postgres -d Gatekeep
+type backup.sql | docker exec -i gatekeep-postgres psql -U postgres -d GateKeep
 ```
 
 ### Limpiar Redis Cache
@@ -167,10 +183,10 @@ GET GateKeep:beneficios:all
 docker-compose ps
 
 # Ver logs de PostgreSQL
-docker-compose logs postgres
+docker-compose logs db
 
 # Reiniciar servicios en orden
-docker-compose restart postgres
+docker-compose restart db
 docker-compose restart api
 ```
 
@@ -209,7 +225,7 @@ netstat -ano | findstr :5011
 # Matar el proceso (usar el PID del comando anterior)
 taskkill /PID <PID> /F
 
-# O cambiar el puerto en docker-compose.yaml
+# O cambiar el puerto en docker-compose.yml
 ```
 
 ## 🌐 URLs de Acceso
@@ -231,7 +247,7 @@ Los datos se guardan en volúmenes de Docker:
 docker volume ls
 
 # Inspeccionar un volumen
-docker volume inspect gatekeep_postgres_data
+docker volume inspect src_pgdata
 
 # Eliminar volúmenes no usados
 docker volume prune
@@ -276,4 +292,3 @@ Si encuentras problemas:
 1. Revisa los logs: `docker-compose logs -f`
 2. Verifica el estado: `docker-compose ps`
 3. Revisa la documentación en `docs/`
-

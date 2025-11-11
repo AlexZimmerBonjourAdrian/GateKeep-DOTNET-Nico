@@ -1,6 +1,6 @@
 {
     "database": {
-        "host": "postgres",
+        "host": "db",
         "port": "5432",
         "name": "Gatekeep",
         "user": "postgres",
@@ -32,4 +32,3 @@
         "lockoutDurationMinutes": 15
     }
 }
-

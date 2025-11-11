@@ -38,5 +38,5 @@ npm-debug.log*
 
 # Local config (no sobrescribir en producción)
 **/config.json
+!GateKeep.Api/config.json
 !**/config.Production.json
-
