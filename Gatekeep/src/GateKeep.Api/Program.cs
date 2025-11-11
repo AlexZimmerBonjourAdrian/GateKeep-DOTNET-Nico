@@ -265,11 +265,16 @@ builder.Services.AddDbContext<GateKeepDbContext>(options =>
 {
     // Leer configuración desde config.json
     var config = builder.Configuration.GetSection("database");
-    var host = config["host"] ?? "localhost";
-    var port = config["port"] ?? "5432";
-    var database = config["name"] ?? "GateKeep_Dev";
-    var username = config["user"] ?? "postgres";
-    var password = config["password"] ?? "dev_password";
+    
+    // Permitir override con variables de entorno (prioridad: ENV > config.json)
+    var host = Environment.GetEnvironmentVariable("DB_HOST") ?? config["host"] ?? "localhost";
+    var port = Environment.GetEnvironmentVariable("DB_PORT") ?? config["port"] ?? "5432";
+    var database = Environment.GetEnvironmentVariable("DB_NAME") ?? config["name"] ?? "GateKeep_Dev";
+    var username = Environment.GetEnvironmentVariable("DB_USER") ?? config["user"] ?? "postgres";
+    var password = Environment.GetEnvironmentVariable("DB_PASSWORD") ?? config["password"] ?? "dev_password";
+    
+    Log.Information("Configurando PostgreSQL - Host: {Host}, Puerto: {Port}, Base de datos: {Database}, Usuario: {User}", 
+        host, port, database, username);
     
     var connectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};";
     
@@ -363,15 +368,22 @@ builder.Services.AddScoped<IMongoDatabase>(serviceProvider =>
 builder.Services.AddStackExchangeRedisCache(options =>
 {
     var redisConfig = builder.Configuration.GetSection("redis");
-    options.Configuration = redisConfig["connectionString"] ?? "localhost:6379";
-    options.InstanceName = redisConfig["instanceName"] ?? "GateKeepRedis:";
+    // Permitir override con variables de entorno
+    var connectionString = Environment.GetEnvironmentVariable("REDIS_CONNECTION") ?? redisConfig["connectionString"] ?? "localhost:6379";
+    var instanceName = Environment.GetEnvironmentVariable("REDIS_INSTANCE") ?? redisConfig["instanceName"] ?? "GateKeepRedis:";
+    
+    options.Configuration = connectionString;
+    options.InstanceName = instanceName;
+    
+    Log.Information("Configurando Redis - Connection: {Connection}, Instance: {Instance}", connectionString, instanceName);
 });
 
 // Servicios de Redis y Caching
 builder.Services.AddSingleton<IConnectionMultiplexer>(serviceProvider =>
 {
     var redisConfig = builder.Configuration.GetSection("redis");
-    var connectionString = redisConfig["connectionString"] ?? "localhost:6379";
+    var connectionString = Environment.GetEnvironmentVariable("REDIS_CONNECTION") ?? redisConfig["connectionString"] ?? "localhost:6379";
+    Log.Information("Conectando a Redis: {Connection}", connectionString);
     return ConnectionMultiplexer.Connect(connectionString);
 });
 

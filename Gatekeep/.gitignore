@@ -3,5 +3,14 @@ obj/
 .artifacts/
 *.user
 *.suo
+
+# Variables de entorno y archivos de configuracion sensibles
 .env
+.env.local
+.env.*.local
+*.env.local
+config.local.json
+secrets.json
+
+# Archivos de configuracion con credenciales (mantener .example para plantillas)
 src/GateKeep.Api/config.json
