@@ -320,22 +320,21 @@ builder.Services.AddScoped<ICachedBeneficioService, CachedBeneficioService>();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+// Swagger disponible en Development y Production (para demos)
+// En un ambiente productivo real, esto debería estar protegido o deshabilitado
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "GateKeep API v1");
-        c.RoutePrefix = "swagger";
-        c.DocumentTitle = "GateKeep API Documentation";
-        c.DefaultModelsExpandDepth(-1); // Ocultar modelos por defecto
-        c.DisplayRequestDuration();
-        c.EnableDeepLinking();
-        // c.EnableFilter(); // ← Comentado para deshabilitar el filtro
-        c.ShowExtensions();
-        c.EnableValidator();
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "GateKeep API v1");
+    c.RoutePrefix = "swagger";
+    c.DocumentTitle = "GateKeep API Documentation";
+    c.DefaultModelsExpandDepth(-1); // Ocultar modelos por defecto
+    c.DisplayRequestDuration();
+    c.EnableDeepLinking();
+    // c.EnableFilter(); // ← Comentado para deshabilitar el filtro
+    c.ShowExtensions();
+    c.EnableValidator();
+});
 
 // Middleware de CORS
 app.UseCors("AllowFrontend");
