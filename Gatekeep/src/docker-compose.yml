@@ -1,0 +1,83 @@
+networks:
+  gatekeep-network:
+    driver: bridge
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: gatekeep-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: "Gatekeep"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "1234"
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d Gatekeep"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gatekeep-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: gatekeep-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gatekeep-network
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gatekeep-api
+    restart: on-failure
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+      ASPNETCORE_URLS: "http://+:5011"
+      DATABASE__HOST: "db"
+      DATABASE__PORT: "5432"
+      DATABASE__NAME: "Gatekeep"
+      DATABASE__USER: "postgres"
+      DATABASE__PASSWORD: "1234"
+      REDIS__CONNECTIONSTRING: "redis:6379"
+      REDIS__INSTANCENAME: "GateKeep:"
+    ports:
+      - "5011:5011"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - gatekeep-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5011/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Si quieres montar config locales en vez de usar variables de entorno, descomenta:
+    # volumes:
+    #   - ./GateKeep.Api/config.Production.json:/app/config.Production.json:ro
+    #   - ./GateKeep.Api/appsettings.Production.json:/app/appsettings.Production.json:ro
+
+volumes:
+  pgdata:
+    driver: local
+  redisdata:
+    driver: local
