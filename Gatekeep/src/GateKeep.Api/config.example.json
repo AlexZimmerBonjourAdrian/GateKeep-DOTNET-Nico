@@ -1,0 +1,35 @@
+{
+    "database": {
+        "host": "localhost o postgres (para Docker)",
+        "port": "5432",
+        "name": "nombre_base_datos",
+        "user": "usuario_postgres",
+        "password": "usa_variables_de_entorno"
+    },
+    "mongodb": {
+        "connectionString": "usa_variables_de_entorno",
+        "databaseName": "nombre_base_datos_mongo",
+        "useStableApi": true
+    },
+    "redis": {
+        "connectionString": "localhost:6379 o redis:6379 (para Docker)",
+        "instanceName": "prefijo_cache:",
+        "enabled": true
+    },
+    "application": {
+        "environment": "Development o Production",
+        "urls": "http://localhost:5011"
+    },
+    "jwt": {
+        "key": "usa_variables_de_entorno_minimo_256_bits",
+        "issuer": "nombre_emisor",
+        "audience": "nombre_audiencia",
+        "expirationHours": 8
+    },
+    "security": {
+        "passwordMinLength": 8,
+        "maxLoginAttempts": 5,
+        "lockoutDurationMinutes": 15
+    }
+}
+

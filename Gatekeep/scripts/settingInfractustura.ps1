@@ -351,6 +351,8 @@ function Main {
         Write-ColorOutput "1. Asegúrate de que PostgreSQL esté corriendo" "Cyan"
         Write-ColorOutput "2. Configura el código de mensajería en la aplicación" "Cyan"
         Write-ColorOutput "3. Accede a RabbitMQ Management: http://localhost:15672" "Cyan"
+        Write-ColorOutput "4. Para monitoreo, ejecuta: .\scripts\setupMonitoring.ps1" "Cyan"
+        Write-ColorOutput "5. Para abrir todas las herramientas: .\scripts\openMonitoringTools.ps1" "Cyan"
     } else {
         Write-ColorOutput "  Proceso completado con errores" "Red"
         Write-ColorOutput "  Revisa los mensajes anteriores para más detalles" "Yellow"

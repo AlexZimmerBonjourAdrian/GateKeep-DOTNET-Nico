@@ -6,6 +6,7 @@ using GateKeep.Api.Application.Events;
 using GateKeep.Api.Domain.Entities;
 using GateKeep.Api.Domain.Enums;
 using GateKeep.Api.Infrastructure.Persistence;
+using GateKeep.Api.Infrastructure.Observability;
 using Microsoft.EntityFrameworkCore;
 
 namespace GateKeep.Api.Infrastructure.Acceso;
@@ -18,12 +19,16 @@ public class AccesoService : IAccesoService
     private readonly GateKeepDbContext _context;
     private readonly IEventoHistoricoService? _eventoHistoricoService;
     private readonly IEventPublisher? _eventPublisher;
+    private readonly IObservabilityService _observabilityService;
+    private readonly ILogger<AccesoService> _logger;
 
     public AccesoService(
         IReglaAccesoRepository reglaAccesoRepository,
         IUsuarioRepository usuarioRepository,
         IEspacioRepository espacioRepository,
         GateKeepDbContext context,
+        IObservabilityService observabilityService,
+        ILogger<AccesoService> logger,
         IEventoHistoricoService? eventoHistoricoService = null,
         IEventPublisher? eventPublisher = null)
     {
@@ -31,6 +36,8 @@ public class AccesoService : IAccesoService
         _usuarioRepository = usuarioRepository;
         _espacioRepository = espacioRepository;
         _context = context;
+        _observabilityService = observabilityService;
+        _logger = logger;
         _eventoHistoricoService = eventoHistoricoService;
         _eventPublisher = eventPublisher;
     }
@@ -202,6 +209,11 @@ public class AccesoService : IAccesoService
 
         _context.EventosAcceso.Add(eventoAcceso);
         await _context.SaveChangesAsync();
+        
+        // Registrar métrica de acceso permitido
+        _observabilityService.RecordAcceso("Permitido", true);
+        _logger.LogInformation("Acceso permitido: Usuario={UsuarioId}, Espacio={EspacioId}, PuntoControl={PuntoControl}",
+            usuarioId, espacioId, puntoControl);
 
         if (_eventoHistoricoService != null)
         {
@@ -247,6 +259,11 @@ public class AccesoService : IAccesoService
 
         _context.EventosAcceso.Add(eventoAcceso);
         await _context.SaveChangesAsync();
+        
+        // Registrar métrica de acceso rechazado
+        _observabilityService.RecordAcceso("Rechazado", false);
+        _logger.LogWarning("Acceso rechazado: Usuario={UsuarioId}, Espacio={EspacioId}, PuntoControl={PuntoControl}, Razon={Razon}",
+            usuarioId, espacioId, puntoControl, razon);
 
         if (_eventoHistoricoService != null)
         {

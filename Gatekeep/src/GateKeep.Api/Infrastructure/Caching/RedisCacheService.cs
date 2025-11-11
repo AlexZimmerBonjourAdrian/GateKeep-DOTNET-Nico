@@ -1,6 +1,8 @@
 ﻿using Microsoft.Extensions.Caching.Distributed;
 using StackExchange.Redis;
 using System.Text.Json;
+using GateKeep.Api.Infrastructure.Observability;
+using Microsoft.Extensions.Logging;
 
 namespace GateKeep.Api.Infrastructure.Caching;
 
@@ -12,15 +14,21 @@ public sealed class RedisCacheService : ICacheService
     private readonly IDistributedCache _cache;
     private readonly IConnectionMultiplexer _redis;
     private readonly ICacheMetricsService _metrics;
+    private readonly IObservabilityService _observabilityService;
+    private readonly ILogger<RedisCacheService> _logger;
 
     public RedisCacheService(
         IDistributedCache cache, 
         IConnectionMultiplexer redis,
-        ICacheMetricsService metrics)
+        ICacheMetricsService metrics,
+        IObservabilityService observabilityService,
+        ILogger<RedisCacheService> logger)
     {
         _cache = cache;
         _redis = redis;
         _metrics = metrics;
+        _observabilityService = observabilityService;
+        _logger = logger;
     }
 
     public async Task<T?> GetAsync<T>(string key) where T : class
@@ -30,10 +38,14 @@ public sealed class RedisCacheService : ICacheService
         if (value is null)
         {
             _metrics.RecordMiss(key);
+            _observabilityService.RecordCacheOperation("get", false);
+            _logger.LogDebug("Cache miss: {Key}", key);
             return null;
         }
 
         _metrics.RecordHit(key);
+        _observabilityService.RecordCacheOperation("get", true);
+        _logger.LogDebug("Cache hit: {Key}", key);
         return JsonSerializer.Deserialize<T>(value);
     }
 
@@ -47,12 +59,16 @@ public sealed class RedisCacheService : ICacheService
         };
 
         await _cache.SetStringAsync(key, serializedValue, options);
+        _observabilityService.RecordCacheOperation("set", true);
+        _logger.LogDebug("Cache set: {Key}, Expiration={Expiration}", key, expiration);
     }
 
     public async Task RemoveAsync(string key)
     {
         await _cache.RemoveAsync(key);
         _metrics.RecordInvalidation(key);
+        _observabilityService.RecordCacheOperation("remove", true);
+        _logger.LogDebug("Cache removed: {Key}", key);
     }
 
     public async Task RemoveByPatternAsync(string pattern)

@@ -2,6 +2,8 @@ using GateKeep.Api.Application.Auditoria;
 using GateKeep.Api.Application.Notificaciones;
 using GateKeep.Api.Contracts.Notificaciones;
 using GateKeep.Api.Domain.Entities;
+using GateKeep.Api.Infrastructure.Observability;
+using Microsoft.Extensions.Logging;
 
 namespace GateKeep.Api.Application.Notificaciones;
 
@@ -9,12 +11,18 @@ public class NotificacionService : INotificacionService
 {
     private readonly INotificacionRepository _notificacionRepository;
     private readonly IEventoHistoricoService? _eventoHistoricoService;
+    private readonly IObservabilityService _observabilityService;
+    private readonly ILogger<NotificacionService> _logger;
 
     public NotificacionService(
         INotificacionRepository notificacionRepository,
+        IObservabilityService observabilityService,
+        ILogger<NotificacionService> logger,
         IEventoHistoricoService? eventoHistoricoService = null)
     {
         _notificacionRepository = notificacionRepository;
+        _observabilityService = observabilityService;
+        _logger = logger;
         _eventoHistoricoService = eventoHistoricoService;
     }
 
@@ -30,6 +38,11 @@ public class NotificacionService : INotificacionService
 
         var notificacionCreada = await _notificacionRepository.CrearAsync(notificacion);
         
+        // Registrar métrica de notificación enviada
+        _observabilityService.RecordNotificacionEnviada(tipo, true);
+        _logger.LogInformation("Notificación creada: Tipo={Tipo}, Mensaje={Mensaje}",
+            tipo, mensaje);
+        
         if (_eventoHistoricoService != null && usuarioIdCreador.HasValue)
         {
             try
@@ -40,8 +53,10 @@ public class NotificacionService : INotificacionService
                     "Creada",
                     new Dictionary<string, object> { { "notificacionId", notificacionCreada.Id } });
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogWarning(ex, "Error al registrar notificación en histórico");
+                _observabilityService.RecordError("NotificacionService", "HistoricoError");
             }
         }
         

@@ -31,6 +31,7 @@ using GateKeep.Api.Infrastructure.Notificaciones;
 using GateKeep.Api.Infrastructure.Persistence;
 using GateKeep.Api.Infrastructure.Security;
 using GateKeep.Api.Infrastructure.Usuarios;
+using GateKeep.Api.Infrastructure.Observability;
 using GateKeep.Infrastructure.QrCodes;
 using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
@@ -42,15 +43,87 @@ using System.Security.Claims;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
 using StackExchange.Redis;
+using Serilog;
+using Serilog.Events;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using OpenTelemetry.Metrics;
 
-var builder = WebApplication.CreateBuilder(args);
+// Configurar Serilog
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("System", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .Enrich.WithMachineName()
+    .Enrich.WithThreadId()
+    .Enrich.WithEnvironmentName()
+    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
+    .CreateBootstrapLogger();
+
+Log.Information("Iniciando GateKeep.Api");
+
+try
+{
+    // Cargar variables de entorno desde archivo .env en el directorio src
+    var envPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", ".env"));
+    
+    if (File.Exists(envPath))
+    {
+        DotNetEnv.Env.Load(envPath);
+        Log.Information("Variables de entorno cargadas desde: {EnvPath}", envPath);
+    }
+    else
+    {
+        Log.Warning("Archivo .env no encontrado en: {EnvPath}", envPath);
+        Log.Warning("Usando variables de entorno del sistema o valores por defecto.");
+    }
+    
+    var builder = WebApplication.CreateBuilder(args);
+
+    // Configurar Serilog desde appsettings.json
+    builder.Host.UseSerilog((context, services, configuration) => configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext()
+        .Enrich.WithProperty("Application", "GateKeep.Api"));
 
 // Cargar config.json: hacerlo opcional para entornos Docker donde montamos config.Production.json
 builder.Configuration.AddJsonFile("config.json", optional: true, reloadOnChange: true);
-// Cargar configuración específica para producción si existe
-builder.Configuration.AddJsonFile("config.Production.json", optional: true, reloadOnChange: true);
+
+// Cargar configuración específica para producción SOLO en producción
+if (builder.Environment.IsProduction())
+{
+    builder.Configuration.AddJsonFile("config.Production.json", optional: true, reloadOnChange: true);
+}
+
 // Permitir sobreescritura por variables de entorno
 builder.Configuration.AddEnvironmentVariables();
+
+// Configurar puerto desde variable de entorno o config
+var port = Environment.GetEnvironmentVariable("GATEKEEP_PORT") 
+    ?? builder.Configuration.GetSection("application")["urls"]?.Split(':').LastOrDefault()
+    ?? "5011";
+
+// Si el puerto viene como URL completa (ej: http://localhost:5011), extraer solo el número
+if (port.Contains("://"))
+{
+    port = port.Split(':').LastOrDefault() ?? "5011";
+}
+
+builder.WebHost.UseUrls($"http://localhost:{port}");
+Log.Information("GateKeep.Api configurado para ejecutarse en puerto: {Port}", port);
+
+// DEBUG: Verificar configuración de la base de datos
+var currentDir = Directory.GetCurrentDirectory();
+var configJsonPath = Path.Combine(currentDir, "config.json");
+Log.Information("Directorio actual: {CurrentDir}", currentDir);
+Log.Information("Entorno: {Environment}", builder.Environment.EnvironmentName);
+Log.Information("config.json existe: {Exists}", File.Exists(configJsonPath));
+var dbHost = builder.Configuration.GetSection("database")["host"];
+var dbPort = builder.Configuration.GetSection("database")["port"];
+var dbName = builder.Configuration.GetSection("database")["name"];
+Log.Information("Configuración DB - Host: {Host}, Port: {Port}, DB: {Database}", dbHost ?? "NULL", dbPort ?? "NULL", dbName ?? "NULL");
 
 // Swagger (exploración y documentación)
 builder.Services.AddEndpointsApiExplorer();
@@ -114,9 +187,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         var jwtConfig = builder.Configuration.GetSection("jwt");
-        var jwtKey = jwtConfig["key"] ?? throw new InvalidOperationException("JWT Key no configurada");
-        var jwtIssuer = jwtConfig["issuer"] ?? "GateKeep";
-        var jwtAudience = jwtConfig["audience"] ?? "GateKeepUsers";
+        
+        // Permitir override con variables de entorno
+        var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") 
+            ?? jwtConfig["key"] 
+            ?? throw new InvalidOperationException("JWT Key no configurada");
+        
+        var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") 
+            ?? jwtConfig["issuer"] 
+            ?? "GateKeep";
+        
+        var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") 
+            ?? jwtConfig["audience"] 
+            ?? "GateKeepUsers";
+        
+        Log.Information("Configurando JWT - Issuer: {Issuer}, Audience: {Audience}", jwtIssuer, jwtAudience);
         
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -130,50 +215,54 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ClockSkew = TimeSpan.FromMinutes(5) // Permitir 5 minutos de diferencia
         };
 
-        // Configuración para Swagger con logging completo
+        // Configuración para Swagger con logging de autenticación
         options.Events = new JwtBearerEvents
         {
             OnAuthenticationFailed = context =>
             {
-                Console.WriteLine($"JWT Authentication Failed: {context.Exception.Message}");
-                Console.WriteLine($"Exception Type: {context.Exception.GetType().Name}");
-                Console.WriteLine($"Request Path: {context.Request.Path}");
+                Log.Warning("JWT Authentication Failed: {Message}, ExceptionType: {ExceptionType}, RequestPath: {Path}",
+                    context.Exception.Message,
+                    context.Exception.GetType().Name,
+                    context.Request.Path);
                 
                 if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
                 {
-                    Console.WriteLine("Token has expired");
+                    Log.Warning("Token has expired for request: {Path}", context.Request.Path);
                     context.Response.Headers["Token-Expired"] = "true";
                 }
                 else if (context.Exception.GetType() == typeof(SecurityTokenInvalidSignatureException))
                 {
-                    Console.WriteLine("Token signature is invalid");
+                    Log.Warning("Token signature is invalid for request: {Path}", context.Request.Path);
                 }
                 else if (context.Exception.GetType() == typeof(SecurityTokenInvalidIssuerException))
                 {
-                    Console.WriteLine("Token issuer is invalid");
+                    Log.Warning("Token issuer is invalid for request: {Path}", context.Request.Path);
                 }
                 else if (context.Exception.GetType() == typeof(SecurityTokenInvalidAudienceException))
                 {
-                    Console.WriteLine("Token audience is invalid");
+                    Log.Warning("Token audience is invalid for request: {Path}", context.Request.Path);
                 }
                 
                 return Task.CompletedTask;
             },
             OnTokenValidated = context =>
             {
-                Console.WriteLine($"JWT Token Validated for user: {context.Principal?.Identity?.Name}");
+                var userName = context.Principal?.Identity?.Name ?? "Unknown";
                 var roles = context.Principal?.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList() ?? new List<string>();
-                Console.WriteLine($"User Roles: {string.Join(", ", roles)}");
+                Log.Information("JWT Token validated for user: {UserName}, Roles: {Roles}", userName, string.Join(", ", roles));
                 return Task.CompletedTask;
             },
             OnChallenge = context =>
             {
-                Console.WriteLine($"JWT Challenge: {context.Error} - {context.ErrorDescription}");
+                Log.Warning("JWT Challenge: Error={Error}, Description={ErrorDescription}, Path={Path}",
+                    context.Error,
+                    context.ErrorDescription,
+                    context.Request.Path);
                 return Task.CompletedTask;
             },
             OnMessageReceived = context =>
             {
-                Console.WriteLine($"JWT Message Received from: {context.Request.Path}");
+                Log.Debug("JWT Message received from: {Path}", context.Request.Path);
                 return Task.CompletedTask;
             }
         };
@@ -202,11 +291,16 @@ builder.Services.AddDbContext<GateKeepDbContext>(options =>
 {
     // Leer configuración desde config.json
     var config = builder.Configuration.GetSection("database");
-    var host = config["host"] ?? "localhost";
-    var port = config["port"] ?? "5432";
-    var database = config["name"] ?? "GateKeep_Dev";
-    var username = config["user"] ?? "postgres";
-    var password = config["password"] ?? "dev_password";
+    
+    // Permitir override con variables de entorno (prioridad: ENV > config.json)
+    var host = Environment.GetEnvironmentVariable("DB_HOST") ?? config["host"] ?? "localhost";
+    var port = Environment.GetEnvironmentVariable("DB_PORT") ?? config["port"] ?? "5432";
+    var database = Environment.GetEnvironmentVariable("DB_NAME") ?? config["name"] ?? "GateKeep_Dev";
+    var username = Environment.GetEnvironmentVariable("DB_USER") ?? config["user"] ?? "postgres";
+    var password = Environment.GetEnvironmentVariable("DB_PASSWORD") ?? config["password"] ?? "dev_password";
+    
+    Log.Information("Configurando PostgreSQL - Host: {Host}, Puerto: {Port}, Base de datos: {Database}, Usuario: {User}", 
+        host, port, database, username);
     
     var connectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};";
     
@@ -263,8 +357,16 @@ builder.Services.AddScoped<IEventoHistoricoService, EventoHistoricoService>();
 builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
 {
     var mongoConfig = builder.Configuration.GetSection("mongodb");
-    var connectionString = mongoConfig["connectionString"] ?? "mongodb://localhost:27017";
-    var useStableApi = mongoConfig.GetValue<bool>("useStableApi", false);
+    
+    // Permitir override con variables de entorno
+    var connectionString = Environment.GetEnvironmentVariable("MONGODB_CONNECTION") 
+        ?? mongoConfig["connectionString"] 
+        ?? "mongodb://localhost:27017";
+    
+    var useStableApi = Environment.GetEnvironmentVariable("MONGODB_USE_STABLE_API")?.ToLower() == "true"
+        || mongoConfig.GetValue<bool>("useStableApi", false);
+    
+    Log.Information("Configurando MongoDB - UseStableApi: {UseStableApi}", useStableApi);
     
     try
     {
@@ -291,7 +393,13 @@ builder.Services.AddScoped<IMongoDatabase>(serviceProvider =>
 {
     var client = serviceProvider.GetRequiredService<IMongoClient>();
     var mongoConfig = builder.Configuration.GetSection("mongodb");
-    var databaseName = mongoConfig["databaseName"] ?? "GateKeepMongo";
+    
+    // Permitir override con variables de entorno
+    var databaseName = Environment.GetEnvironmentVariable("MONGODB_DATABASE") 
+        ?? mongoConfig["databaseName"] 
+        ?? "GateKeepMongo";
+    
+    Log.Information("Configurando MongoDB Database: {DatabaseName}", databaseName);
     
     return client.GetDatabase(databaseName);
 });
@@ -300,15 +408,22 @@ builder.Services.AddScoped<IMongoDatabase>(serviceProvider =>
 builder.Services.AddStackExchangeRedisCache(options =>
 {
     var redisConfig = builder.Configuration.GetSection("redis");
-    options.Configuration = redisConfig["connectionString"] ?? "localhost:6379";
-    options.InstanceName = redisConfig["instanceName"] ?? "GateKeepRedis:";
+    // Permitir override con variables de entorno
+    var connectionString = Environment.GetEnvironmentVariable("REDIS_CONNECTION") ?? redisConfig["connectionString"] ?? "localhost:6379";
+    var instanceName = Environment.GetEnvironmentVariable("REDIS_INSTANCE") ?? redisConfig["instanceName"] ?? "GateKeepRedis:";
+    
+    options.Configuration = connectionString;
+    options.InstanceName = instanceName;
+    
+    Log.Information("Configurando Redis - Connection: {Connection}, Instance: {Instance}", connectionString, instanceName);
 });
 
 // Servicios de Redis y Caching
 builder.Services.AddSingleton<IConnectionMultiplexer>(serviceProvider =>
 {
     var redisConfig = builder.Configuration.GetSection("redis");
-    var connectionString = redisConfig["connectionString"] ?? "localhost:6379";
+    var connectionString = Environment.GetEnvironmentVariable("REDIS_CONNECTION") ?? redisConfig["connectionString"] ?? "localhost:6379";
+    Log.Information("Conectando a Redis: {Connection}", connectionString);
     return ConnectionMultiplexer.Connect(connectionString);
 });
 
@@ -317,6 +432,58 @@ builder.Services.AddScoped<ICacheService, RedisCacheService>();
 
 // Servicios de Beneficios con Caching
 builder.Services.AddScoped<ICachedBeneficioService, CachedBeneficioService>();
+
+// Servicios de Observabilidad
+builder.Services.AddSingleton<ICorrelationIdProvider, CorrelationIdProvider>();
+builder.Services.AddSingleton<IObservabilityService, ObservabilityService>();
+
+// Configuración de OpenTelemetry
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource
+        .AddService("GateKeep.Api")
+        .AddAttributes(new Dictionary<string, object>
+        {
+            ["environment"] = builder.Environment.EnvironmentName,
+            ["host.name"] = Environment.MachineName
+        }))
+    .WithTracing(tracerProviderBuilder =>
+    {
+        tracerProviderBuilder
+            .AddSource("GateKeep.Api")
+            .AddAspNetCoreInstrumentation(options =>
+            {
+                options.RecordException = true;
+                options.EnrichWithHttpRequest = (activity, request) =>
+                {
+                    if (request.Headers.TryGetValue("X-Correlation-ID", out var correlationId))
+                    {
+                        activity.SetTag("correlation_id", correlationId.ToString());
+                    }
+                };
+                options.EnrichWithHttpResponse = (activity, response) =>
+                {
+                    activity.SetTag("http.response.content_type", response.ContentType);
+                };
+            })
+            .AddHttpClientInstrumentation(options =>
+            {
+                options.RecordException = true;
+            })
+            .AddEntityFrameworkCoreInstrumentation(options =>
+            {
+                options.SetDbStatementForText = true;
+                options.EnrichWithIDbCommand = (activity, command) =>
+                {
+                    activity.SetTag("db.name", "GateKeepDb");
+                };
+            });
+    })
+    .WithMetrics(meterProviderBuilder =>
+    {
+        meterProviderBuilder
+            .AddMeter("GateKeep.Api")
+            .AddPrometheusExporter();
+    });
 
 var app = builder.Build();
 
@@ -360,6 +527,26 @@ app.UseSwaggerUI(c =>
 // Middleware de CORS
 app.UseCors("AllowFrontend");
 
+// Middleware de CorrelationId (antes de authentication para que esté disponible en logs)
+app.UseCorrelationId();
+
+// Middleware de Serilog para logging de requests
+app.UseSerilogRequestLogging(options =>
+{
+    options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
+    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    {
+        diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
+        diagnosticContext.Set("RequestScheme", httpContext.Request.Scheme);
+        diagnosticContext.Set("UserAgent", httpContext.Request.Headers["User-Agent"].ToString());
+        
+        if (httpContext.Items.TryGetValue("CorrelationId", out var correlationId))
+        {
+            diagnosticContext.Set("CorrelationId", correlationId);
+        }
+    };
+});
+
 // Middleware de Seguridad
 app.UseAuthentication();
 app.UseAuthorization();
@@ -371,6 +558,10 @@ app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 
 // Health
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }))
+  .WithTags("System");
+
+// Prometheus Metrics Endpoint
+app.MapPrometheusScrapingEndpoint()
   .WithTags("System");
 
 // MongoDB Health Check con ping usando BsonDocument
@@ -559,5 +750,18 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-
-app.Run();
+    Log.Information("GateKeep.Api iniciado correctamente");
+    
+    app.Run();
+    
+    Log.Information("GateKeep.Api detenido correctamente");
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Error fatal al iniciar la aplicación");
+    throw;
+}
+finally
+{
+    Log.CloseAndFlush();
+}
