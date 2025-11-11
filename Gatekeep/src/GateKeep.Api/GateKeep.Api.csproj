@@ -29,6 +29,10 @@
     <PackageReference Include="ZXing.Net" Version="0.16.11" />
     <!-- Binding para soporte de System.Drawing (BitmapRenderer, BarcodeWriter<Bitmap>) -->
     <PackageReference Include="ZXing.Net.Bindings.Windows.Compatibility" Version="0.16.14" />
+    
+    <!-- Paquetes de Redis para Caching -->
+    <PackageReference Include="StackExchange.Redis" Version="2.8.16" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.*" />
   </ItemGroup>
 
   <ItemGroup>

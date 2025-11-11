@@ -19,10 +19,12 @@ using GateKeep.Api.Endpoints.Espacios;
 using GateKeep.Api.Endpoints.Eventos;
 using GateKeep.Api.Endpoints.Notificaciones;
 using GateKeep.Api.Endpoints.Usuarios;
+using GateKeep.Api.Endpoints.Shared;
 using GateKeep.Api.Infrastructure.Acceso;
 using GateKeep.Api.Infrastructure.Anuncios;
 using GateKeep.Api.Infrastructure.Auditoria;
 using GateKeep.Api.Infrastructure.Beneficios;
+using GateKeep.Api.Infrastructure.Caching;
 using GateKeep.Api.Infrastructure.Espacios;
 using GateKeep.Api.Infrastructure.Eventos;
 using GateKeep.Api.Infrastructure.Notificaciones;
@@ -31,7 +33,6 @@ using GateKeep.Api.Infrastructure.Security;
 using GateKeep.Api.Infrastructure.Usuarios;
 using GateKeep.Infrastructure.QrCodes;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
 using MongoDB.Bson;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -40,6 +41,7 @@ using System.Text;
 using System.Security.Claims;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -290,6 +292,28 @@ builder.Services.AddScoped<IMongoDatabase>(serviceProvider =>
     return client.GetDatabase(databaseName);
 });
 
+// Configuración de Redis
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    var redisConfig = builder.Configuration.GetSection("redis");
+    options.Configuration = redisConfig["connectionString"] ?? "localhost:6379";
+    options.InstanceName = redisConfig["instanceName"] ?? "GateKeepRedis:";
+});
+
+// Servicios de Redis y Caching
+builder.Services.AddSingleton<IConnectionMultiplexer>(serviceProvider =>
+{
+    var redisConfig = builder.Configuration.GetSection("redis");
+    var connectionString = redisConfig["connectionString"] ?? "localhost:6379";
+    return ConnectionMultiplexer.Connect(connectionString);
+});
+
+builder.Services.AddSingleton<ICacheMetricsService, CacheMetricsService>();
+builder.Services.AddScoped<ICacheService, RedisCacheService>();
+
+// Servicios de Beneficios con Caching
+builder.Services.AddScoped<ICachedBeneficioService, CachedBeneficioService>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -342,6 +366,28 @@ app.MapGet("/health/mongodb", (IMongoClient mongoClient) =>
     catch (Exception ex)
     {
         return Results.Problem($"Error conectando a MongoDB Atlas: {ex.Message}");
+    }
+})
+.WithTags("System");
+
+// Redis Health Check
+app.MapGet("/health/redis", (IConnectionMultiplexer redis) =>
+{
+    try
+    {
+        var isConnected = redis.IsConnected;
+        
+        return Results.Ok(new
+        {
+            status = isConnected ? "ok" : "disconnected",
+            isConnected,
+            endpoints = redis.GetEndPoints().Select(ep => ep.ToString()).ToArray(),
+            message = "Redis is connected and operational"
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Error conectando a Redis: {ex.Message}");
     }
 })
 .WithTags("System");
@@ -409,6 +455,7 @@ app.MapBeneficioEndpoints();
 app.MapNotificacionEndpoints();
 app.MapUsuarioEndpoints();
 app.MapUsuarioProfileEndpoints();
+app.MapCacheMetricsEndpoints(); // Endpoint de métricas de cache
 
 // Auto-aplicar migraciones al iniciar
 using (var scope = app.Services.CreateScope())

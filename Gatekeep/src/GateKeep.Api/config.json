@@ -11,6 +11,11 @@
         "databaseName": "GateKeepMongo",
         "useStableApi": true
     },
+    "redis": {
+        "connectionString": "localhost:6379",
+        "instanceName": "GateKeep:",
+        "enabled": true
+    },
     "application": {
         "environment": "Development",
         "urls": "http://localhost:5011"
