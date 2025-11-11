@@ -13,4 +13,5 @@ config.local.json
 secrets.json
 
 # Archivos de configuracion con credenciales (mantener .example para plantillas)
-src/GateKeep.Api/config.json
+# config.json ahora está vacío y se sube al repo (usar variables de entorno)
+config.local.json
