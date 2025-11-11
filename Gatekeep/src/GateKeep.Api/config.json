@@ -4,7 +4,7 @@
         "port": "5432",
         "name": "Gatekeep",
         "user": "postgres",
-        "password": "1234"
+        "password": "897888fg2"
     },
     "mongodb": {
         "connectionString": "mongodb+srv://adriambonjour2015_db_user:XRvJsYWO51XK8vvW@gatekeepmongo.py5i1x4.mongodb.net/?appName=GateKeepMongo",
