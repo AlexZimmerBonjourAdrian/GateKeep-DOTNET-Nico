@@ -45,8 +45,12 @@ using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Cargar config.json
-builder.Configuration.AddJsonFile("config.json", optional: false, reloadOnChange: true);
+// Cargar config.json: hacerlo opcional para entornos Docker donde montamos config.Production.json
+builder.Configuration.AddJsonFile("config.json", optional: true, reloadOnChange: true);
+// Cargar configuración específica para producción si existe
+builder.Configuration.AddJsonFile("config.Production.json", optional: true, reloadOnChange: true);
+// Permitir sobreescritura por variables de entorno
+builder.Configuration.AddEnvironmentVariables();
 
 // Swagger (exploración y documentación)
 builder.Services.AddEndpointsApiExplorer();

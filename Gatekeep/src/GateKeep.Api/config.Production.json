@@ -1,0 +1,35 @@
+{
+    "database": {
+        "host": "postgres",
+        "port": "5432",
+        "name": "Gatekeep",
+        "user": "postgres",
+        "password": "1234"
+    },
+    "mongodb": {
+        "connectionString": "mongodb+srv://adriambonjour2015_db_user:XRvJsYWO51XK8vvW@gatekeepmongo.py5i1x4.mongodb.net/?appName=GateKeepMongo",
+        "databaseName": "GateKeepMongo",
+        "useStableApi": true
+    },
+    "redis": {
+        "connectionString": "redis:6379",
+        "instanceName": "GateKeep:",
+        "enabled": true
+    },
+    "application": {
+        "environment": "Production",
+        "urls": "http://0.0.0.0:5011"
+    },
+    "jwt": {
+        "key": "GateKeep-Secret-Key-Very-Long-And-Secure-256-Bits-Minimum-Length-Required",
+        "issuer": "GateKeep",
+        "audience": "GateKeepUsers",
+        "expirationHours": 8
+    },
+    "security": {
+        "passwordMinLength": 8,
+        "maxLoginAttempts": 5,
+        "lockoutDurationMinutes": 15
+    }
+}
+

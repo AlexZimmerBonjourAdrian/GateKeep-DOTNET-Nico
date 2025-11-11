@@ -9,12 +9,12 @@ Write-Host ""
 # Verificar si Docker está instalado
 $dockerInstalled = Get-Command docker -ErrorAction SilentlyContinue
 if (-not $dockerInstalled) {
-    Write-Host "❌ Docker no está instalado." -ForegroundColor Red
-    Write-Host "   Por favor, instala Docker Desktop desde: https://www.docker.com/products/docker-desktop" -ForegroundColor Yellow
+    Write-Host "[ERROR] Docker no está instalado." -ForegroundColor Red
+    Write-Host "  Por favor, instala Docker Desktop desde: https://www.docker.com/products/docker-desktop" -ForegroundColor Yellow
     exit 1
 }
 
-Write-Host "✓ Docker está instalado" -ForegroundColor Green
+Write-Host "[OK] Docker está instalado" -ForegroundColor Green
 
 # Verificar si el contenedor de Redis ya existe
 $existingContainer = docker ps -a --filter "name=redis-gatekeep" --format "{{.Names}}"
@@ -27,24 +27,29 @@ if ($existingContainer -eq "redis-gatekeep") {
     $isRunning = docker ps --filter "name=redis-gatekeep" --format "{{.Names}}"
     
     if ($isRunning -eq "redis-gatekeep") {
-        Write-Host "✓ Redis ya está corriendo" -ForegroundColor Green
+        Write-Host "[OK] Redis ya está corriendo" -ForegroundColor Green
         Write-Host ""
         Write-Host "Puedes verificar el estado con:" -ForegroundColor Cyan
         Write-Host "  docker ps | findstr redis-gatekeep" -ForegroundColor White
     } else {
         Write-Host "Iniciando contenedor existente..." -ForegroundColor Yellow
-        docker start redis-gatekeep
-        Write-Host "✓ Redis iniciado correctamente" -ForegroundColor Green
+        docker start redis-gatekeep | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "[OK] Redis iniciado correctamente" -ForegroundColor Green
+        } else {
+            Write-Host "[ERROR] No se pudo iniciar el contenedor existente" -ForegroundColor Red
+            exit 1
+        }
     }
 } else {
     Write-Host ""
     Write-Host "Creando nuevo contenedor de Redis..." -ForegroundColor Yellow
-    docker run -d --name redis-gatekeep -p 6379:6379 redis:latest
+    docker run -d --name redis-gatekeep -p 6379:6379 redis:latest | Out-Null
     
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "✓ Redis instalado y corriendo correctamente" -ForegroundColor Green
+        Write-Host "[OK] Redis instalado y corriendo correctamente" -ForegroundColor Green
     } else {
-        Write-Host "❌ Error al crear el contenedor de Redis" -ForegroundColor Red
+        Write-Host "[ERROR] Error al crear el contenedor de Redis" -ForegroundColor Red
         exit 1
     }
 }
@@ -66,6 +71,5 @@ Write-Host "  Eliminar:    docker rm -f redis-gatekeep" -ForegroundColor White
 Write-Host "  Conectar:    docker exec -it redis-gatekeep redis-cli" -ForegroundColor White
 Write-Host ""
 
-Write-Host "✓ Redis está listo para usar con GateKeep" -ForegroundColor Green
+Write-Host "[OK] Redis está listo para usar con GateKeep" -ForegroundColor Green
 Write-Host ""
-
