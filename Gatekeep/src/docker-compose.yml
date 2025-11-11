@@ -50,11 +50,13 @@ services:
       - seq_data:/data
     environment:
       - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_NOAUTHENTICATION=True
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:80/api || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:80/api || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
     networks:
       - gatekeep-network
 

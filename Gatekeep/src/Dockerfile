@@ -21,28 +21,21 @@ WORKDIR /app
 EXPOSE 5011
 EXPOSE 5012
 
-# Instalar netcat-openbsd para el health check y wait script
-RUN apt-get update && apt-get install -y netcat-openbsd curl && rm -rf /var/lib/apt/lists/*
+# Instalar curl para el health check
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 # Copy published files
 COPY --from=publish /app/publish .
 
 # Copiar archivos de configuración desde el contexto de build si existen
-# Esto garantiza que la imagen contiene config.Production.json y appsettings.* por defecto
 COPY --from=build /src/GateKeep.Api/config.Production.json /app/config.Production.json
 COPY --from=build /src/GateKeep.Api/appsettings.Production.json /app/appsettings.Production.json
 COPY --from=build /src/GateKeep.Api/appsettings.json /app/appsettings.json
-
-# Copiar también config.json (es obligatorio según el error en tiempo de ejecución)
 COPY --from=build /src/GateKeep.Api/config.json /app/config.json
-
-# Copiar el script de entrada
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Set environment variables
 ENV ASPNETCORE_URLS=http://+:5011
 ENV ASPNETCORE_ENVIRONMENT=Production
 
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-CMD ["dotnet", "GateKeep.Api.dll"]
+# Usar directamente dotnet en lugar del entrypoint script
+ENTRYPOINT ["dotnet", "GateKeep.Api.dll"]
