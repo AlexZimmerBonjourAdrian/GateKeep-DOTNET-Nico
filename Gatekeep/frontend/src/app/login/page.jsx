@@ -17,6 +17,9 @@ export default function Login() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    
+    console.log('Intentando login con:', { email, password: '***' });
+    
     UsuarioService.login({ email, password })
       .then(response => {
         console.log('Login successful:', response.data);
@@ -32,11 +35,29 @@ export default function Login() {
           
           // Redirigir al usuario después del login exitoso
           window.location.href = '/';
+        } else {
+          console.error('Respuesta del servidor sin éxito:', response.data);
+          alert('Error en el login: ' + (response.data.message || 'Respuesta inválida del servidor'));
         }
       })
       .catch(error => {
         console.error('Login failed:', error);
-        alert('Error en el login. Por favor verifica tus credenciales.');
+        
+        // Mostrar información más detallada del error
+        if (error.response) {
+          // El servidor respondió con un código de error
+          console.error('Error response:', error.response.data);
+          console.error('Error status:', error.response.status);
+          alert(`Error en el login: ${error.response.data?.message || error.response.statusText || 'Error del servidor'}`);
+        } else if (error.request) {
+          // La petición se hizo pero no hubo respuesta
+          console.error('No response received:', error.request);
+          alert('Error: No se pudo conectar con el servidor. Verifica que el backend esté corriendo en http://localhost:5011');
+        } else {
+          // Algo pasó al configurar la petición
+          console.error('Error setting up request:', error.message);
+          alert('Error al procesar la petición: ' + error.message);
+        }
       });
   }
 
@@ -85,15 +106,7 @@ export default function Login() {
           <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 8 }}>
             <button type="submit" className="save-btn">Login</button>
           </div>
-
-          <div className="divider-row" role="separator" aria-hidden="true">
-            <hr />
-            <span className="pi pi-circle " aria-hidden="true"></span>
-            <hr />
-          </div>
-          
-          
-          
+         
         </form>
         </div>
       </div>

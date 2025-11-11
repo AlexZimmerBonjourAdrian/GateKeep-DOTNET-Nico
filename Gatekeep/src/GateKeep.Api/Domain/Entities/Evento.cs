@@ -13,3 +13,5 @@ public sealed record Evento
     bool Activo = true
 );
 
+
+

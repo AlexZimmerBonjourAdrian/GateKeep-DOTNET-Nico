@@ -179,6 +179,18 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy("FuncionarioOrAdmin", policy => policy.RequireRole("Funcionario", "Admin"))
     .AddPolicy("AllUsers", policy => policy.RequireRole("Estudiante", "Funcionario", "Admin"));
 
+// Configuración de CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000", "http://127.0.0.1:3000")
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
+    });
+});
+
 // EF Core - PostgreSQL
 builder.Services.AddDbContext<GateKeepDbContext>(options =>
 {
@@ -297,9 +309,14 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+// Middleware de CORS
+app.UseCors("AllowFrontend");
+
 // Middleware de Seguridad
 app.UseAuthentication();
 app.UseAuthorization();
+
+
 
 // Minimal API
 app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
@@ -471,5 +488,5 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-app.Run();
 
+app.Run();

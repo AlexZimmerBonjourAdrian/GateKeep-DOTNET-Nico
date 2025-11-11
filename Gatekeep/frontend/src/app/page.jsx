@@ -25,6 +25,7 @@ export default function Home() {
       try {
         const response = await EventoService.getEventos();
         setEventos(response.data || []);
+        console.log('Eventos cargados:', response.data || []);
       } catch (error) {
         console.error('Error al cargar eventos:', error);
         setEventos([]);

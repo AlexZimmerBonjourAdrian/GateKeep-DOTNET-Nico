@@ -16,18 +16,25 @@ export default function Header() {
   const [notificaciones, setNotificaciones] = useState(0);
 
   useEffect(() => {
- 
-    const isAuthenticated = SecurityService.checkAuthAndRedirect(pathname);
+    const fetchNotifications = async () => {
+      SecurityService.checkAuthAndRedirect(pathname);
 
-    // Si está autenticado, obtener datos del usuario y notificaciones
-    if (isAuthenticated) {
-      const storedUserId = SecurityService.getUserId();
+      // Si está autenticado, obtener datos del usuario y notificaciones
+        const storedUserId = SecurityService.getUserId();
+        
+        if (storedUserId) {
+          try {
+            const response = await UsuarioService.getNotificacionesSinLeer(storedUserId);
+            setNotificaciones(response.data || 0);
+          } catch (error) {
+            console.error('Error al cargar notificaciones:', error);
+            setNotificaciones(0);
+          }
+        }
       
-      if (storedUserId) {
-        const notifs = UsuarioService.getNotificacionesSinLeer(storedUserId);
-        setNotificaciones(notifs);
-      }
-    }
+    };
+
+    fetchNotifications();
   }, [pathname, router]);
 
   const handleLogout = (e) => {
