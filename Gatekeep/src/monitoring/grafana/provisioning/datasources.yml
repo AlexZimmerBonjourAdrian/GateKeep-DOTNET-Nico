@@ -5,6 +5,7 @@ datasources:
     type: prometheus
     access: proxy
     url: http://prometheus:9090
+    uid: prometheus  # Agregar UID explícito
     isDefault: true
     editable: true
     jsonData:
