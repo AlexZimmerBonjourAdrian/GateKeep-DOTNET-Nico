@@ -1,5 +1,6 @@
 using GateKeep.Api.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace GateKeep.Api.Infrastructure.Persistence.Configurations;
@@ -23,6 +24,13 @@ public sealed class ReglaAccesoConfiguration : IEntityTypeConfiguration<ReglaAcc
                 v => (IReadOnlyList<GateKeep.Api.Domain.Enums.Rol>)v.Split(',', StringSplitOptions.RemoveEmptyEntries)
                         .Select(s => Enum.Parse<GateKeep.Api.Domain.Enums.Rol>(s))
                         .ToList()
+            )
+            .Metadata.SetValueComparer(
+                new ValueComparer<IReadOnlyList<GateKeep.Api.Domain.Enums.Rol>>(
+                    (c1, c2) => c1 != null && c2 != null && c1.SequenceEqual(c2),
+                    c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
+                    c => c.ToList()
+                )
             );
 
         builder.Property(x => x.EspacioId).IsRequired();

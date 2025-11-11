@@ -487,27 +487,6 @@ builder.Services.AddOpenTelemetry()
 
 var app = builder.Build();
 
-// Aplicar migraciones automáticamente al iniciar (para Docker/Production)
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    try
-    {
-        var context = services.GetRequiredService<GateKeepDbContext>();
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        
-        logger.LogInformation("Aplicando migraciones de base de datos...");
-        context.Database.Migrate();
-        logger.LogInformation("Migraciones aplicadas exitosamente");
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Error al aplicar migraciones de base de datos");
-        throw;
-    }
-}
-
 // Swagger disponible en Development y Production (para demos)
 // En un ambiente productivo real, esto debería estar protegido o deshabilitado
 app.UseSwagger();
@@ -676,10 +655,14 @@ app.MapCacheMetricsEndpoints(); // Endpoint de métricas de cache
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<GateKeepDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     
+    try
+    {
     if (app.Environment.IsDevelopment())
     {
         // En desarrollo: recrear BD automáticamente
+            logger.LogInformation("Modo Development: recreando base de datos...");
         db.Database.EnsureDeleted();
         db.Database.EnsureCreated();
         
@@ -741,12 +724,25 @@ using (var scope = app.Services.CreateScope())
             db.Usuarios.Add(funcionario);
             
             await db.SaveChangesAsync();
+                logger.LogInformation("Datos iniciales creados exitosamente");
         }
     }
     else
     {
-        // En producción: solo migraciones
+            // En producción: crear esquema infra y aplicar migraciones
+            logger.LogInformation("Aplicando migraciones de base de datos...");
+            
+            // Crear el esquema 'infra' si no existe (requerido para el historial de migraciones)
+            db.Database.ExecuteSqlRaw("CREATE SCHEMA IF NOT EXISTS infra;");
+            
         db.Database.Migrate();
+            logger.LogInformation("Migraciones aplicadas exitosamente");
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error al aplicar migraciones de base de datos");
+        throw;
     }
 }
 
