@@ -185,11 +185,7 @@ public class AuthService : IAuthService
             // Generar un nuevo JWT token
             // Nota: En producción, deberías extraer el userId del refresh token almacenado
             // Por ahora, generamos un token genérico
-            var jwtConfig = _configuration.GetSection("jwt");
-            var jwtKey = jwtConfig["key"] ?? throw new InvalidOperationException("JWT Key no configurada");
-            var jwtIssuer = jwtConfig["issuer"] ?? "GateKeep";
-            var jwtAudience = jwtConfig["audience"] ?? "GateKeepUsers";
-            var expirationHours = jwtConfig.GetValue<int>("expirationHours", 8);
+            var (jwtKey, jwtIssuer, jwtAudience, expirationHours) = GetJwtConfig();
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -228,13 +224,33 @@ public class AuthService : IAuthService
         return Task.FromResult(true);
     }
 
-    private string GenerateJwtToken(Usuario usuario)
+    private (string key, string issuer, string audience, int expirationHours) GetJwtConfig()
     {
         var jwtConfig = _configuration.GetSection("jwt");
-        var jwtKey = jwtConfig["key"] ?? throw new InvalidOperationException("JWT Key no configurada");
-        var jwtIssuer = jwtConfig["issuer"] ?? "GateKeep";
-        var jwtAudience = jwtConfig["audience"] ?? "GateKeepUsers";
-        var expirationHours = jwtConfig.GetValue<int>("expirationHours", 8);
+        
+        // Permitir override con variables de entorno
+        var key = Environment.GetEnvironmentVariable("JWT_KEY") 
+            ?? jwtConfig["key"] 
+            ?? throw new InvalidOperationException("JWT Key no configurada");
+        
+        var issuer = Environment.GetEnvironmentVariable("JWT_ISSUER") 
+            ?? jwtConfig["issuer"] 
+            ?? "GateKeep";
+        
+        var audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") 
+            ?? jwtConfig["audience"] 
+            ?? "GateKeepUsers";
+        
+        var expirationHours = int.TryParse(Environment.GetEnvironmentVariable("JWT_EXPIRATION_HOURS"), out var hours)
+            ? hours
+            : jwtConfig.GetValue<int>("expirationHours", 8);
+        
+        return (key, issuer, audience, expirationHours);
+    }
+
+    private string GenerateJwtToken(Usuario usuario)
+    {
+        var (jwtKey, jwtIssuer, jwtAudience, expirationHours) = GetJwtConfig();
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -265,10 +281,7 @@ public class AuthService : IAuthService
     {
         try
         {
-            var jwtConfig = _configuration.GetSection("jwt");
-            var jwtKey = jwtConfig["key"] ?? throw new InvalidOperationException("JWT Key no configurada");
-            var jwtIssuer = jwtConfig["issuer"] ?? "GateKeep";
-            var jwtAudience = jwtConfig["audience"] ?? "GateKeepUsers";
+            var (jwtKey, jwtIssuer, jwtAudience, _) = GetJwtConfig();
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
             var tokenHandler = new JwtSecurityTokenHandler();

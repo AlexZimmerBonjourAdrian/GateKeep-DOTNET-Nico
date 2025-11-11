@@ -7,18 +7,18 @@ services:
     container_name: gatekeep-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: Gatekeep
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      - "5432:5432"
+      - "${DB_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - gatekeep-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d Gatekeep"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -49,10 +49,33 @@ services:
     container_name: gatekeep-api
     restart: unless-stopped
     ports:
-      - "5011:5011"
+      - "${GATEKEEP_PORT}:${GATEKEEP_PORT}"
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ASPNETCORE_URLS=http://+:5011
+      - ASPNETCORE_ENVIRONMENT=${APP_ENVIRONMENT}
+      - ASPNETCORE_URLS=http://+:${GATEKEEP_PORT}
+      # PostgreSQL
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      # MongoDB
+      - MONGODB_CONNECTION=${MONGODB_CONNECTION}
+      - MONGODB_DATABASE=${MONGODB_DATABASE}
+      - MONGODB_USE_STABLE_API=${MONGODB_USE_STABLE_API}
+      # Redis
+      - REDIS_CONNECTION=${REDIS_CONNECTION}
+      - REDIS_INSTANCE=${REDIS_INSTANCE}
+      - REDIS_ENABLED=${REDIS_ENABLED}
+      # JWT
+      - JWT_KEY=${JWT_KEY}
+      - JWT_ISSUER=${JWT_ISSUER}
+      - JWT_AUDIENCE=${JWT_AUDIENCE}
+      - JWT_EXPIRATION_HOURS=${JWT_EXPIRATION_HOURS}
+      # Security
+      - SECURITY_PASSWORD_MIN_LENGTH=${SECURITY_PASSWORD_MIN_LENGTH}
+      - SECURITY_MAX_LOGIN_ATTEMPTS=${SECURITY_MAX_LOGIN_ATTEMPTS}
+      - SECURITY_LOCKOUT_DURATION_MINUTES=${SECURITY_LOCKOUT_DURATION_MINUTES}
     # NOTA: no montamos config.json/appsettings por defecto para evitar sobrescribir
     # los archivos incrustados en la imagen. Si quieres usar archivos locales, descomenta y ajusta:
     # volumes:
@@ -68,7 +91,7 @@ services:
     networks:
       - gatekeep-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5011/health/redis"]
+      test: ["CMD", "curl", "-f", "http://localhost:${GATEKEEP_PORT}/health/redis"]
       interval: 30s
       timeout: 10s
       retries: 3

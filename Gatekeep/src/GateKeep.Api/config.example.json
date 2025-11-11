@@ -1,29 +1,29 @@
 {
     "database": {
-        "host": "localhost",
+        "host": "localhost o postgres (para Docker)",
         "port": "5432",
-        "name": "Gatekeep",
-        "user": "postgres",
-        "password": "TU_CONTRASEÑA_AQUI"
+        "name": "nombre_base_datos",
+        "user": "usuario_postgres",
+        "password": "usa_variables_de_entorno"
     },
     "mongodb": {
-        "connectionString": "mongodb+srv://USER:PASSWORD@HOST/?appName=GateKeepMongo",
-        "databaseName": "GateKeepMongo",
+        "connectionString": "usa_variables_de_entorno",
+        "databaseName": "nombre_base_datos_mongo",
         "useStableApi": true
     },
     "redis": {
-        "connectionString": "localhost:6379",
-        "instanceName": "GateKeep:",
+        "connectionString": "localhost:6379 o redis:6379 (para Docker)",
+        "instanceName": "prefijo_cache:",
         "enabled": true
     },
     "application": {
-        "environment": "Development",
+        "environment": "Development o Production",
         "urls": "http://localhost:5011"
     },
     "jwt": {
-        "key": "GateKeep-Secret-Key-Very-Long-And-Secure-256-Bits-Minimum-Length-Required",
-        "issuer": "GateKeep",
-        "audience": "GateKeepUsers",
+        "key": "usa_variables_de_entorno_minimo_256_bits",
+        "issuer": "nombre_emisor",
+        "audience": "nombre_audiencia",
         "expirationHours": 8
     },
     "security": {
@@ -32,3 +32,4 @@
         "lockoutDurationMinutes": 15
     }
 }
+

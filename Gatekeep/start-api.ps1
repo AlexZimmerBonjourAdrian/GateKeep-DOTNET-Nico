@@ -29,6 +29,50 @@ function Write-Header {
     Write-Host ""
 }
 
+# Funcion para cargar variables de entorno desde archivo .env.local
+function Load-EnvFile {
+    param([string]$EnvFilePath)
+    
+    if (Test-Path $EnvFilePath) {
+        Write-ColorOutput "`nCargando configuracion desde .env.local..." "Cyan"
+        
+        $loadedVars = 0
+        Get-Content $EnvFilePath | ForEach-Object {
+            $line = $_.Trim()
+            
+            # Ignorar lineas vacias y comentarios
+            if ($line -and -not $line.StartsWith("#")) {
+                if ($line -match '^([^=]+)=(.*)$') {
+                    $key = $matches[1].Trim()
+                    $value = $matches[2].Trim()
+                    
+                    # Remover comillas si existen
+                    $value = $value.Trim('"').Trim("'")
+                    
+                    # Establecer variable de entorno
+                    [System.Environment]::SetEnvironmentVariable($key, $value, "Process")
+                    
+                    # Mostrar variable cargada (ocultar password)
+                    if ($key -like "*PASSWORD*" -or $key -like "*SECRET*" -or $key -like "*KEY*") {
+                        Write-ColorOutput "  [OK] $key = ********" "Gray"
+                    } else {
+                        Write-ColorOutput "  [OK] $key = $value" "Gray"
+                    }
+                    
+                    $loadedVars++
+                }
+            }
+        }
+        
+        Write-ColorOutput "`n$loadedVars variable(s) cargada(s) exitosamente" "Green"
+        return $true
+    } else {
+        Write-ColorOutput "`nArchivo .env.local no encontrado" "Yellow"
+        Write-ColorOutput "Tip: Copia env.example.txt a .env.local y configura tus credenciales" "Gray"
+        return $false
+    }
+}
+
 # Funcion para liberar puerto
 function Free-Port {
     param(
@@ -84,7 +128,11 @@ function Free-Port {
 # Banner de inicio
 Write-Header "GateKeep API Launcher"
 
-Write-ColorOutput "Configuracion:" "Cyan"
+# Cargar variables de entorno desde .env.local si existe
+$envFilePath = Join-Path $PSScriptRoot ".env.local"
+Load-EnvFile -EnvFilePath $envFilePath
+
+Write-ColorOutput "`nConfiguracion:" "Cyan"
 Write-ColorOutput "  Puerto: $Port" "White"
 Write-ColorOutput "  Forzar: $(if ($Force) { 'Si' } else { 'No' })" "White"
 Write-ColorOutput "  Sin compilar: $(if ($NoBuild) { 'Si' } else { 'No' })" "White"

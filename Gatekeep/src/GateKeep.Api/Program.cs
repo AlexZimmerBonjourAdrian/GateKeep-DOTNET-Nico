@@ -65,6 +65,20 @@ Log.Information("Iniciando GateKeep.Api");
 
 try
 {
+    // Cargar variables de entorno desde archivo .env en el directorio src
+    var envPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", ".env"));
+    
+    if (File.Exists(envPath))
+    {
+        DotNetEnv.Env.Load(envPath);
+        Log.Information("Variables de entorno cargadas desde: {EnvPath}", envPath);
+    }
+    else
+    {
+        Log.Warning("Archivo .env no encontrado en: {EnvPath}", envPath);
+        Log.Warning("Usando variables de entorno del sistema o valores por defecto.");
+    }
+    
     var builder = WebApplication.CreateBuilder(args);
 
     // Configurar Serilog desde appsettings.json
@@ -173,9 +187,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         var jwtConfig = builder.Configuration.GetSection("jwt");
-        var jwtKey = jwtConfig["key"] ?? throw new InvalidOperationException("JWT Key no configurada");
-        var jwtIssuer = jwtConfig["issuer"] ?? "GateKeep";
-        var jwtAudience = jwtConfig["audience"] ?? "GateKeepUsers";
+        
+        // Permitir override con variables de entorno
+        var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") 
+            ?? jwtConfig["key"] 
+            ?? throw new InvalidOperationException("JWT Key no configurada");
+        
+        var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") 
+            ?? jwtConfig["issuer"] 
+            ?? "GateKeep";
+        
+        var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") 
+            ?? jwtConfig["audience"] 
+            ?? "GateKeepUsers";
+        
+        Log.Information("Configurando JWT - Issuer: {Issuer}, Audience: {Audience}", jwtIssuer, jwtAudience);
         
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -331,8 +357,16 @@ builder.Services.AddScoped<IEventoHistoricoService, EventoHistoricoService>();
 builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
 {
     var mongoConfig = builder.Configuration.GetSection("mongodb");
-    var connectionString = mongoConfig["connectionString"] ?? "mongodb://localhost:27017";
-    var useStableApi = mongoConfig.GetValue<bool>("useStableApi", false);
+    
+    // Permitir override con variables de entorno
+    var connectionString = Environment.GetEnvironmentVariable("MONGODB_CONNECTION") 
+        ?? mongoConfig["connectionString"] 
+        ?? "mongodb://localhost:27017";
+    
+    var useStableApi = Environment.GetEnvironmentVariable("MONGODB_USE_STABLE_API")?.ToLower() == "true"
+        || mongoConfig.GetValue<bool>("useStableApi", false);
+    
+    Log.Information("Configurando MongoDB - UseStableApi: {UseStableApi}", useStableApi);
     
     try
     {
@@ -359,7 +393,13 @@ builder.Services.AddScoped<IMongoDatabase>(serviceProvider =>
 {
     var client = serviceProvider.GetRequiredService<IMongoClient>();
     var mongoConfig = builder.Configuration.GetSection("mongodb");
-    var databaseName = mongoConfig["databaseName"] ?? "GateKeepMongo";
+    
+    // Permitir override con variables de entorno
+    var databaseName = Environment.GetEnvironmentVariable("MONGODB_DATABASE") 
+        ?? mongoConfig["databaseName"] 
+        ?? "GateKeepMongo";
+    
+    Log.Information("Configurando MongoDB Database: {DatabaseName}", databaseName);
     
     return client.GetDatabase(databaseName);
 });
