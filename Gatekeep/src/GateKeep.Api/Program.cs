@@ -320,6 +320,27 @@ builder.Services.AddScoped<ICachedBeneficioService, CachedBeneficioService>();
 
 var app = builder.Build();
 
+// Aplicar migraciones automáticamente al iniciar (para Docker/Production)
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<GateKeepDbContext>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        
+        logger.LogInformation("Aplicando migraciones de base de datos...");
+        context.Database.Migrate();
+        logger.LogInformation("Migraciones aplicadas exitosamente");
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Error al aplicar migraciones de base de datos");
+        throw;
+    }
+}
+
 // Swagger disponible en Development y Production (para demos)
 // En un ambiente productivo real, esto debería estar protegido o deshabilitado
 app.UseSwagger();

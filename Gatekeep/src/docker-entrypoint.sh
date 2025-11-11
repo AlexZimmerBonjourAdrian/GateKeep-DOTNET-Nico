@@ -17,4 +17,3 @@ echo "PostgreSQL is up - starting application"
 
 # Ejecutar el comando original
 exec "$@"
-
