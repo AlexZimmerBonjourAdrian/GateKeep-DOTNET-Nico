@@ -48,6 +48,11 @@ using Microsoft.OpenApi.Models;
 using System.Reflection;
 using StackExchange.Redis;
 using Serilog;
+using Amazon;
+using Amazon.SecretsManager;
+using Amazon.SimpleSystemsManagement;
+using GateKeep.Api.Infrastructure.AWS;
+using GateKeep.Api.Endpoints.AWS;
 using Serilog.Events;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -474,6 +479,38 @@ builder.Services.AddScoped<ICacheService, RedisCacheService>();
 // Servicios de Beneficios con Caching
 builder.Services.AddScoped<ICachedBeneficioService, CachedBeneficioService>();
 
+// Configuración de AWS SDK
+var awsRegion = Environment.GetEnvironmentVariable("AWS_REGION") ?? "sa-east-1";
+var regionEndpoint = RegionEndpoint.GetBySystemName(awsRegion);
+
+Log.Information("Configurando AWS SDK - Región: {Region}", awsRegion);
+
+// AWS Secrets Manager
+builder.Services.AddSingleton<IAmazonSecretsManager>(sp =>
+{
+    var config = new AmazonSecretsManagerConfig
+    {
+        RegionEndpoint = regionEndpoint
+    };
+    // Las credenciales se leen automáticamente de las variables de entorno:
+    // AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
+    return new AmazonSecretsManagerClient(config);
+});
+
+// AWS Parameter Store (Systems Manager)
+builder.Services.AddSingleton<IAmazonSimpleSystemsManagement>(sp =>
+{
+    var config = new AmazonSimpleSystemsManagementConfig
+    {
+        RegionEndpoint = regionEndpoint
+    };
+    return new AmazonSimpleSystemsManagementClient(config);
+});
+
+// Servicios AWS
+builder.Services.AddScoped<IAwsSecretsService, AwsSecretsService>();
+builder.Services.AddScoped<IAwsParameterService, AwsParameterService>();
+
 // Servicios de Observabilidad
 builder.Services.AddSingleton<ICorrelationIdProvider, CorrelationIdProvider>();
 builder.Services.AddSingleton<IObservabilityService, ObservabilityService>();
@@ -703,6 +740,7 @@ app.MapNotificacionEndpoints();
 app.MapUsuarioEndpoints();
 app.MapUsuarioProfileEndpoints();
 app.MapCacheMetricsEndpoints(); // Endpoint de métricas de cache
+app.MapAwsTestEndpoints(); // Endpoints de prueba AWS
 
 // Auto-aplicar migraciones al iniciar
 using (var scope = app.Services.CreateScope())
