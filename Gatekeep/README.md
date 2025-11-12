@@ -243,6 +243,10 @@ docker-compose up -d
 - **[GUIA-INICIO.md](./GUIA-INICIO.md)** - Guía completa de configuración
 - **[src/README-COMANDOS.md](./src/README-COMANDOS.md)** - Comandos rápidos
 - **[docs/](./docs/)** - Documentación técnica detallada
+  - **[AWS_SETUP.md](./docs/AWS_SETUP.md)** - Instalación y configuración de AWS CLI
+  - **[PLAN_DESPLIEGUE_AUTOMATIZACION.md](./docs/PLAN_DESPLIEGUE_AUTOMATIZACION.md)** - Plan completo para CI/CD y despliegue en AWS
+  - **[DEPLOYMENT.md](./docs/DEPLOYMENT.md)** - Guía paso a paso para desplegar en AWS
+  - **[ENVIRONMENT_VARIABLES.md](./docs/ENVIRONMENT_VARIABLES.md)** - Variables de entorno y configuración
 
 ## 🤝 Contribuir
 
