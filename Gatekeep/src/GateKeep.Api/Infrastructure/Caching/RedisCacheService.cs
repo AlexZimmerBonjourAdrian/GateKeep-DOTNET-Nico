@@ -39,13 +39,13 @@ public sealed class RedisCacheService : ICacheService
         {
             _metrics.RecordMiss(key);
             _observabilityService.RecordCacheOperation("get", false);
-            _logger.LogDebug("Cache miss: {Key}", key);
+            _logger.LogWarning("-----[CACHE]--- cache miss: {Key}", key);
             return null;
         }
 
         _metrics.RecordHit(key);
         _observabilityService.RecordCacheOperation("get", true);
-        _logger.LogDebug("Cache hit: {Key}", key);
+        _logger.LogWarning("-----[CACHE]--- cache hit: {Key}", key);
         return JsonSerializer.Deserialize<T>(value);
     }
 
@@ -60,7 +60,7 @@ public sealed class RedisCacheService : ICacheService
 
         await _cache.SetStringAsync(key, serializedValue, options);
         _observabilityService.RecordCacheOperation("set", true);
-        _logger.LogDebug("Cache set: {Key}, Expiration={Expiration}", key, expiration);
+        _logger.LogWarning("-----[CACHE]--- cache set: {Key}, Expiration={Expiration}", key, expiration);
     }
 
     public async Task RemoveAsync(string key)
@@ -68,7 +68,7 @@ public sealed class RedisCacheService : ICacheService
         await _cache.RemoveAsync(key);
         _metrics.RecordInvalidation(key);
         _observabilityService.RecordCacheOperation("remove", true);
-        _logger.LogDebug("Cache removed: {Key}", key);
+        _logger.LogWarning("-----[CACHE]--- cache removed: {Key}", key);
     }
 
     public async Task RemoveByPatternAsync(string pattern)
