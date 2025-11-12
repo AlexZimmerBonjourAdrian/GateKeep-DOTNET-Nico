@@ -69,18 +69,28 @@ Log.Information("Iniciando GateKeep.Api");
 
 try
 {
-    // Cargar variables de entorno desde archivo .env en el directorio src
-    var envPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", ".env"));
-    
-    if (File.Exists(envPath))
+    // Cargar variables de entorno desde archivo .env SOLO si estamos en desarrollo local
+    // En Docker, las variables ya están en el entorno del contenedor (pasadas por docker-compose)
+    // Docker Compose lee automáticamente el .env del host y lo pasa al contenedor
+    if (!Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER")?.Equals("true", StringComparison.OrdinalIgnoreCase) == true)
     {
-        DotNetEnv.Env.Load(envPath);
-        Log.Information("Variables de entorno cargadas desde: {EnvPath}", envPath);
+        // Estamos ejecutando localmente, intentar cargar .env
+        var envPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", ".env"));
+        
+        if (File.Exists(envPath))
+        {
+            DotNetEnv.Env.Load(envPath);
+            Log.Information("Variables de entorno cargadas desde: {EnvPath}", envPath);
+        }
+        else
+        {
+            Log.Warning("Archivo .env no encontrado en: {EnvPath}", envPath);
+            Log.Warning("Usando variables de entorno del sistema o valores por defecto.");
+        }
     }
     else
     {
-        Log.Warning("Archivo .env no encontrado en: {EnvPath}", envPath);
-        Log.Warning("Usando variables de entorno del sistema o valores por defecto.");
+        Log.Information("Ejecutando en contenedor Docker - usando variables de entorno del contenedor");
     }
     
     var builder = WebApplication.CreateBuilder(args);
@@ -115,7 +125,12 @@ if (port.Contains("://"))
     port = port.Split(':').LastOrDefault() ?? "5011";
 }
 
-builder.WebHost.UseUrls($"http://localhost:{port}");
+// En Docker, ASPNETCORE_URLS contiene "+" (ej: "http://+:5011"), usar 0.0.0.0 para escuchar en todas las interfaces
+// En local, usar localhost
+var listenAddress = Environment.GetEnvironmentVariable("ASPNETCORE_URLS")?.Contains("+") == true 
+    ? "0.0.0.0" 
+    : "localhost";
+builder.WebHost.UseUrls($"http://{listenAddress}:{port}");
 Log.Information("GateKeep.Api configurado para ejecutarse en puerto: {Port}", port);
 
 // DEBUG: Verificar configuración de la base de datos
@@ -297,11 +312,33 @@ builder.Services.AddDbContext<GateKeepDbContext>(options =>
     var config = builder.Configuration.GetSection("database");
     
     // Permitir override con variables de entorno (prioridad: ENV > config.json)
-    var host = Environment.GetEnvironmentVariable("DB_HOST") ?? config["host"] ?? "localhost";
-    var port = Environment.GetEnvironmentVariable("DB_PORT") ?? config["port"] ?? "5432";
-    var database = Environment.GetEnvironmentVariable("DB_NAME") ?? config["name"] ?? "GateKeep_Dev";
-    var username = Environment.GetEnvironmentVariable("DB_USER") ?? config["user"] ?? "postgres";
-    var password = Environment.GetEnvironmentVariable("DB_PASSWORD") ?? config["password"] ?? "dev_password";
+    // Docker Compose pasa DATABASE__HOST (formato .NET Configuration), también soportamos DB_HOST para compatibilidad
+    // .NET Configuration mapea DATABASE__HOST a Configuration["DATABASE:HOST"]
+    var host = builder.Configuration["DATABASE:HOST"]
+        ?? Environment.GetEnvironmentVariable("DATABASE__HOST")
+        ?? Environment.GetEnvironmentVariable("DB_HOST")
+        ?? config["host"]
+        ?? "localhost";
+    var port = builder.Configuration["DATABASE:PORT"]
+        ?? Environment.GetEnvironmentVariable("DATABASE__PORT")
+        ?? Environment.GetEnvironmentVariable("DB_PORT")
+        ?? config["port"]
+        ?? "5432";
+    var database = builder.Configuration["DATABASE:NAME"]
+        ?? Environment.GetEnvironmentVariable("DATABASE__NAME")
+        ?? Environment.GetEnvironmentVariable("DB_NAME")
+        ?? config["name"]
+        ?? "GateKeep_Dev";
+    var username = builder.Configuration["DATABASE:USER"]
+        ?? Environment.GetEnvironmentVariable("DATABASE__USER")
+        ?? Environment.GetEnvironmentVariable("DB_USER")
+        ?? config["user"]
+        ?? "postgres";
+    var password = builder.Configuration["DATABASE:PASSWORD"]
+        ?? Environment.GetEnvironmentVariable("DATABASE__PASSWORD")
+        ?? Environment.GetEnvironmentVariable("DB_PASSWORD")
+        ?? config["password"]
+        ?? "dev_password";
     
     Log.Information("Configurando PostgreSQL - Host: {Host}, Puerto: {Port}, Base de datos: {Database}, Usuario: {User}", 
         host, port, database, username);
