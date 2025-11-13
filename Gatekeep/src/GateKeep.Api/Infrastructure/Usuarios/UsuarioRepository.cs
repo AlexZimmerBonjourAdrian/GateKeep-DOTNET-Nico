@@ -37,7 +37,17 @@ public sealed class UsuarioRepository : IUsuarioRepository
 
     public async Task UpdateAsync(Usuario usuario)
     {
-        _context.Usuarios.Update(usuario);
+        // Evitar conflicto de tracking: si ya hay una instancia con el mismo Id, actualizar sus valores
+        var existing = await _context.Usuarios.FirstOrDefaultAsync(u => u.Id == usuario.Id);
+        if (existing is not null)
+        {
+            _context.Entry(existing).CurrentValues.SetValues(usuario);
+        }
+        else
+        {
+            // No hay instancia trackeada; adjuntar y marcar como modificada
+            _context.Usuarios.Update(usuario);
+        }
         await _context.SaveChangesAsync();
     }
 
