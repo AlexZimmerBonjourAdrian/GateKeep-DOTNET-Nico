@@ -94,25 +94,25 @@ public static class NotificacionEndpoints
                 return Results.BadRequest(new { error = "El ID de notificación es requerido y no puede estar vacío" });
             }
 
-            var userId = long.Parse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            
-            var notificacionExistente = await service.ObtenerPorIdAsync(id);
-            if (notificacionExistente == null)
+            if (string.IsNullOrWhiteSpace(request.Mensaje))
             {
-                return Results.NotFound(new { error = $"La notificación con ID {id} no existe en el sistema" });
+                return Results.BadRequest(new { error = "El mensaje de la notificación es requerido y no puede estar vacío" });
             }
 
-            // Crear nueva notificación con los datos actualizados
-            var notificacionActualizada = new NotificacionDto
+            try
             {
-                Id = id,
-                Mensaje = request.Mensaje,
-                Tipo = request.Tipo,
-                FechaEnvio = notificacionExistente.FechaEnvio,
-                Activa = notificacionExistente.Activa
-            };
+                var notificacionActualizada = await service.ActualizarNotificacionAsync(id, request.Mensaje, request.Tipo);
+                if (notificacionActualizada == null)
+                {
+                    return Results.NotFound(new { error = $"La notificación con ID {id} no existe en el sistema" });
+                }
 
-            return Results.Ok(notificacionActualizada);
+                return Results.Ok(notificacionActualizada);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = $"Error al actualizar la notificación: {ex.Message}" });
+            }
         })
         .RequireAuthorization("FuncionarioOrAdmin")
         .WithName("ActualizarNotificacion")

@@ -39,6 +39,7 @@ using GateKeep.Api.Infrastructure.Usuarios;
 using GateKeep.Api.Infrastructure.Observability;
 using GateKeep.Infrastructure.QrCodes;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using MongoDB.Driver;
 using MongoDB.Bson;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -931,16 +932,73 @@ using (var scope = app.Services.CreateScope())
             logger.LogInformation("Aplicando migraciones de base de datos...");
             
             // Crear el esquema 'infra' si no existe (requerido para el historial de migraciones)
-            db.Database.ExecuteSqlRaw("CREATE SCHEMA IF NOT EXISTS infra;");
+            try
+            {
+                db.Database.ExecuteSqlRaw("CREATE SCHEMA IF NOT EXISTS infra;");
+            }
+            catch (Exception schemaEx)
+            {
+                logger.LogWarning(schemaEx, "Advertencia al crear esquema 'infra' (puede que ya exista)");
+            }
             
-        db.Database.Migrate();
-            logger.LogInformation("Migraciones aplicadas exitosamente");
+            try
+            {
+                // Verificar si hay migraciones pendientes antes de aplicar
+                var pendingMigrations = db.Database.GetPendingMigrations().ToList();
+                if (pendingMigrations.Any())
+                {
+                    logger.LogInformation("Aplicando {Count} migraciones pendientes...", pendingMigrations.Count);
+                    db.Database.Migrate();
+                    logger.LogInformation("Migraciones aplicadas exitosamente");
+                }
+                else
+                {
+                    logger.LogInformation("No hay migraciones pendientes. Base de datos está actualizada.");
+                }
+            }
+            catch (Npgsql.PostgresException pgEx) when (pgEx.SqlState == "42P07" || pgEx.SqlState == "23505")
+            {
+                // Error de tabla/objeto ya existe o violación de clave única
+                // Esto puede ocurrir si las tablas fueron creadas manualmente o hay inconsistencias
+                logger.LogWarning(pgEx, "Advertencia: Algunas tablas ya existen. Verificando estado de migraciones...");
+                
+                // Intentar verificar el estado de las migraciones
+                try
+                {
+                    var appliedMigrations = db.Database.GetAppliedMigrations().ToList();
+                    var allMigrations = db.Database.GetMigrations().ToList();
+                    
+                    if (appliedMigrations.Count == allMigrations.Count)
+                    {
+                        logger.LogInformation("Todas las migraciones ya están aplicadas. Continuando...");
+                    }
+                    else
+                    {
+                        logger.LogWarning("Hay inconsistencias en las migraciones. La aplicación continuará pero puede haber problemas.");
+                        logger.LogWarning("Migraciones aplicadas: {AppliedCount}/{TotalCount}", appliedMigrations.Count, allMigrations.Count);
+                    }
+                }
+                catch (Exception checkEx)
+                {
+                    logger.LogError(checkEx, "No se pudo verificar el estado de las migraciones");
+                    // Continuar de todas formas - la aplicación puede funcionar si las tablas existen
+                }
+            }
         }
     }
     catch (Exception ex)
     {
         logger.LogError(ex, "Error al aplicar migraciones de base de datos");
-        throw;
+        // En producción, no lanzar la excepción para evitar que la app se reinicie continuamente
+        // Solo registrar el error y continuar
+        if (app.Environment.IsDevelopment())
+        {
+            throw;
+        }
+        else
+        {
+            logger.LogWarning("Continuando a pesar del error de migración (modo producción)");
+        }
     }
 }
 

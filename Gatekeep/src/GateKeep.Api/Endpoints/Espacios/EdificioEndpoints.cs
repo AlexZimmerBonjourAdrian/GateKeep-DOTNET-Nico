@@ -2,6 +2,7 @@ using GateKeep.Api.Application.Espacios;
 using GateKeep.Api.Contracts.Espacios;
 using GateKeep.Api.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace GateKeep.Api.Endpoints.Espacios;
@@ -10,9 +11,9 @@ public static class EdificioEndpoints
 {
     public static IEndpointRouteBuilder MapEdificioEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/espacios/edificios").WithTags("Edificios");
+        var group = app.MapGroup("/api/espacios/edificios").WithTags("Edificios");
 
-        // GET /espacios/edificios - Todos los usuarios autenticados pueden ver edificios
+        // GET /api/espacios/edificios - Todos los usuarios autenticados pueden ver edificios
         group.MapGet("/", async (IEspacioRepository espacioRepository) =>
         {
             var espacios = await espacioRepository.ObtenerTodosAsync();
@@ -35,7 +36,7 @@ public static class EdificioEndpoints
             .Produces(401)
             .Produces(403);
 
-        // GET /espacios/edificios/{id} - Todos los usuarios autenticados pueden ver un edificio específico
+        // GET /api/espacios/edificios/{id} - Todos los usuarios autenticados pueden ver un edificio específico
         group.MapGet("/{id:long}", async (long id, IEspacioRepository espacioRepository) =>
         {
             var espacio = await espacioRepository.ObtenerPorIdAsync(id);
@@ -62,19 +63,42 @@ public static class EdificioEndpoints
             .Produces(401)
             .Produces(403);
 
-        // POST /espacios/edificios - Solo funcionarios y administradores pueden crear edificios
+        // POST /api/espacios/edificios - Solo funcionarios y administradores pueden crear edificios
         group.MapPost("/", async (CrearEdificioRequest request, IEspacioFactory espacioFactory, IEspacioRepository espacioRepository) =>
         {
-            var edificio = await espacioFactory.CrearEdificioAsync(request);
-            var edificioCreado = await espacioRepository.CrearAsync(edificio);
-            
-            return Results.Created($"/espacios/edificios/{edificioCreado.Id}", new
+            try
             {
-                message = "Edificio creado exitosamente",
-                id = edificioCreado.Id,
-                nombre = edificioCreado.Nombre,
-                codigoEdificio = ((Edificio)edificioCreado).CodigoEdificio
-            });
+                var edificio = await espacioFactory.CrearEdificioAsync(request);
+                var edificioCreado = await espacioRepository.CrearAsync(edificio);
+                
+                return Results.Created($"/api/espacios/edificios/{edificioCreado.Id}", new
+                {
+                    message = "Edificio creado exitosamente",
+                    id = edificioCreado.Id,
+                    nombre = edificioCreado.Nombre,
+                    codigoEdificio = ((Edificio)edificioCreado).CodigoEdificio
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("unique") == true || 
+                                                ex.InnerException?.Message.Contains("duplicate") == true ||
+                                                ex.InnerException?.Message.Contains("23505") == true)
+            {
+                return Results.BadRequest(new { error = "Ya existe un edificio con ese código" });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(
+                    detail: $"Error al crear el edificio: {ex.Message}",
+                    statusCode: 500);
+            }
         })
             .RequireAuthorization("FuncionarioOrAdmin")
             .WithName("CreateEdificio")
@@ -84,7 +108,7 @@ public static class EdificioEndpoints
             .Produces(401)
             .Produces(403);
 
-        // PUT /espacios/edificios/{id} - Solo funcionarios y administradores pueden actualizar edificios
+        // PUT /api/espacios/edificios/{id} - Solo funcionarios y administradores pueden actualizar edificios
         group.MapPut("/{id:long}", async (long id, CrearEdificioRequest request, IEspacioRepository espacioRepository) =>
         {
             var espacio = await espacioRepository.ObtenerPorIdAsync(id);
@@ -119,7 +143,7 @@ public static class EdificioEndpoints
             .Produces(401)
             .Produces(403);
 
-        // DELETE /espacios/edificios/{id} - Solo administradores pueden eliminar edificios
+        // DELETE /api/espacios/edificios/{id} - Solo administradores pueden eliminar edificios
         group.MapDelete("/{id:long}", async (long id, IEspacioRepository espacioRepository) =>
         {
             var espacio = await espacioRepository.ObtenerPorIdAsync(id);

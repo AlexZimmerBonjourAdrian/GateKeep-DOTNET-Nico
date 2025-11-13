@@ -29,22 +29,25 @@ public sealed class NotificacionSincronizacionService : INotificacionSincronizac
         _sincronizacionQueue = sincronizacionQueue;
     }
 
-    public async Task LimpiarRegistrosHuerfanosAsync(long usuarioId)
+    public Task LimpiarRegistrosHuerfanosAsync(long usuarioId)
     {
         // Encolar en lugar de ejecutar directamente
         _sincronizacionQueue.Enqueue("limpiar_huerfanos", usuarioId);
+        return Task.CompletedTask;
     }
 
-    public async Task ValidarConsistenciaAsync(long usuarioId)
+    public Task ValidarConsistenciaAsync(long usuarioId)
     {
         // Encolar en lugar de ejecutar directamente
         _sincronizacionQueue.Enqueue("notificaciones", usuarioId);
+        return Task.CompletedTask;
     }
 
-    public async Task SincronizarEliminacionUsuarioAsync(long usuarioId)
+    public Task SincronizarEliminacionUsuarioAsync(long usuarioId)
     {
         // Encolar en lugar de ejecutar directamente
         _sincronizacionQueue.Enqueue("eliminacion_usuario", usuarioId);
+        return Task.CompletedTask;
     }
 
     // Métodos internos para procesamiento desde la cola (llamados por el procesador)

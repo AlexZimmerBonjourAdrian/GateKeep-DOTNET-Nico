@@ -2,6 +2,7 @@ using GateKeep.Api.Application.Espacios;
 using GateKeep.Api.Contracts.Espacios;
 using GateKeep.Api.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace GateKeep.Api.Endpoints.Espacios;
@@ -10,9 +11,9 @@ public static class SalonEndpoints
 {
     public static IEndpointRouteBuilder MapSalonEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/espacios/salones").WithTags("Salones");
+        var group = app.MapGroup("/api/espacios/salones").WithTags("Salones");
 
-        // GET /espacios/salones - Todos los usuarios autenticados pueden ver salones
+        // GET /api/espacios/salones - Todos los usuarios autenticados pueden ver salones
         group.MapGet("/", async (IEspacioRepository espacioRepository) =>
         {
             var espacios = await espacioRepository.ObtenerTodosAsync();
@@ -33,7 +34,7 @@ public static class SalonEndpoints
             .Produces(401)
             .Produces(403);
 
-        // GET /espacios/salones/{id} - Todos los usuarios autenticados pueden ver un salón específico
+        // GET /api/espacios/salones/{id} - Todos los usuarios autenticados pueden ver un salón específico
         group.MapGet("/{id:long}", async (long id, IEspacioRepository espacioRepository) =>
         {
             var espacio = await espacioRepository.ObtenerPorIdAsync(id);
@@ -58,19 +59,48 @@ public static class SalonEndpoints
             .Produces(401)
             .Produces(403);
 
-        // POST /espacios/salones - Solo funcionarios y administradores pueden crear salones
+        // POST /api/espacios/salones - Solo funcionarios y administradores pueden crear salones
         group.MapPost("/", async (CrearSalonRequest request, IEspacioFactory espacioFactory, IEspacioRepository espacioRepository) =>
         {
-            var salon = await espacioFactory.CrearSalonAsync(request);
-            var salonCreado = await espacioRepository.CrearAsync(salon);
-            
-            return Results.Created($"/espacios/salones/{salonCreado.Id}", new
+            try
             {
-                message = "Salón creado exitosamente",
-                id = salonCreado.Id,
-                nombre = salonCreado.Nombre,
-                numeroSalon = ((Salon)salonCreado).NumeroSalon
-            });
+                var salon = await espacioFactory.CrearSalonAsync(request);
+                var salonCreado = await espacioRepository.CrearAsync(salon);
+                
+                return Results.Created($"/api/espacios/salones/{salonCreado.Id}", new
+                {
+                    message = "Salón creado exitosamente",
+                    id = salonCreado.Id,
+                    nombre = salonCreado.Nombre,
+                    numeroSalon = ((Salon)salonCreado).NumeroSalon
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("foreign key") == true || 
+                                                ex.InnerException?.Message.Contains("violates foreign key") == true ||
+                                                ex.InnerException?.Message.Contains("23503") == true)
+            {
+                return Results.BadRequest(new { error = "El edificio especificado no existe" });
+            }
+            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("unique") == true || 
+                                                ex.InnerException?.Message.Contains("duplicate") == true ||
+                                                ex.InnerException?.Message.Contains("23505") == true)
+            {
+                return Results.BadRequest(new { error = "Ya existe un salón con ese número en el edificio especificado" });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(
+                    detail: $"Error al crear el salón: {ex.Message}",
+                    statusCode: 500);
+            }
         })
             .RequireAuthorization("FuncionarioOrAdmin")
             .WithName("CreateSalon")
@@ -80,7 +110,7 @@ public static class SalonEndpoints
             .Produces(401)
             .Produces(403);
 
-        // PUT /espacios/salones/{id} - Solo funcionarios y administradores pueden actualizar salones
+        // PUT /api/espacios/salones/{id} - Solo funcionarios y administradores pueden actualizar salones
         group.MapPut("/{id:long}", async (long id, CrearSalonRequest request, IEspacioRepository espacioRepository) =>
         {
             var espacio = await espacioRepository.ObtenerPorIdAsync(id);
@@ -113,7 +143,7 @@ public static class SalonEndpoints
             .Produces(401)
             .Produces(403);
 
-        // DELETE /espacios/salones/{id} - Solo administradores pueden eliminar salones
+        // DELETE /api/espacios/salones/{id} - Solo administradores pueden eliminar salones
         group.MapDelete("/{id:long}", async (long id, IEspacioRepository espacioRepository) =>
         {
             var espacio = await espacioRepository.ObtenerPorIdAsync(id);

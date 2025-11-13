@@ -107,6 +107,25 @@ public class NotificacionService : INotificacionService
         return notificacion != null ? MapToDto(notificacion) : null;
     }
 
+    public async Task<NotificacionDto?> ActualizarNotificacionAsync(string id, string mensaje, string tipo)
+    {
+        var notificacion = await _notificacionRepository.ObtenerPorIdAsync(id);
+        if (notificacion == null)
+        {
+            return null;
+        }
+
+        notificacion.Mensaje = mensaje;
+        notificacion.Tipo = tipo;
+        notificacion.UpdatedAt = DateTime.UtcNow;
+
+        var notificacionActualizada = await _notificacionRepository.ActualizarAsync(notificacion);
+        
+        _logger.LogInformation("Notificación actualizada: Id={Id}, Tipo={Tipo}", id, tipo);
+        
+        return MapToDto(notificacionActualizada);
+    }
+
     public async Task<bool> EliminarNotificacionAsync(string id)
     {
         return await _notificacionRepository.EliminarAsync(id);
