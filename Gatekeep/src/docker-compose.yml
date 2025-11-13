@@ -40,6 +40,24 @@ services:
     networks:
       - gatekeep-network
 
+  mongodb:
+    image: mongo:7.0
+    container_name: gatekeep-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGODB_DATABASE:-GateKeepMongo}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gatekeep-network
+
   seq:
     image: datalust/seq:latest
     container_name: gatekeep-seq
@@ -124,7 +142,7 @@ services:
       REDIS__CONNECTIONSTRING: ${REDIS_CONNECTION:-redis:6379}
       REDIS__INSTANCENAME: ${REDIS_INSTANCE:-GateKeep:}
       REDIS__ENABLED: ${REDIS_ENABLED:-true}
-      MONGODB_CONNECTION: ${MONGODB_CONNECTION:-}
+      MONGODB_CONNECTION: ${MONGODB_CONNECTION:-mongodb://mongodb:27017}
       MONGODB_DATABASE: ${MONGODB_DATABASE:-GateKeepMongo}
       MONGODB_USE_STABLE_API: ${MONGODB_USE_STABLE_API:-false}
       JWT__KEY: ${JWT_KEY}
@@ -143,6 +161,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
       seq:
         condition: service_healthy
@@ -163,6 +183,8 @@ volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  mongodb_data:
     driver: local
   seq_data:
     driver: local
