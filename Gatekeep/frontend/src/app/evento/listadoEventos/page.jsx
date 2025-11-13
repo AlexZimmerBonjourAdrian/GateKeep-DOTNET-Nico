@@ -3,8 +3,8 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Header from '../../../components/Header';
-import { EventoService } from '@services/EventoService';
-import { SecurityService } from '@/services/securityService';
+import { EventoService } from '../../../services/EventoService';
+import { SecurityService } from '../../../services/securityService';
 
 export default function listadoEventos() {
 

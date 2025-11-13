@@ -1,15 +1,18 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation'; // Importa el hook para la navegación
+import { useRouter, usePathname } from 'next/navigation'; // Importa el hook para la navegación
 import Header from '../components/Header';
 import Carousel from '../components/Carousel';
 import { EventoService } from '../services/EventoService';
 import { AnuncioService } from '../services/AnuncioService';
+import { SecurityService } from '../services/securityService';
 
 export default function Home() {
   
   const router = useRouter(); // Inicializa el hook useRouter
+  const pathname = usePathname();
+  SecurityService.checkAuthAndRedirect(pathname);
 
   const [eventos, setEventos] = useState([]);
   const [anuncios, setAnuncios] = useState([]);
@@ -22,6 +25,7 @@ export default function Home() {
       try {
         const response = await EventoService.getEventos();
         setEventos(response.data || []);
+        console.log('Eventos cargados:', response.data || []);
       } catch (error) {
         console.error('Error al cargar eventos:', error);
         setEventos([]);

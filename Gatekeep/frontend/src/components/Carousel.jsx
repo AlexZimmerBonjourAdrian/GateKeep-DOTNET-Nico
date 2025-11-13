@@ -7,18 +7,58 @@ import { useRouter } from 'next/navigation';
 const Carousel = ({ items, route }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const router = useRouter();
-  const itemsPerPage = 4;
-  const maxIndex = Math.min(items.length, 9) - itemsPerPage;
-
+  
+  // Lógica adaptable:
+  // - Si hay <= 8 items: mostrar 3 + "Ver más"
+  // - Si hay > 8 items: mostrar 4 por página, excepto la última que será 3 + "Ver más"
+  const totalItems = items.length;
+  const isSmallCollection = totalItems <= 8;
+  
+  // Determinar cuántos items mostrar en la página actual
+  let itemsPerPage;
+  let itemsRemaining = totalItems - currentIndex;
+  
+  if (isSmallCollection) {
+    // Colección pequeña: siempre 3 items
+    itemsPerPage = Math.min(3, totalItems);
+  } else {
+    // Colección grande: mostrar 4, excepto si quedan 4 o menos (entonces mostrar 3)
+    if (itemsRemaining <= 4) {
+      itemsPerPage = Math.min(3, itemsRemaining);
+    } else {
+      itemsPerPage = 4;
+    }
+  }
+  
+  // Calcular cuántos items realmente mostrar (sin contar "Ver más")
+  const visibleItems = items.slice(currentIndex, currentIndex + itemsPerPage);
+  
+  // Calcular si hay más items después de los visibles
+  const hasMoreItems = (currentIndex + itemsPerPage) < totalItems;
+  
   const handleNext = () => {
-    if (currentIndex + itemsPerPage <= maxIndex) {
-      setCurrentIndex(currentIndex + itemsPerPage);
+    if (hasMoreItems) {
+      const nextIndex = currentIndex + itemsPerPage;
+      setCurrentIndex(Math.min(nextIndex, totalItems - 1));
     }
   };
 
   const handlePrev = () => {
-    if (currentIndex - itemsPerPage >= 0) {
-      setCurrentIndex(currentIndex - itemsPerPage);
+    if (currentIndex > 0) {
+      // Retroceder según la lógica adaptable
+      const prevItemsPerPage = isSmallCollection ? 3 : 4;
+      setCurrentIndex(Math.max(currentIndex - prevItemsPerPage, 0));
+    }
+  };
+
+  const handleSeeMore = () => {
+    if (route) router.push(route);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleSeeMore();
     }
   };
 
@@ -30,62 +70,46 @@ const Carousel = ({ items, route }) => {
         </button>
       )}
       <div className="carousel">
-        {items.slice(currentIndex, currentIndex + itemsPerPage).map((item, index) => {
-          const globalIndex = currentIndex + index;
-
-          // If there are more than 8 items, render a special 9th "Ver más" card
-          if (items.length > 7 && globalIndex === 7) {
-            const handleSeeMore = () => {
-              if (route) router.push(route);
-            };
-
-            const handleKeyDown = (e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handleSeeMore();
-              }
-            };
-
-            return (
-              <div
-                key="see-more"
-                className="carousel-item see-more"
-                role="button"
-                tabIndex={0}
-                onClick={handleSeeMore}
-                onKeyDown={handleKeyDown}
-                aria-label='Ver más'
-              >
-                <div className="see-more-top">Ver más</div>
-                <div className="see-more-arrow">&#8250;</div>
-              </div>
-            );
-          }
-
+        {/* Renderizar items normales */}
+        {visibleItems.map((item, index) => {
           return (
-            <div key={item.Id || item.id || index} className="carousel-item" tabIndex={0}>
-              {/* Soportar tanto el modelo Evento (Nombre, Fecha) como anuncios (title, date) */}
-              {(item.Nombre || item.title) && <h3>{item.Nombre || item.title}</h3>}
-              {(item.Fecha || item.date) && (
+            <div key={item.id || `item-${currentIndex + index}`} className="carousel-item" tabIndex={0}>
+              {/* Soportar tanto el modelo con mayúsculas como minúsculas */}
+              {(item.nombre || item.Nombre || item.title) && (
+                <h3>{item.nombre || item.Nombre || item.title}</h3>
+              )}
+              {(item.fecha || item.Fecha || item.date) && (
                 <p>
-                  {item.Fecha 
-                    ? new Date(item.Fecha).toLocaleDateString('es-ES', { 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                      })
-                    : item.date
-                  }
+                  {new Date(item.fecha || item.Fecha || item.date).toLocaleDateString('es-ES', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
                 </p>
               )}
             </div>
           );
         })}
+        
+        {/* Siempre mostrar tarjeta "Ver más" si hay ruta y hay items */}
+        {route && items.length > 0 && (
+          <div
+            key="see-more"
+            className="carousel-item see-more"
+            role="button"
+            tabIndex={0}
+            onClick={handleSeeMore}
+            onKeyDown={handleKeyDown}
+            aria-label='Ver más'
+          >
+            <div className="see-more-top">Ver más</div>
+            <div className="see-more-arrow">&#8250;</div>
+          </div>
+        )}
       </div>
 
-      {/* Only show next if there are more pages within the capped 9-item window.
-          Also ensure the right arrow doesn't appear when the special 9th 'Ver más' is present on the page. */}
-      {currentIndex + itemsPerPage < Math.min(items.length, 9) && !(items.length > 8 && currentIndex + itemsPerPage >= 9) && (
+      {/* Mostrar botón siguiente solo si hay items ocultos después de los visibles */}
+      {hasMoreItems && (
         <button className="carousel-button next" onClick={handleNext}>
           &#8250;
         </button>
@@ -106,7 +130,7 @@ const Carousel = ({ items, route }) => {
 
         .carousel {
           display: flex;
-          gap: 2vw;
+          gap: 1vw;
           padding: 12px 0;
           /* Center the visible items so left/right spacing is equal */
           justify-content: center;
@@ -120,8 +144,8 @@ const Carousel = ({ items, route }) => {
         }
 
         .carousel-item {
-          /* Keep 4 items visible but scale sizes responsively. */
-          flex: 0 0 calc((100% - 4vw) / 4);
+          /* Adaptable layout: show 4 or 5 items depending on content */
+          flex: 0 0 calc((100% - ${visibleItems.length}vw) / ${visibleItems.length + 1});
           max-width: 360px;
           min-width: 120px;
           /* Use aspect-ratio instead of fixed height so height scales with width */
@@ -239,15 +263,15 @@ const Carousel = ({ items, route }) => {
           transform: translateY(-4px) scale(1.04);
         }
 
-        /* PHONE: <= 425px - keep 4 items but shrink them to fit and reduce heights */
+        /* PHONE: <= 425px - adaptable items */
         @media (max-width: 425px) {
           .carousel {
-            gap: 1.5vw;
+            gap: 1vw;
             padding: 6px 0;
           }
 
           .carousel-item {
-            flex: 0 0 calc((100% - 6vw) / 4);
+            flex: 0 0 calc((100% - ${visibleItems.length + 1}vw) / ${visibleItems.length + 1});
             max-width: none;
             min-width: 16vw;
             aspect-ratio: 9 / 13;
@@ -279,12 +303,12 @@ const Carousel = ({ items, route }) => {
         /* TABLET: 426px - 768px */
         @media (min-width: 426px) and (max-width: 768px) {
           .carousel {
-            gap: 2.5vw;
+            gap: 1vw;
             padding: 10px 0;
           }
 
           .carousel-item {
-            flex: 0 0 calc((100% - 5vw) / 4);
+            flex: 0 0 calc((100% - ${visibleItems.length}vw) / ${visibleItems.length + 1});
             max-width: 300px;
             min-width: 140px;
             aspect-ratio: 9 / 13;
@@ -299,10 +323,10 @@ const Carousel = ({ items, route }) => {
           }
         }
 
-        /* DESKTOP: >= 769px - original proportions (kept for large screens) */
+        /* DESKTOP: >= 769px - adaptable proportions */
         @media (min-width: 769px) {
           .carousel-item {
-            flex: 0 0 calc((100% - 4vw) / 4);
+            flex: 0 0 calc((100% - ${visibleItems.length}vw) / ${visibleItems.length + 1});
             max-width: 360px;
             min-width: 220px;
             aspect-ratio: 9 / 13;

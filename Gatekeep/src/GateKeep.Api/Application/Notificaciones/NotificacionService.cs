@@ -2,19 +2,30 @@ using GateKeep.Api.Application.Auditoria;
 using GateKeep.Api.Application.Notificaciones;
 using GateKeep.Api.Contracts.Notificaciones;
 using GateKeep.Api.Domain.Entities;
+using GateKeep.Api.Infrastructure.Observability;
+using Microsoft.Extensions.Logging;
 
 namespace GateKeep.Api.Application.Notificaciones;
 
 public class NotificacionService : INotificacionService
 {
     private readonly INotificacionRepository _notificacionRepository;
+    private readonly INotificacionUsuarioRepository _notificacionUsuarioRepository;
     private readonly IEventoHistoricoService? _eventoHistoricoService;
+    private readonly IObservabilityService _observabilityService;
+    private readonly ILogger<NotificacionService> _logger;
 
     public NotificacionService(
         INotificacionRepository notificacionRepository,
+        INotificacionUsuarioRepository notificacionUsuarioRepository,
+        IObservabilityService observabilityService,
+        ILogger<NotificacionService> logger,
         IEventoHistoricoService? eventoHistoricoService = null)
     {
         _notificacionRepository = notificacionRepository;
+        _notificacionUsuarioRepository = notificacionUsuarioRepository;
+        _observabilityService = observabilityService;
+        _logger = logger;
         _eventoHistoricoService = eventoHistoricoService;
     }
 
@@ -30,6 +41,40 @@ public class NotificacionService : INotificacionService
 
         var notificacionCreada = await _notificacionRepository.CrearAsync(notificacion);
         
+        // Si se proporciona un usuarioIdCreador, crear la relación usuario-notificación
+        if (usuarioIdCreador.HasValue)
+        {
+            try
+            {
+                var notificacionUsuario = new NotificacionUsuario
+                {
+                    UsuarioId = usuarioIdCreador.Value,
+                    NotificacionId = notificacionCreada.Id,
+                    Leido = false,
+                    FechaLectura = null,
+                    CreatedAt = DateTime.UtcNow
+                };
+                
+                await _notificacionUsuarioRepository.CrearAsync(notificacionUsuario);
+                
+                _logger.LogInformation(
+                    "Relación usuario-notificación creada: UsuarioId={UsuarioId}, NotificacionId={NotificacionId}",
+                    usuarioIdCreador.Value, notificacionCreada.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, 
+                    "Error al crear relación usuario-notificación para UsuarioId={UsuarioId}, NotificacionId={NotificacionId}",
+                    usuarioIdCreador.Value, notificacionCreada.Id);
+                _observabilityService.RecordError("NotificacionService", "RelacionUsuarioError");
+            }
+        }
+        
+        // Registrar métrica de notificación enviada
+        _observabilityService.RecordNotificacionEnviada(tipo, true);
+        _logger.LogInformation("Notificación creada: Tipo={Tipo}, Mensaje={Mensaje}",
+            tipo, mensaje);
+        
         if (_eventoHistoricoService != null && usuarioIdCreador.HasValue)
         {
             try
@@ -40,8 +85,10 @@ public class NotificacionService : INotificacionService
                     "Creada",
                     new Dictionary<string, object> { { "notificacionId", notificacionCreada.Id } });
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogWarning(ex, "Error al registrar notificación en histórico");
+                _observabilityService.RecordError("NotificacionService", "HistoricoError");
             }
         }
         
@@ -58,6 +105,25 @@ public class NotificacionService : INotificacionService
     {
         var notificacion = await _notificacionRepository.ObtenerPorIdAsync(id);
         return notificacion != null ? MapToDto(notificacion) : null;
+    }
+
+    public async Task<NotificacionDto?> ActualizarNotificacionAsync(string id, string mensaje, string tipo)
+    {
+        var notificacion = await _notificacionRepository.ObtenerPorIdAsync(id);
+        if (notificacion == null)
+        {
+            return null;
+        }
+
+        notificacion.Mensaje = mensaje;
+        notificacion.Tipo = tipo;
+        notificacion.UpdatedAt = DateTime.UtcNow;
+
+        var notificacionActualizada = await _notificacionRepository.ActualizarAsync(notificacion);
+        
+        _logger.LogInformation("Notificación actualizada: Id={Id}, Tipo={Tipo}", id, tipo);
+        
+        return MapToDto(notificacionActualizada);
     }
 
     public async Task<bool> EliminarNotificacionAsync(string id)

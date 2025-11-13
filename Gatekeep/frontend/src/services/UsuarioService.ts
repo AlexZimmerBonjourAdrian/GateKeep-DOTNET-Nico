@@ -32,7 +32,7 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 
 export class UsuarioService {
   /**
-   * Login de usuario con email y contraseña
+   * Login de usuario con email y contraseña.
    */
   static login(credentials: { email: string; password: string }) {
     return axios.post(AUTH_URL + "login", credentials);

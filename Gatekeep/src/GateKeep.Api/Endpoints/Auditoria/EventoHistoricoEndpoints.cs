@@ -134,16 +134,24 @@ public static class EventoHistoricoEndpoints
         .Produces(403);
 
         group.MapGet("/estadisticas", async (
-            [FromQuery] DateTime fechaDesde,
-            [FromQuery] DateTime fechaHasta,
-            [FromServices] IEventoHistoricoRepository repository) =>
+            [FromServices] IEventoHistoricoRepository repository,
+            [FromQuery] DateTime? fechaDesde = null,
+            [FromQuery] DateTime? fechaHasta = null) =>
         {
-            var estadisticas = await repository.ObtenerEstadisticasPorTipoAsync(fechaDesde, fechaHasta);
+            var fechaDesdeFinal = fechaDesde ?? DateTime.UtcNow.AddDays(-30);
+            var fechaHastaFinal = fechaHasta ?? DateTime.UtcNow;
+
+            if (fechaDesdeFinal > fechaHastaFinal)
+            {
+                return Results.BadRequest(new { error = "La fecha desde no puede ser mayor que la fecha hasta" });
+            }
+
+            var estadisticas = await repository.ObtenerEstadisticasPorTipoAsync(fechaDesdeFinal, fechaHastaFinal);
 
             return Results.Ok(new ReporteEstadisticasDto
             {
-                FechaDesde = fechaDesde,
-                FechaHasta = fechaHasta,
+                FechaDesde = fechaDesdeFinal,
+                FechaHasta = fechaHastaFinal,
                 EstadisticasPorTipo = estadisticas
             });
         })

@@ -1,136 +1,275 @@
-# Demo1.Api — Minimal API en .NET 8 (Strategy + Decorator + Factory + Template Method)
+# GateKeep API
 
-Autor: **Nico Escobar**
+Sistema de gestión de acceso y control para espacios universitarios construido con .NET 8, PostgreSQL, MongoDB, Redis y arquitectura ECS.
 
-## 🔎 Descripción
-API mínima para cálculo de precios por país. Demuestra:
-- **Strategy**: impuestos por país.
-- **Decorator**: descuento opcional desde `appsettings.json`.
-- **Factory**: compone el cálculo (Strategy [+ Decorator]).
-- **Template Method**: formato del recibo.
-- **IMemoryCache**: cachea estrategias por país (exp. deslizante 30 min).
+## 🚀 Inicio Rápido
 
-## 🧰 Requisitos
-- .NET SDK **8.x**
-- Kestrel (servidor por defecto)
-- Swagger/OpenAPI habilitado
+### Con Scripts PowerShell (Recomendado)
 
-**Base URL (por defecto):** `http://localhost:5011`  
-**Swagger UI:** `http://localhost:5011/swagger`
+```powershell
+# Iniciar todo con Docker
+.\iniciar-docker.ps1
 
-## ▶️ Ejecución
+# Detener servicios
+.\detener-docker.ps1
 
-```bash
-# macOS / Linux
-./scripts/run.sh
-
-# Windows (PowerShell)
-./scripts/run.ps1
+# Recrear contenedores
+.\recrear-docker.ps1
 ```
 
-> Los scripts deben establecer `ASPNETCORE_URLS=http://localhost:5011` o equivalente.
+### Comandos Manuales
+
+**Desarrollo Local:**
+```powershell
+cd src\GateKeep.Api
+dotnet run
+```
+
+**Con Docker:**
+```powershell
+cd src
+docker-compose up -d
+```
+
+## 📋 Requisitos
+
+- **.NET 8.0 SDK**
+- **Docker Desktop** (para ejecución con contenedores)
+- **PostgreSQL** (para desarrollo local)
+- **Redis** (para desarrollo local)
+- **MongoDB** (opcional, para funciones de auditoría)
 
 ## ⚙️ Configuración
 
-Archivo `appsettings.json` (fragmento relevante):
+### 1. Variables de Entorno
 
-```json
-{
-  "Pricing": {
-    "DiscountRate": 0.05
-  }
-}
+Copia y edita el archivo de ejemplo:
+
+```powershell
+cd src
+Copy-Item ".env.example" ".env"
+notepad .env
 ```
 
-- **Rango aceptado:** `0.0 .. 1.0` (5% ⇒ `0.05`).
-- Si falta o es `0`, no se aplica descuento (no se usa el Decorator).
+**Variables principales:**
+```env
+# Base de Datos
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=Gatekeep
+DB_USER=postgres
+DB_PASSWORD=tu_contraseña
 
-## 🌐 Endpoints
+# API
+GATEKEEP_PORT=5011
+APP_ENVIRONMENT=Development
 
-| Método | Ruta                                   | Descripción                                 | Códigos |
-|-------:|----------------------------------------|---------------------------------------------|:-------:|
-| POST   | `/countries`                           | Crea/actualiza un país en memoria.          | 201     |
-| GET    | `/countries/{id}`                      | Obtiene un país por id.                     | 200/404 |
-| GET    | `/countries`                           | Lista todos los países.                     | 200     |
-| DELETE | `/countries`                           | Elimina todos los países (en memoria).      | 204     |
-| GET    | `/pricing/{country}/{amount}`          | Calcula precio (base + impuestos [+ desc]). | 200/400/404 |
-| GET    | `/health` *(opcional)*                 | Estado básico del servicio.                  | 200     |
+# JWT
+JWT_KEY=clave-secreta-minimo-256-bits
+JWT_ISSUER=GateKeep
+JWT_AUDIENCE=GateKeepUsers
 
-### Ejemplos
+# MongoDB
+MONGODB_CONNECTION=tu_connection_string
+MONGODB_DATABASE=GateKeepMongo
 
-**Crear/actualizar país**
-
-```http
-POST /countries HTTP/1.1
-Host: localhost:5011
-Content-Type: application/json
-
-{
-  "id": "UY",
-  "name": "Uruguay",
-  "currency": "UYU",
-  "taxRate": 0.22
-}
+# Redis
+REDIS_CONNECTION=localhost:6379
+REDIS_INSTANCE=GateKeep:
 ```
 
-**Respuesta**
-```
-201 Created
-Location: /countries/UY
-```
+### 2. Primera Ejecución
 
-**Obtener país**
-```http
-GET /countries/UY HTTP/1.1
-Host: localhost:5011
-```
+```powershell
+# Con Docker (incluye PostgreSQL y Redis)
+.\iniciar-docker.ps1
 
-**Listar países**
-```http
-GET /countries HTTP/1.1
-Host: localhost:5011
+# O manualmente
+cd src
+docker-compose up -d
 ```
 
-**Calcular precio**
-```http
-GET /pricing/UY/100 HTTP/1.1
-Host: localhost:5011
+## 🌐 URLs de Acceso
+
+| Servicio | URL | Credenciales |
+|----------|-----|--------------|
+| **API Swagger** | http://localhost:5011/swagger | - |
+| **Health Check** | http://localhost:5011/health | - |
+| **Seq (Logs)** | http://localhost:5341 | admin / admin |
+| **Prometheus** | http://localhost:9090 | - |
+| **Grafana** | http://localhost:3001 | admin / admin123 |
+
+## 📁 Estructura del Proyecto
+
+```
+Gatekeep/
+├── src/
+│   ├── .env                      # Variables de entorno (NO en git)
+│   ├── .env.example              # Plantilla de variables
+│   ├── docker-compose.yaml       # Configuración Docker
+│   ├── README-COMANDOS.md        # Comandos rápidos
+│   └── GateKeep.Api/
+│       ├── Program.cs
+│       ├── Application/          # Lógica de negocio
+│       ├── Domain/               # Entidades y enums
+│       ├── Infrastructure/       # Repositorios y servicios
+│       ├── Endpoints/            # Minimal API endpoints
+│       └── Contracts/            # DTOs y contratos
+├── docs/                         # Documentación técnica
+├── scripts/                      # Scripts útiles
+├── iniciar-docker.ps1           # Script para iniciar
+├── detener-docker.ps1           # Script para detener
+├── recrear-docker.ps1           # Script para recrear
+├── GUIA-INICIO.md               # Guía completa
+└── README.md                    # Este archivo
 ```
 
-**Respuesta (200 OK)**
-```json
-{
-  "country": "UY",
-  "baseAmount": 100,
-  "finalAmount": 115.9,
-  "receipt": "== Retail Receipt ==\nBase: 100, Final: 115.9\nGenerated at 2025-08-24 12:34:56Z"
-}
+## 🔧 Comandos Útiles
+
+### Docker
+
+```powershell
+# Ver logs en tiempo real
+docker-compose logs -f api
+
+# Reiniciar un servicio
+docker-compose restart api
+
+# Ver estado
+docker-compose ps
+
+# Detener todo
+docker-compose down
+
+# Recrear contenedores
+docker-compose down && docker-compose up -d --build
 ```
 
-**cURL**
-```bash
-curl -X POST "http://localhost:5011/countries"   -H "Content-Type: application/json"   -d '{"id":"UY","name":"Uruguay","currency":"UYU","taxRate":0.22}'
+### .NET
 
-curl "http://localhost:5011/pricing/UY/100"
+```powershell
+# Limpiar y reconstruir
+dotnet clean && dotnet build
+
+# Ejecutar en modo watch (recarga automática)
+dotnet watch run
+
+# Ejecutar tests
+dotnet test
 ```
 
-### Errores comunes
-| Código | Motivo                                     |
-|:-----:|---------------------------------------------|
-| 400   | Estrategia no soportada / parámetros inválidos. |
-| 404   | País no registrado.                         |
+### Base de Datos
 
-## 🧩 Patrones (resumen)
-- **Strategy** (`ITaxStrategy`, `ConfigurableTaxStrategy`): define el impuesto por país (usa `taxRate` guardado al registrar).
-- **Decorator** (`DiscountDecorator`): aplica opcionalmente un descuento global `Pricing:DiscountRate`.
-- **Factory** (`PriceCalculatorFactory`): arma el cálculo (Base + Decorator si corresponde) y usa `IMemoryCache` por país.
-- **Template Method** (`ReceiptGenerator` → `RetailReceiptGenerator`): compone `Header → Body → Footer` del recibo.
+```powershell
+# Conectar a PostgreSQL (Docker)
+docker exec -it gatekeep-postgres psql -U postgres -d Gatekeep
 
-## 📦 Contratos (DTOs principales)
-- `Country`: `{ id, name, currency, taxRate }`
-- `PricingResponse`: `{ country, baseAmount, finalAmount, receipt }`
+# Backup
+docker exec gatekeep-postgres pg_dump -U postgres Gatekeep > backup.sql
 
-## 📝 Notas
-- **Persistencia:** almacenamiento de `Country` es en memoria (se pierde al reiniciar).
-- Cambiá `DiscountRate` y **reiniciá** para ver el efecto en `finalAmount`.
-- La raíz `/` redirige a `/swagger` y puede excluirse de la doc si así se configuró.
+# Restore
+docker exec -i gatekeep-postgres psql -U postgres Gatekeep < backup.sql
+```
+
+## 🎯 Características Principales
+
+- ✅ **Autenticación JWT** - Sistema seguro de tokens
+- ✅ **Control de Acceso** - Reglas configurables por rol y espacio
+- ✅ **Arquitectura ECS** - Entity-Component-System reutilizable
+- ✅ **Caching con Redis** - Optimización de rendimiento
+- ✅ **Auditoría MongoDB** - Registro de eventos históricos
+- ✅ **Observabilidad** - Logs, métricas y trazabilidad
+- ✅ **QR Codes** - Generación de códigos para acceso
+- ✅ **Minimal API** - Endpoints ligeros y rápidos
+
+## 📊 Stack Tecnológico
+
+- **Backend:** .NET 8.0, C# 12
+- **Base de Datos:** PostgreSQL 16, MongoDB 7, Redis 7
+- **ORM:** Entity Framework Core 9
+- **Logging:** Serilog, Seq
+- **Métricas:** OpenTelemetry, Prometheus
+- **Visualización:** Grafana
+- **Seguridad:** BCrypt, JWT Bearer
+- **Contenedores:** Docker, Docker Compose
+
+## 🔄 Cambiar Puerto
+
+1. Editar `src/.env`:
+   ```env
+   GATEKEEP_PORT=5020
+   ```
+
+2. Reiniciar:
+   ```powershell
+   docker-compose down && docker-compose up -d
+   ```
+
+## 🐛 Solución de Problemas
+
+### Puerto ya en uso
+```powershell
+netstat -ano | findstr :5011
+taskkill /PID <PID> /F
+```
+
+### Variables no cargadas
+```powershell
+# Verificar que .env existe
+Test-Path "src\.env"
+
+# Ver contenido
+Get-Content "src\.env"
+```
+
+### Error de autenticación PostgreSQL
+```powershell
+# Verificar contraseña en .env
+Get-Content "src\.env" | Select-String "DB_PASSWORD"
+```
+
+### Docker no responde
+```powershell
+# Reiniciar servicios
+docker-compose down
+docker-compose up -d
+
+# O usar el script
+.\recrear-docker.ps1
+```
+
+## 📚 Documentación
+
+- **[GUIA-INICIO.md](./GUIA-INICIO.md)** - Guía completa de configuración
+- **[src/README-COMANDOS.md](./src/README-COMANDOS.md)** - Comandos rápidos
+- **[docs/](./docs/)** - Documentación técnica detallada
+  - **[AWS_SETUP.md](./docs/AWS_SETUP.md)** - Instalación y configuración de AWS CLI
+  - **[PLAN_DESPLIEGUE_AUTOMATIZACION.md](./docs/PLAN_DESPLIEGUE_AUTOMATIZACION.md)** - Plan completo para CI/CD y despliegue en AWS
+  - **[DEPLOYMENT.md](./docs/DEPLOYMENT.md)** - Guía paso a paso para desplegar en AWS
+  - **[ENVIRONMENT_VARIABLES.md](./docs/ENVIRONMENT_VARIABLES.md)** - Variables de entorno y configuración
+
+## 🤝 Contribuir
+
+1. Las variables de entorno son **obligatorias** - usar `src/.env`
+2. Los archivos `config.json` están vacíos - no agregar credenciales
+3. Seguir la arquitectura ECS establecida
+4. Documentar cambios importantes
+
+## 📝 Notas Importantes
+
+- El archivo `.env` **NO** se sube a Git (está en `.gitignore`)
+- Siempre usar `.env.example` como plantilla
+- Las credenciales de producción deben estar en variables de entorno del servidor
+- Los archivos `config.json` y `config.Production.json` están vacíos intencionalmente
+
+## 📞 Soporte
+
+Para problemas o dudas:
+1. Revisa la [Guía de Inicio](./GUIA-INICIO.md)
+2. Consulta los logs: `docker-compose logs -f api`
+3. Verifica configuración: `Get-Content src\.env`
+
+---
+
+**Última actualización:** 11 de noviembre de 2025
+

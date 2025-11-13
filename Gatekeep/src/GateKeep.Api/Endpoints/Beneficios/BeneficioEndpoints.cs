@@ -12,7 +12,7 @@ public static class BeneficioEndpoints
         var group = app.MapGroup("/beneficios").WithTags("Beneficios");
 
         // GET /beneficios - Todos los usuarios autenticados pueden ver beneficios
-        group.MapGet("/", async (IBeneficioService service) =>
+        group.MapGet("/", async (ICachedBeneficioService service) =>
         {
             var beneficios = await service.ObtenerTodosAsync();
             return Results.Ok(beneficios);
@@ -25,7 +25,7 @@ public static class BeneficioEndpoints
         .Produces(403);
 
         // GET /beneficios/{id} - Todos los usuarios autenticados pueden ver un beneficio específico
-        group.MapGet("/{id:long}", async (long id, IBeneficioService service) =>
+        group.MapGet("/{id:long}", async (long id, ICachedBeneficioService service) =>
         {
             var beneficio = await service.ObtenerPorIdAsync(id);
             return beneficio is not null ? Results.Ok(beneficio) : Results.NotFound();
@@ -38,8 +38,21 @@ public static class BeneficioEndpoints
         .Produces(401)
         .Produces(403);
 
+        // GET /beneficios/vigentes - Todos los usuarios autenticados pueden ver beneficios vigentes
+        group.MapGet("/vigentes", async (ICachedBeneficioService service) =>
+        {
+            var beneficios = await service.ObtenerBeneficiosVigentesAsync();
+            return Results.Ok(beneficios);
+        })
+        .RequireAuthorization("AllUsers")
+        .WithName("GetBeneficiosVigentes")
+        .WithSummary("Obtener beneficios vigentes (con cache)")
+        .Produces<IEnumerable<BeneficioDto>>(200)
+        .Produces(401)
+        .Produces(403);
+
         // POST /beneficios - Solo funcionarios y administradores pueden crear beneficios
-        group.MapPost("/", async (CrearBeneficioRequest request, ClaimsPrincipal user, IBeneficioService service) =>
+        group.MapPost("/", async (CrearBeneficioRequest request, ClaimsPrincipal user, ICachedBeneficioService service) =>
         {
             var userId = long.Parse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
             
@@ -58,7 +71,7 @@ public static class BeneficioEndpoints
         .Produces(403);
 
         // PUT /beneficios/{id} - Solo funcionarios y administradores pueden actualizar beneficios
-        group.MapPut("/{id:long}", async (long id, ActualizarBeneficioRequest request, ClaimsPrincipal user, IBeneficioService service) =>
+        group.MapPut("/{id:long}", async (long id, ActualizarBeneficioRequest request, ClaimsPrincipal user, ICachedBeneficioService service) =>
         {
             var userId = long.Parse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
             var userRole = user.FindFirst(ClaimTypes.Role)?.Value;
@@ -92,7 +105,7 @@ public static class BeneficioEndpoints
         .Produces(403);
 
         // DELETE /beneficios/{id} - Solo administradores pueden eliminar beneficios
-        group.MapDelete("/{id:long}", async (long id, IBeneficioService service) =>
+        group.MapDelete("/{id:long}", async (long id, ICachedBeneficioService service) =>
         {
             await service.EliminarAsync(id);
             return Results.Ok($"Beneficio {id} marcado como eliminado (borrado lógico)");

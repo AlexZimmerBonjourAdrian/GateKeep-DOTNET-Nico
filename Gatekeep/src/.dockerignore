@@ -1,0 +1,42 @@
+# Binaries
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa]rm/
+[Aa]rm64/
+bld/
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio cache/options
+.vs/
+
+# Rider
+.idea/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+
+# Docker
+.dockerignore
+
+# Local config (no sobrescribir en producción)
+**/config.json
+!GateKeep.Api/config.json
+!**/config.Production.json

@@ -11,19 +11,30 @@ import { UsuarioService } from '../services/UsuarioService'
 import { SecurityService } from '../services/securityService'
 
 export default function Header() {
-  const pathname = usePathname();
-  SecurityService.checkAuthAndRedirect(pathname);
   const router = useRouter();
+  const pathname = usePathname();
   const [notificaciones, setNotificaciones] = useState(0);
 
   useEffect(() => {
-    const storedUserId = SecurityService.getUserId();
+    const fetchNotifications = async () => {
+      SecurityService.checkAuthAndRedirect(pathname);
+
+      // Si está autenticado, obtener datos del usuario y notificaciones
+        const storedUserId = SecurityService.getUserId();
+        
+        if (storedUserId) {
+          try {
+            const response = await UsuarioService.getNotificacionesSinLeer(storedUserId);
+            setNotificaciones(response.data || 0);
+          } catch (error) {
+            console.error('Error al cargar notificaciones:', error);
+            setNotificaciones(0);
+          }
+        }
       
-    if (storedUserId) {
-      const notifs = UsuarioService.getNotificacionesSinLeer(storedUserId);
-      setNotificaciones(notifs);
-    }
-    
+    };
+
+    fetchNotifications();
   }, [pathname, router]);
 
   const handleLogout = (e) => {

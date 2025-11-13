@@ -1,7 +1,7 @@
 import axios from "axios";
-import { URLService } from "./urlService";
+import { URLService } from "./urlService";    
 
-const API_URL = URLService.getLink() + "anuncio"; // p.ej. http://localhost:5011/api/evento
+const API_URL = URLService.getLink() + "anuncios/";
 
 export class AnuncioService {
   static getAnuncios() {

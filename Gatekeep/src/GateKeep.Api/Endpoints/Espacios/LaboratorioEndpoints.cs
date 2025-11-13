@@ -8,7 +8,7 @@ public static class LaboratorioEndpoints
 {
     public static IEndpointRouteBuilder MapLaboratorioEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/espacios/laboratorios").WithTags("Laboratorios");
+        var group = app.MapGroup("/api/espacios/laboratorios").WithTags("Laboratorios");
 
         // GET /espacios/laboratorios - Todos los usuarios autenticados pueden ver laboratorios
         group.MapGet("/", () => Results.Ok("Lista de laboratorios"))

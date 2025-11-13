@@ -1,0 +1,228 @@
+networks:
+  gatekeep-network:
+    driver: bridge
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gatekeep-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-Gatekeep}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-Gatekeep}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gatekeep-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: gatekeep-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gatekeep-network
+
+  mongodb:
+    image: mongo:7.0
+    container_name: gatekeep-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGODB_DATABASE:-GateKeepMongo}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gatekeep-network
+
+  seq:
+    image: datalust/seq:latest
+    container_name: gatekeep-seq
+    restart: unless-stopped
+    ports:
+      - "5341:80"
+    volumes:
+      - seq_data:/data
+    environment:
+      - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_NOAUTHENTICATION=True
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:80/api || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - gatekeep-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: gatekeep-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9090/-/healthy || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - gatekeep-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: gatekeep-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - gatekeep-network
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: gatekeep-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"      # Puerto AMQP
+      - "15672:15672"    # Puerto Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - rabbitmq_log:/var/log/rabbitmq
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - gatekeep-network
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gatekeep-api
+    restart: on-failure
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${APP_ENVIRONMENT:-Production}
+      ASPNETCORE_URLS: "http://+:${GATEKEEP_PORT:-5011}"
+      DATABASE__HOST: ${DB_HOST:-postgres}
+      DATABASE__PORT: ${DB_PORT:-5432}
+      DATABASE__NAME: ${DB_NAME:-Gatekeep}
+      DATABASE__USER: ${DB_USER:-postgres}
+      DATABASE__PASSWORD: ${DB_PASSWORD}
+      REDIS__CONNECTIONSTRING: ${REDIS_CONNECTION:-redis:6379}
+      REDIS__INSTANCENAME: ${REDIS_INSTANCE:-GateKeep:}
+      REDIS__ENABLED: ${REDIS_ENABLED:-true}
+      MONGODB_CONNECTION: ${MONGODB_CONNECTION:-mongodb://mongodb:27017}
+      MONGODB_DATABASE: ${MONGODB_DATABASE:-GateKeepMongo}
+      MONGODB_USE_STABLE_API: ${MONGODB_USE_STABLE_API:-false}
+      JWT__KEY: ${JWT_KEY}
+      JWT__ISSUER: ${JWT_ISSUER:-GateKeep}
+      JWT__AUDIENCE: ${JWT_AUDIENCE:-GateKeepUsers}
+      JWT__EXPIRATIONHOURS: ${JWT_EXPIRATION_HOURS:-8}
+      SECURITY__PASSWORDMINLENGTH: ${SECURITY_PASSWORD_MIN_LENGTH:-8}
+      SECURITY__MAXLOGINATTEMPTS: ${SECURITY_MAX_LOGIN_ATTEMPTS:-5}
+      SECURITY__LOCKOUTDURATIONMINUTES: ${SECURITY_LOCKOUT_DURATION_MINUTES:-15}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_REGION: ${AWS_REGION:-sa-east-1}
+      RABBITMQ__HOST: ${RABBITMQ_HOST:-rabbitmq}
+      RABBITMQ__PORT: ${RABBITMQ_PORT:-5672}
+      RABBITMQ__USERNAME: ${RABBITMQ_USER:-guest}
+      RABBITMQ__PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ__VIRTUALHOST: ${RABBITMQ_VHOST:-/}
+    ports:
+      - "${GATEKEEP_PORT:-5011}:${GATEKEEP_PORT:-5011}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      seq:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gatekeep-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5011/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Si quieres montar config locales en vez de usar variables de entorno, descomenta:
+    # volumes:
+    #   - ./GateKeep.Api/config.Production.json:/app/config.Production.json:ro
+    #   - ./GateKeep.Api/appsettings.Production.json:/app/appsettings.Production.json:ro
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  mongodb_data:
+    driver: local
+  seq_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  rabbitmq_data:
+    driver: local
+  rabbitmq_log:
+    driver: local

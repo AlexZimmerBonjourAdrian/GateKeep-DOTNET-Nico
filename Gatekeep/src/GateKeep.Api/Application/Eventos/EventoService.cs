@@ -1,15 +1,24 @@
 using GateKeep.Api.Contracts.Eventos;
 using GateKeep.Api.Domain.Entities;
+using GateKeep.Api.Infrastructure.Observability;
+using Microsoft.Extensions.Logging;
 
 namespace GateKeep.Api.Application.Eventos;
 
 public sealed class EventoService : IEventoService
 {
     private readonly IEventoRepository _repository;
+    private readonly IObservabilityService _observabilityService;
+    private readonly ILogger<EventoService> _logger;
 
-    public EventoService(IEventoRepository repository)
+    public EventoService(
+        IEventoRepository repository,
+        IObservabilityService observabilityService,
+        ILogger<EventoService> logger)
     {
         _repository = repository;
+        _observabilityService = observabilityService;
+        _logger = logger;
     }
 
     public async Task<IEnumerable<EventoDto>> ObtenerTodosAsync()
@@ -36,6 +45,12 @@ public sealed class EventoService : IEventoService
         );
 
         var eventoCreado = await _repository.CrearAsync(evento);
+        
+        // Registrar métrica de evento creado
+        _observabilityService.RecordEventoCreado(request.Resultado ?? "General");
+        _logger.LogInformation("Evento creado: Nombre={Nombre}, Resultado={Resultado}, PuntoControl={PuntoControl}",
+            request.Nombre, request.Resultado, request.PuntoControl);
+        
         return MapToDto(eventoCreado);
     }
 

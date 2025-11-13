@@ -43,8 +43,10 @@ public class PasswordService : IPasswordService
         if (string.IsNullOrEmpty(password))
             return false;
 
-        // Obtener configuración de seguridad desde config.json
-        var minLength = _configuration.GetValue<int>("security:passwordMinLength", 8);
+        // Obtener configuración de seguridad desde config.json o variables de entorno
+        var minLength = int.TryParse(Environment.GetEnvironmentVariable("SECURITY_PASSWORD_MIN_LENGTH"), out var envMinLength)
+            ? envMinLength
+            : _configuration.GetValue<int>("security:passwordMinLength", 8);
         
         // Validaciones básicas de fortaleza de contraseña
         var hasMinLength = password.Length >= minLength;
