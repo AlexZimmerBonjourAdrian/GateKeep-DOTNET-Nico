@@ -9,6 +9,7 @@ using GateKeep.Api.Application.Notificaciones;
 using GateKeep.Api.Application.Security;
 using GateKeep.Api.Application.Events;
 using GateKeep.Api.Application.Usuarios;
+using MassTransit;
 using GateKeep.Api.Contracts.Usuarios;
 using GateKeep.Api.Domain.Enums;
 using GateKeep.Api.Endpoints.Acceso;
@@ -394,6 +395,11 @@ builder.Services.AddSingleton<QrCodeGenerator>();
 // Servicios de Notificaciones MongoDB
 builder.Services.AddScoped<INotificacionRepository, NotificacionRepository>();
 builder.Services.AddScoped<INotificacionService, NotificacionService>();
+builder.Services.AddScoped<INotificacionUsuarioRepository, NotificacionUsuarioRepository>();
+builder.Services.AddScoped<INotificacionUsuarioService, NotificacionUsuarioService>();
+builder.Services.AddScoped<INotificacionUsuarioValidationService, NotificacionUsuarioValidationService>();
+builder.Services.AddScoped<INotificacionSincronizacionService, NotificacionSincronizacionService>();
+builder.Services.AddScoped<INotificacionTransactionService, NotificacionTransactionService>();
 
 // Servicios de Auditoria MongoDB
 builder.Services.AddScoped<IEventoHistoricoRepository, EventoHistoricoRepository>();
@@ -517,6 +523,107 @@ builder.Services.AddSingleton<IObservabilityService, ObservabilityService>();
 
 // Servicios de Eventos (Observer Pattern)
 builder.Services.AddSingleton<IEventPublisher, EventPublisher>();
+
+// Configuración de RabbitMQ Settings
+builder.Services.Configure<GateKeep.Api.Infrastructure.Messaging.RabbitMqSettings>(
+    builder.Configuration.GetSection("RabbitMQ"));
+
+// Servicios de Mensajería Asíncrona
+builder.Services.AddSingleton<GateKeep.Api.Infrastructure.Messaging.IIdempotencyService, 
+    GateKeep.Api.Infrastructure.Messaging.RedisIdempotencyService>();
+builder.Services.AddScoped<GateKeep.Api.Infrastructure.Messaging.IEventBusPublisher, 
+    GateKeep.Api.Infrastructure.Messaging.MassTransitEventBusPublisher>();
+
+// Configuración de MassTransit con RabbitMQ
+builder.Services.AddMassTransit(x =>
+{
+    // Registrar consumidores
+    x.AddConsumer<GateKeep.Api.Infrastructure.Messaging.Consumers.AccesoRechazadoConsumer>();
+    x.AddConsumer<GateKeep.Api.Infrastructure.Messaging.Consumers.BeneficioCanjeadoConsumer>();
+
+    x.UsingRabbitMq((context, cfg) =>
+    {
+        var rabbitMqConfig = builder.Configuration.GetSection("RabbitMQ");
+        
+        // Leer configuración con fallback a variables de entorno
+        var host = builder.Configuration["RABBITMQ:HOST"]
+            ?? Environment.GetEnvironmentVariable("RABBITMQ__HOST")
+            ?? rabbitMqConfig["Host"]
+            ?? "localhost";
+        var port = int.Parse(builder.Configuration["RABBITMQ:PORT"]
+            ?? Environment.GetEnvironmentVariable("RABBITMQ__PORT")
+            ?? rabbitMqConfig["Port"]
+            ?? "5672");
+        var username = builder.Configuration["RABBITMQ:USERNAME"]
+            ?? Environment.GetEnvironmentVariable("RABBITMQ__USERNAME")
+            ?? rabbitMqConfig["Username"]
+            ?? "guest";
+        var password = builder.Configuration["RABBITMQ:PASSWORD"]
+            ?? Environment.GetEnvironmentVariable("RABBITMQ__PASSWORD")
+            ?? rabbitMqConfig["Password"]
+            ?? "guest";
+        var virtualHost = builder.Configuration["RABBITMQ:VIRTUALHOST"]
+            ?? Environment.GetEnvironmentVariable("RABBITMQ__VIRTUALHOST")
+            ?? rabbitMqConfig["VirtualHost"]
+            ?? "/";
+
+        var retryCount = int.Parse(rabbitMqConfig["RetryCount"] ?? "3");
+        var initialIntervalSeconds = int.Parse(rabbitMqConfig["InitialIntervalSeconds"] ?? "5");
+        var intervalIncrementSeconds = int.Parse(rabbitMqConfig["IntervalIncrementSeconds"] ?? "10");
+
+        Log.Information("Configurando RabbitMQ - Host: {Host}:{Port}, VHost: {VirtualHost}, Usuario: {Username}", 
+            host, port, virtualHost, username);
+
+        cfg.Host(host, (ushort)port, virtualHost, h =>
+        {
+            h.Username(username);
+            h.Password(password);
+        });
+
+        // Configurar reintentos con backoff exponencial
+        cfg.UseMessageRetry(retry =>
+        {
+            retry.Exponential(retryCount, 
+                TimeSpan.FromSeconds(initialIntervalSeconds), 
+                TimeSpan.FromSeconds(intervalIncrementSeconds), 
+                TimeSpan.FromMinutes(5));
+            
+            retry.Ignore<ArgumentNullException>();
+            retry.Ignore<InvalidOperationException>();
+        });
+
+        // Configurar endpoints para los consumidores
+        cfg.ReceiveEndpoint("acceso-rechazado-queue", e =>
+        {
+            e.ConfigureConsumer<GateKeep.Api.Infrastructure.Messaging.Consumers.AccesoRechazadoConsumer>(context);
+            
+            // Configurar Dead Letter Queue
+            e.BindDeadLetterQueue("acceso-rechazado-queue-dlq", "acceso-rechazado-queue-dlq-exchange");
+            
+            // Configurar prefetch para limitar mensajes concurrentes
+            e.PrefetchCount = 16;
+            e.UseConcurrencyLimit(8);
+        });
+
+        cfg.ReceiveEndpoint("beneficio-canjeado-queue", e =>
+        {
+            e.ConfigureConsumer<GateKeep.Api.Infrastructure.Messaging.Consumers.BeneficioCanjeadoConsumer>(context);
+            
+            // Configurar Dead Letter Queue
+            e.BindDeadLetterQueue("beneficio-canjeado-queue-dlq", "beneficio-canjeado-queue-dlq-exchange");
+            
+            e.PrefetchCount = 16;
+            e.UseConcurrencyLimit(8);
+        });
+
+        // Configuración global de serialización
+        cfg.ConfigureJsonSerializerOptions(options =>
+        {
+            options.WriteIndented = false;
+            return options;
+        });
+    });
+});
 
 // Servicios de Colas
 builder.Services.AddSingleton<ISincronizacionQueue, SincronizacionQueue>();

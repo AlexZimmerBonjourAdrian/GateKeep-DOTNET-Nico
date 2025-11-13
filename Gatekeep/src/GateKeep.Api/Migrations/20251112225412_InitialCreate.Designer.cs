@@ -9,10 +9,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace GateKeep.Api.Infrastructure.Persistence.Migrations
+namespace GateKeep.Api.Migrations
 {
     [DbContext(typeof(GateKeepDbContext))]
-    [Migration("20251111153600_InitialCreate")]
+    [Migration("20251112225412_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />

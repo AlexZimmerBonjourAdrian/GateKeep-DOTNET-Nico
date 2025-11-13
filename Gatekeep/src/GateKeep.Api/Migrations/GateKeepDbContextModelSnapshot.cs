@@ -8,7 +8,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace GateKeep.Api.Infrastructure.Persistence.Migrations
+namespace GateKeep.Api.Migrations
 {
     [DbContext(typeof(GateKeepDbContext))]
     partial class GateKeepDbContextModelSnapshot : ModelSnapshot

@@ -1,5 +1,6 @@
 ﻿using GateKeep.Api.Contracts.Beneficios;
 using GateKeep.Api.Infrastructure.Caching;
+using Microsoft.Extensions.Logging;
 
 namespace GateKeep.Api.Application.Beneficios;
 
@@ -10,13 +11,16 @@ public sealed class CachedBeneficioService : ICachedBeneficioService
 {
     private readonly IBeneficioService _beneficioService;
     private readonly ICacheService _cacheService;
+    private readonly ILogger<CachedBeneficioService> _logger;
 
     public CachedBeneficioService(
         IBeneficioService beneficioService,
-        ICacheService cacheService)
+        ICacheService cacheService,
+        ILogger<CachedBeneficioService> logger)
     {
         _beneficioService = beneficioService;
         _cacheService = cacheService;
+        _logger = logger;
     }
 
     public async Task<IEnumerable<BeneficioDto>> ObtenerTodosAsync()
@@ -24,7 +28,7 @@ public sealed class CachedBeneficioService : ICachedBeneficioService
         var cacheKey = CacheKeys.AllBeneficios;
         
         // Intentar obtener del cache
-        var cachedBeneficios = await _cacheService.GetAsync<IEnumerable<BeneficioDto>>(cacheKey);
+        var cachedBeneficios = await _cacheService.GetAsync<List<BeneficioDto>>(cacheKey);
         if (cachedBeneficios is not null)
         {
             return cachedBeneficios;
@@ -68,7 +72,7 @@ public sealed class CachedBeneficioService : ICachedBeneficioService
         var cacheKey = CacheKeys.BeneficiosVigentes;
         
         // Intentar obtener del cache
-        var cachedBeneficios = await _cacheService.GetAsync<IEnumerable<BeneficioDto>>(cacheKey);
+        var cachedBeneficios = await _cacheService.GetAsync<List<BeneficioDto>>(cacheKey);
         if (cachedBeneficios is not null)
         {
             return cachedBeneficios;

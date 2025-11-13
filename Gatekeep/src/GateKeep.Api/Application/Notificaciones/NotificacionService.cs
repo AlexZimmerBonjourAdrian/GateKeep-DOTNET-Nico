@@ -10,17 +10,20 @@ namespace GateKeep.Api.Application.Notificaciones;
 public class NotificacionService : INotificacionService
 {
     private readonly INotificacionRepository _notificacionRepository;
+    private readonly INotificacionUsuarioRepository _notificacionUsuarioRepository;
     private readonly IEventoHistoricoService? _eventoHistoricoService;
     private readonly IObservabilityService _observabilityService;
     private readonly ILogger<NotificacionService> _logger;
 
     public NotificacionService(
         INotificacionRepository notificacionRepository,
+        INotificacionUsuarioRepository notificacionUsuarioRepository,
         IObservabilityService observabilityService,
         ILogger<NotificacionService> logger,
         IEventoHistoricoService? eventoHistoricoService = null)
     {
         _notificacionRepository = notificacionRepository;
+        _notificacionUsuarioRepository = notificacionUsuarioRepository;
         _observabilityService = observabilityService;
         _logger = logger;
         _eventoHistoricoService = eventoHistoricoService;
@@ -37,6 +40,35 @@ public class NotificacionService : INotificacionService
         };
 
         var notificacionCreada = await _notificacionRepository.CrearAsync(notificacion);
+        
+        // Si se proporciona un usuarioIdCreador, crear la relación usuario-notificación
+        if (usuarioIdCreador.HasValue)
+        {
+            try
+            {
+                var notificacionUsuario = new NotificacionUsuario
+                {
+                    UsuarioId = usuarioIdCreador.Value,
+                    NotificacionId = notificacionCreada.Id,
+                    Leido = false,
+                    FechaLectura = null,
+                    CreatedAt = DateTime.UtcNow
+                };
+                
+                await _notificacionUsuarioRepository.CrearAsync(notificacionUsuario);
+                
+                _logger.LogInformation(
+                    "Relación usuario-notificación creada: UsuarioId={UsuarioId}, NotificacionId={NotificacionId}",
+                    usuarioIdCreador.Value, notificacionCreada.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, 
+                    "Error al crear relación usuario-notificación para UsuarioId={UsuarioId}, NotificacionId={NotificacionId}",
+                    usuarioIdCreador.Value, notificacionCreada.Id);
+                _observabilityService.RecordError("NotificacionService", "RelacionUsuarioError");
+            }
+        }
         
         // Registrar métrica de notificación enviada
         _observabilityService.RecordNotificacionEnviada(tipo, true);
