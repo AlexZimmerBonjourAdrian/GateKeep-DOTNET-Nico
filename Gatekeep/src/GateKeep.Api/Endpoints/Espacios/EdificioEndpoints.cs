@@ -11,7 +11,7 @@ public static class EdificioEndpoints
 {
     public static IEndpointRouteBuilder MapEdificioEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/espacios/edificios").WithTags("Edificios");
+        var group = app.MapGroup("/espacios/edificios").WithTags("Edificios");
 
         // GET /api/espacios/edificios - Todos los usuarios autenticados pueden ver edificios
         group.MapGet("/", async (IEspacioRepository espacioRepository) =>

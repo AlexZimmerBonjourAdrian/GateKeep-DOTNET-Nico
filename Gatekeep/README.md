@@ -1,4 +1,4 @@
-# GateKeep API
+-# GateKeep API
 
 Sistema de gestión de acceso y control para espacios universitarios construido con .NET 8, PostgreSQL, MongoDB, Redis y arquitectura ECS.
 

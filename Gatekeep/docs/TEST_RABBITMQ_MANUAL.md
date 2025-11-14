@@ -61,7 +61,7 @@ Content-Type: application/json
 
 **Respuesta esperada:** Status 201, guardar el `id` del usuario creado.
 
-#### Crear un Espacio
+#### Crear un Edificio
 ```http
 POST http://localhost:5011/api/espacios
 Content-Type: application/json
@@ -347,22 +347,29 @@ Como el canje de beneficios puede no estar completamente implementado, puedes pr
 
 1. Ir a: `http://localhost:15672/#/queues/%2F/beneficio-canjeado-queue`
 2. Click en **"Publish message"**
-3. En **Payload**, poner:
+3. En **Headers**, agregar:
+   - Key: `Content-Type`, Value: `application/json`
+4. En **Payload**, poner (formato MassTransit):
 
 ```json
 {
-  "eventId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "timestamp": "2025-11-13T12:00:00Z",
-  "usuarioId": <ID_USUARIO>,
-  "beneficioId": <ID_BENEFICIO>,
-  "nombreBeneficio": "Descuento Cafetería 10%",
-  "puntoControl": "Sistema Web",
-  "puntosCanjeados": 100,
-  "idempotencyKey": "beneficio-canjeado-<ID_USUARIO>-<ID_BENEFICIO>-20251113120000"
+  "messageType": [
+    "urn:message:GateKeep.Api.Domain.Events:BeneficioCanjeadoEvent"
+  ],
+  "message": {
+    "eventId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "timestamp": "2025-11-14T02:41:00Z",
+    "usuarioId": 1,
+    "beneficioId": 1,
+    "nombreBeneficio": "Descuento Cafetería 10%",
+    "puntoControl": "Sistema Web",
+    "puntosCanjeados": 100,
+    "idempotencyKey": "beneficio-canjeado-1-1-20251114024100"
+  }
 }
 ```
 
-4. Click **"Publish message"**
+5. Click **"Publish message"**
 
 ### 5.3 Verificaciones
 

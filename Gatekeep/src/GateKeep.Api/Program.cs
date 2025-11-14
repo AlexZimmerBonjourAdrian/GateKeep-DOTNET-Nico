@@ -632,7 +632,8 @@ builder.Services.AddSingleton<IEventoQueue, EventoQueue>();
 
 // Servicios de Background para procesar colas
 builder.Services.AddHostedService<SincronizacionQueueProcessor>();
-builder.Services.AddHostedService<EventoQueueProcessor>();
+// EventoQueueProcessor deshabilitado - ahora se usa RabbitMQ para procesamiento asíncrono
+// builder.Services.AddHostedService<EventoQueueProcessor>();
 builder.Services.AddHostedService<BacklogMetricsUpdater>();
 
 // Configuración de OpenTelemetry
