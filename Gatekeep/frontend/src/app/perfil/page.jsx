@@ -8,7 +8,6 @@ import logo from '/public/assets/LogoGateKeep.webp'
 import harvard from '/public/assets/Harvard.webp'
 import BasketballIcon from '/public/assets/basketball-icon.svg'
 import UsuarioService from '../../services/UsuarioService'
-import { usePathname } from 'next/navigation'
 import { SecurityService } from '../../services/securityService'
 
 export default function Perfil() {

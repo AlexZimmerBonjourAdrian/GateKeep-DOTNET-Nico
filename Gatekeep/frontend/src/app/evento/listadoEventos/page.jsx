@@ -14,6 +14,7 @@ export default function listadoEventos() {
 
   const [eventos, setEventos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
 
   // Fetch eventos al montar el componente
@@ -31,6 +32,28 @@ export default function listadoEventos() {
     };
 
     fetchEventos();
+  }, []);
+
+  // Determinar si el usuario es Administrador para mostrar el botón de creación
+  useEffect(() => {
+    try {
+      // Primero, intentar con SecurityService (usa 'tipoUsuario')
+      const tipo = SecurityService.getTipoUsuario?.() || null;
+      let isAdminRole = false;
+      if (tipo) {
+        isAdminRole = /admin/i.test(tipo);
+      } else if (typeof window !== 'undefined') {
+        const raw = localStorage.getItem('user');
+        if (raw) {
+          const user = JSON.parse(raw);
+          const role = user?.TipoUsuario || user?.tipoUsuario || user?.Rol || user?.rol;
+          if (role) isAdminRole = /admin|administrador/i.test(String(role));
+        }
+      }
+      setIsAdmin(isAdminRole);
+    } catch (e) {
+      setIsAdmin(false);
+    }
   }, []);
 
 
@@ -135,6 +158,19 @@ export default function listadoEventos() {
                   aria-label="Fecha hasta"
                 />
               </div>
+
+              {isAdmin && (
+                <div className="actions-inline">
+                  <button
+                    type="button"
+                    className="create-button"
+                    onClick={() => router.push('/evento/crearEvento')}
+                    aria-label="Crear nuevo evento"
+                  >
+                    Crear Evento
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -191,6 +227,11 @@ export default function listadoEventos() {
           /* Base layout tweaks */
           .container-header{ padding-left: 1.111vw; width: auto; }
           .container-nothing { margin: 0; width: 100%; height: 100%; }
+          .actions-inline{ display:flex; align-items:center; gap:12px; margin-left:auto; margin-right: clamp(12px, 1.111vw, 24px); }
+          .create-button{ background:#f37426; color:#fff; border:none; padding:8px 16px; border-radius:20px; cursor:pointer; font-size:0.85rem; font-weight:600; letter-spacing:0.3px; box-shadow:0 2px 6px rgba(0,0,0,0.15); transition:background 0.15s ease, transform 0.15s ease; }
+          .create-button:hover{ background:#ff8d45; transform:translateY(-2px); }
+          .create-button:active{ transform:translateY(0); }
+          .create-button:focus-visible{ outline:2px solid rgba(37,99,235,0.4); outline-offset:2px; }
 
           /* Filters row */
           .filtros-container{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
