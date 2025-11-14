@@ -1,18 +1,20 @@
 "use client"
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Header from '../../../components/Header';
 import { EventoService } from '../../../services/EventoService';
 import { SecurityService } from '../../../services/securityService';
 
 export default function listadoEventos() {
-
   const pathname = usePathname();
-  SecurityService.checkAuthAndRedirect(pathname);
+  useEffect(() => {
+    SecurityService.checkAuthAndRedirect(pathname);
+  }, [pathname]);
 
   const [eventos, setEventos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   // Fetch eventos al montar el componente
   useEffect(() => {
@@ -42,20 +44,21 @@ export default function listadoEventos() {
   const filteredEventos = useMemo(() => {
     const q = searchInput.trim().toLowerCase();
     return eventos.filter((ev) => {
+      const nombreSrc = ev.Nombre ?? ev.nombre ?? ev.title ?? '';
+      const fechaSrc = ev.Fecha ?? ev.fecha ?? ev.date ?? null;
+      const fechaIso = fechaSrc ? new Date(fechaSrc).toISOString().split('T')[0] : '';
       // Filter by query on Nombre (name)
       if (q) {
-        const nombre = ev.Nombre ? ev.Nombre.toLowerCase() : '';
+        const nombre = typeof nombreSrc === 'string' ? nombreSrc.toLowerCase() : '';
         if (!nombre.includes(q)) return false;
       }
 
       // Filter by date range if provided
       if (dateFrom) {
-        const evFecha = ev.Fecha ? new Date(ev.Fecha).toISOString().split('T')[0] : '';
-        if (!evFecha || evFecha < dateFrom) return false;
+        if (!fechaIso || fechaIso < dateFrom) return false;
       }
       if (dateTo) {
-        const evFecha = ev.Fecha ? new Date(ev.Fecha).toISOString().split('T')[0] : '';
-        if (!evFecha || evFecha > dateTo) return false;
+        if (!fechaIso || fechaIso > dateTo) return false;
       }
 
       return true;
@@ -150,18 +153,32 @@ export default function listadoEventos() {
               // Render each group as its own grid so groups of 4 stay together
               groupedEventos.map((group, gi) => (
                 <div className="event-group" key={`group-${gi}`}>
-                  {group.map((ev) => (
-                    <div key={ev.Id} className="event-card" tabIndex={0}>
-                      {ev.Nombre && <h3>{ev.Nombre}</h3>}
-                      {ev.Fecha && <p>{new Date(ev.Fecha).toLocaleDateString('es-ES', { 
+                  {group.map((ev) => {
+                    const id = ev.Id ?? ev.id ?? `${ev.Nombre ?? ev.nombre ?? 'ev'}-${Math.random()}`;
+                    const nombre = ev.Nombre ?? ev.nombre ?? ev.title;
+                    const fecha = ev.Fecha ?? ev.fecha ?? ev.date;
+                    const punto = ev.PuntoControl ?? ev.puntoControl;
+                    const resultado = ev.Resultado ?? ev.resultado;
+                    return (
+                      <div
+                        key={id}
+                        className="event-card"
+                        tabIndex={0}
+                        role="button"
+                        onClick={() => router.push(`/evento/${id}`)}
+                        onKeyDown={(e) => { if (e.key==='Enter' || e.key===' ') { e.preventDefault(); router.push(`/evento/${id}`) }}}
+                      >
+                        {nombre && <h3>{nombre}</h3>}
+                        {fecha && <p>{new Date(fecha).toLocaleDateString('es-ES', { 
                         year: 'numeric', 
                         month: 'long', 
                         day: 'numeric' 
                       })}</p>}
-                      {ev.PuntoControl && <p><strong>Punto Control:</strong> {ev.PuntoControl}</p>}
-                      {ev.Resultado && <p><strong>Resultado:</strong> {ev.Resultado}</p>}
-                    </div>
-                  ))}
+                        {punto && <p><strong>Punto Control:</strong> {punto}</p>}
+                        {resultado && <p><strong>Resultado:</strong> {resultado}</p>}
+                      </div>
+                    );
+                  })}
                 </div>
               ))
             )}

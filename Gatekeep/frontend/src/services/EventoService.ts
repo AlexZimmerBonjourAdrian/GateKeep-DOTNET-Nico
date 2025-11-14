@@ -7,4 +7,8 @@ export class EventoService {
   static getEventos() {
     return axios.get(API_URL);
   }
+
+  static getEvento(id: number) {
+    return axios.get(API_URL + id);
+  }
 }

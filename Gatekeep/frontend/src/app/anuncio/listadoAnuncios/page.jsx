@@ -1,21 +1,38 @@
 "use client"
 
-import React, { useState, useMemo, useRef } from 'react';
-import { usePathname } from 'next/navigation';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import Header from '../../../components/Header';
 import { SecurityService } from '../../../services/securityService';
+import { AnuncioService } from '../../../services/AnuncioService';
 
 export default function listadoAnuncios() {
 
-  const anuncios = [
-    { id: 1, title: 'Hockey Game', date: '2024-07-01' },
-    { id: 2, title: 'Soccer Match', date: '2024-07-05' },
-    { id: 3, title: 'Basketball Tournament', date: '2024-07-10' },
-    { id: 4, title: 'Tennis Finals', date: '2024-07-15' },
-    { id: 5, title: 'Swimming Competition', date: '2024-07-20' },
-    { id: 6, title: 'Marathon', date: '2024-07-25' },
-    { id: 7, title: 'Cycling Race', date: '2024-07-30' },
-  ]
+  const pathname = usePathname();
+  useEffect(() => {
+    SecurityService.checkAuthAndRedirect(pathname);
+  }, [pathname]);
+
+  const [anuncios, setAnuncios] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  // Fetch anuncios al montar el componente
+  useEffect(() => {
+    const fetchAnuncios = async () => {
+      try {
+        const response = await AnuncioService.getAnuncios();
+        setAnuncios(response.data || []);
+      } catch (error) {
+        console.error('Error al cargar anuncios:', error);
+        setAnuncios([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnuncios();
+  }, []);
 
   // Controlled states for search and date filters
   const [searchInput, setSearchInput] = useState('');
@@ -27,23 +44,26 @@ export default function listadoAnuncios() {
   const filteredAnuncios = useMemo(() => {
     const q = searchInput.trim().toLowerCase();
     return anuncios.filter((ev) => {
-      // Filter by query on title
+      const nombreSrc = ev.Nombre ?? ev.nombre ?? ev.title ?? '';
+      const fechaSrc = ev.Fecha ?? ev.fecha ?? ev.date ?? null;
+      const fechaIso = fechaSrc ? new Date(fechaSrc).toISOString().split('T')[0] : '';
+      // Filter by query on title/nombre
       if (q) {
-        const title = ev.title ? ev.title.toLowerCase() : '';
-        if (!title.includes(q)) return false;
+        const nombre = typeof nombreSrc === 'string' ? nombreSrc.toLowerCase() : '';
+        if (!nombre.includes(q)) return false;
       }
 
       // Filter by date range if provided
       if (dateFrom) {
-        if (!ev.date || ev.date < dateFrom) return false;
+        if (!fechaIso || fechaIso < dateFrom) return false;
       }
       if (dateTo) {
-        if (!ev.date || ev.date > dateTo) return false;
+        if (!fechaIso || fechaIso > dateTo) return false;
       }
 
       return true;
     });
-  }, [searchInput, dateFrom, dateTo]);
+  }, [anuncios, searchInput, dateFrom, dateTo]);
 
   // Group filtered anuncios in chunks of 4 so visual grouping of 4 is preserved
   const groupedAnuncios = [];
@@ -120,7 +140,11 @@ export default function listadoAnuncios() {
 
           {/* Anuncios list - mostrar todas las tarjetas similar al Carousel */}
           <div className="events-grid">
-            {filteredAnuncios.length === 0 ? (
+            {loading ? (
+              <div className="event-card" style={{ background: '#fff6ee' }}>
+                <h3>Cargando anuncios...</h3>
+              </div>
+            ) : filteredAnuncios.length === 0 ? (
               <div className="event-card" style={{ background: '#fff6ee' }}>
                 <h3>No se encontraron anuncios</h3>
                 <p>Prueba otro término o rango de fecha.</p>
@@ -129,12 +153,19 @@ export default function listadoAnuncios() {
               // Render each group as its own grid so groups of 4 stay together
               groupedAnuncios.map((group, gi) => (
                 <div className="event-group" key={`group-${gi}`}>
-                  {group.map((ev) => (
-                    <div key={ev.id} className="event-card" tabIndex={0}>
-                      {ev.title && <h3>{ev.title}</h3>}
-                      {ev.date && <p>{ev.date}</p>}
-                    </div>
-                  ))}
+                  {group.map((ev) => {
+                    const id = ev.Id ?? ev.id ?? `${ev.Nombre ?? ev.nombre ?? 'an'}-${Math.random()}`;
+                    const nombre = ev.Nombre ?? ev.nombre ?? ev.title;
+                    const fecha = ev.Fecha ?? ev.fecha ?? ev.date;
+                    return (
+                      <div key={id} className="event-card" tabIndex={0} role="button" onClick={() => router.push(`/anuncio/${id}`)} onKeyDown={(e) => { if (e.key==='Enter' || e.key===' ') { e.preventDefault(); router.push(`/anuncio/${id}`) }}}>
+                        {nombre && <h3>{nombre}</h3>}
+                        {fecha && (
+                          <p>{new Date(fecha).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ))
             )}

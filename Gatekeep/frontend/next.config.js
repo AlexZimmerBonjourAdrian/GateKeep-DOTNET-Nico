@@ -1,6 +1,5 @@
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
-import withPWA from 'next-pwa'
 
 const __filename = fileURLToPath(
     import.meta.url)
@@ -28,24 +27,5 @@ const nextConfig = {
     },
 }
 
-// Configuración PWA
-const pwaConfig = withPWA({
-    dest: 'public',
-    register: true,
-    skipWaiting: true,
-    disable: isDev, // Deshabilitar en desarrollo para evitar problemas
-    runtimeCaching: [
-        {
-            urlPattern: /^https?.*/,
-            handler: 'NetworkFirst',
-            options: {
-                cacheName: 'offlineCache',
-                expiration: {
-                    maxEntries: 200,
-                },
-            },
-        },
-    ],
-})
-
-export default pwaConfig(nextConfig)
+// Exportar configuración sin PWA para evitar dependencia faltante
+export default nextConfig
