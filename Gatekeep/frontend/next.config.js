@@ -14,8 +14,8 @@ const nextConfig = {
     },
     // Deshabilitar static export para evitar problemas con pre-renderizado
     // output: 'standalone', // Usar standalone para mejor compatibilidad con Docker
-    // Aplicar basePath/assetPrefix solo en producción
-    ...(isDev ? {} : { basePath: '/Gatekeep', assetPrefix: '/Gatekeep' }),
+    // Eliminar basePath/assetPrefix - el frontend está en la raíz del dominio
+    // No usar basePath ya que el ALB enruta directamente a /
     // Configuración para PrimeReact
     transpilePackages: ['primereact', 'primeicons', 'primeflex'],
     // Configuración para evitar conflictos con múltiples lockfiles
