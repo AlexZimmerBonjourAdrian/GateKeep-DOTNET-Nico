@@ -1,0 +1,358 @@
+# ECS Fargate - Despliegue simple de la aplicación
+
+# ECS Cluster
+resource "aws_ecs_cluster" "main" {
+  name = "${var.project_name}-cluster"
+
+  setting {
+    name  = "containerInsights"
+    value = "enabled"
+  }
+
+  tags = {
+    Name        = "${var.project_name}-cluster"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+# CloudWatch Log Group
+resource "aws_cloudwatch_log_group" "ecs" {
+  name              = "/ecs/${var.project_name}"
+  retention_in_days = 7
+
+  tags = {
+    Name        = "${var.project_name}-ecs-logs"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+# IAM Role para ECS Task Execution
+resource "aws_iam_role" "ecs_execution" {
+  name = "${var.project_name}-ecs-execution-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name        = "${var.project_name}-ecs-execution-role"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+# Attach AWS managed policy for ECS task execution
+resource "aws_iam_role_policy_attachment" "ecs_execution" {
+  role       = aws_iam_role.ecs_execution.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+# Policy adicional para acceder a Secrets Manager y Parameter Store
+resource "aws_iam_role_policy" "ecs_execution_secrets" {
+  name = "${var.project_name}-ecs-execution-secrets"
+  role = aws_iam_role.ecs_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = [
+          aws_secretsmanager_secret.db_password.arn,
+          aws_secretsmanager_secret.jwt_key.arn,
+          aws_secretsmanager_secret.rabbitmq_password.arn
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter",
+          "ssm:GetParameters",
+          "ssm:GetParametersByPath"
+        ]
+        Resource = [
+          "arn:aws:ssm:${var.aws_region}:*:parameter/${var.project_name}/*"
+        ]
+      }
+    ]
+  })
+}
+
+# IAM Role para ECS Task (la aplicación misma)
+resource "aws_iam_role" "ecs_task" {
+  name = "${var.project_name}-ecs-task-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name        = "${var.project_name}-ecs-task-role"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+# ECS Task Definition
+resource "aws_ecs_task_definition" "main" {
+  family                   = "${var.project_name}-api"
+  requires_compatibilities = ["FARGATE"]
+  network_mode            = "awsvpc"
+  cpu                     = "512"   # 0.5 vCPU
+  memory                  = "1024"  # 1 GB
+  execution_role_arn      = aws_iam_role.ecs_execution.arn
+  task_role_arn          = aws_iam_role.ecs_task.arn
+
+  container_definitions = jsonencode([
+    {
+      name  = "${var.project_name}-api"
+      image = "${aws_ecr_repository.gatekeep_api.repository_url}:latest"
+
+      portMappings = [
+        {
+          containerPort = 5011
+          protocol      = "tcp"
+        }
+      ]
+
+      environment = [
+        {
+          name  = "ASPNETCORE_ENVIRONMENT"
+          value = var.environment
+        },
+        {
+          name  = "ASPNETCORE_URLS"
+          value = "http://+:5011"
+        },
+        {
+          name  = "GATEKEEP_PORT"
+          value = "5011"
+        },
+        {
+          name  = "AWS_REGION"
+          value = var.aws_region
+        }
+      ]
+
+      secrets = [
+        {
+          name      = "DATABASE__PASSWORD"
+          valueFrom = aws_secretsmanager_secret.db_password.arn
+        },
+        {
+          name      = "JWT__KEY"
+          valueFrom = aws_secretsmanager_secret.jwt_key.arn
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.ecs.name
+          "awslogs-region"       = var.aws_region
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
+
+      healthCheck = {
+        command     = ["CMD-SHELL", "curl -f http://localhost:5011/health || exit 1"]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 60
+      }
+    }
+  ])
+
+  tags = {
+    Name        = "${var.project_name}-api-task"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+# Security Group para ECS
+resource "aws_security_group" "ecs" {
+  name        = "${var.project_name}-ecs-sg"
+  description = "Security group para ECS Fargate"
+  vpc_id      = aws_vpc.main.id
+
+  # Permitir tráfico HTTP saliente
+  egress {
+    description = "Allow all outbound traffic"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Permitir tráfico HTTP entrante (para ALB)
+  ingress {
+    description     = "HTTP from ALB"
+    from_port       = 5011
+    to_port         = 5011
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+  }
+
+  tags = {
+    Name        = "${var.project_name}-ecs-sg"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+# Application Load Balancer (simple)
+resource "aws_lb" "main" {
+  name               = "${var.project_name}-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb.id]
+  subnets            = [aws_subnet.public_1.id, aws_subnet.public_2.id]
+
+  enable_deletion_protection = false
+
+  tags = {
+    Name        = "${var.project_name}-alb"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+# Security Group para ALB
+resource "aws_security_group" "alb" {
+  name        = "${var.project_name}-alb-sg"
+  description = "Security group para Application Load Balancer"
+  vpc_id      = aws_vpc.main.id
+
+  # Permitir HTTP entrante
+  ingress {
+    description = "HTTP from internet"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Permitir HTTPS entrante (opcional, para futuro)
+  ingress {
+    description = "HTTPS from internet"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description = "Allow all outbound traffic"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name        = "${var.project_name}-alb-sg"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+# Target Group
+resource "aws_lb_target_group" "main" {
+  name        = "${var.project_name}-tg"
+  port        = 5011
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 30
+    path                = "/health"
+    protocol            = "HTTP"
+    matcher             = "200"
+  }
+
+  tags = {
+    Name        = "${var.project_name}-tg"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+# ALB Listener
+resource "aws_lb_listener" "main" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.main.arn
+  }
+}
+
+# ECS Service
+resource "aws_ecs_service" "main" {
+  name            = "${var.project_name}-api-service"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.main.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = [aws_subnet.private_1.id, aws_subnet.private_2.id]
+    security_groups  = [aws_security_group.ecs.id]
+    assign_public_ip = false
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.main.arn
+    container_name   = "${var.project_name}-api"
+    container_port   = 5011
+  }
+
+  # Configuración de despliegue
+  deployment_maximum_percent         = 200
+  deployment_minimum_healthy_percent = 100
+
+  depends_on = [
+    aws_lb_listener.main,
+    aws_iam_role_policy.ecs_execution_secrets
+  ]
+
+  tags = {
+    Name        = "${var.project_name}-api-service"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+

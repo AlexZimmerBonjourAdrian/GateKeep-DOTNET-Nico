@@ -34,3 +34,9 @@ variable "aws_secret_access_key" {
   sensitive   = true
 }
 
+variable "aws_profile" {
+  description = "Perfil de AWS a usar (opcional, si tienes múltiples perfiles en ~/.aws/credentials)"
+  type        = string
+  default     = "" # Si está vacío, usa el perfil 'default' o variables de entorno
+}
+
