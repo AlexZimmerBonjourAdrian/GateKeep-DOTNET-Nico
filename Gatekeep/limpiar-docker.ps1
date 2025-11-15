@@ -12,6 +12,7 @@ Write-Host "  - Todas las imágenes Docker" -ForegroundColor Yellow
 Write-Host "  - Todos los volúmenes" -ForegroundColor Yellow
 Write-Host "  - Todas las redes personalizadas" -ForegroundColor Yellow
 Write-Host "  - Todo el caché de Docker" -ForegroundColor Yellow
+Write-Host "  - Todo el caché de builds" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "Esto liberará espacio pero eliminará TODO en Docker." -ForegroundColor Yellow
 Write-Host ""
@@ -96,8 +97,18 @@ if ($networks) {
 }
 Write-Host ""
 
-# Paso 6: Limpieza completa del sistema (incluye caché, contenedores huérfanos, etc.)
-Write-Host "[6/6] Limpieza completa del sistema Docker..." -ForegroundColor Yellow
+# Paso 6: Eliminar caché de builds
+Write-Host "[6/7] Eliminando caché de builds..." -ForegroundColor Yellow
+docker builder prune -a -f
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "  Caché de builds eliminado" -ForegroundColor Green
+} else {
+    Write-Host "  Advertencia: No se pudo eliminar el caché de builds" -ForegroundColor Yellow
+}
+Write-Host ""
+
+# Paso 7: Limpieza completa del sistema (incluye caché, contenedores huérfanos, etc.)
+Write-Host "[7/7] Limpieza completa del sistema Docker..." -ForegroundColor Yellow
 Write-Host "  Esto puede tardar unos momentos..." -ForegroundColor Gray
 docker system prune -a --volumes -f
 if ($LASTEXITCODE -eq 0) {
