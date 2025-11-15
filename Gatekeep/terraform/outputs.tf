@@ -107,3 +107,25 @@ output "application_url" {
   value       = "http://${aws_lb.main.dns_name}"
 }
 
+output "frontend_url" {
+  description = "URL pública del frontend"
+  value       = "http://${aws_lb.main.dns_name}"
+}
+
+output "backend_api_url" {
+  description = "URL pública del backend API"
+  value       = "http://${aws_lb.main.dns_name}/api"
+}
+
+# ECR Frontend
+output "ecr_frontend_repository_url" {
+  description = "URL del repositorio ECR para frontend"
+  value       = aws_ecr_repository.gatekeep_frontend.repository_url
+}
+
+# ECS Frontend
+output "ecs_frontend_service_name" {
+  description = "Nombre del servicio ECS del frontend"
+  value       = aws_ecs_service.frontend.name
+}
+

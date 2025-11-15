@@ -40,3 +40,44 @@ resource "aws_ecr_lifecycle_policy" "gatekeep_api" {
   })
 }
 
+# ECR Repository para Frontend
+resource "aws_ecr_repository" "gatekeep_frontend" {
+  name                 = "${var.project_name}-frontend"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  encryption_configuration {
+    encryption_type = "AES256"
+  }
+
+  tags = {
+    Name        = "${var.project_name}-frontend"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+resource "aws_ecr_lifecycle_policy" "gatekeep_frontend" {
+  repository = aws_ecr_repository.gatekeep_frontend.name
+
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Mantener las últimas 10 imágenes"
+        selection = {
+          tagStatus   = "any"
+          countType   = "imageCountMoreThan"
+          countNumber = 10
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
+}
+

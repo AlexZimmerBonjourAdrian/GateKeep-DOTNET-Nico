@@ -5,8 +5,9 @@ import { URLService } from "./urlService";
 // Base URL del backend y recursos específicos
 const API_URL = URLService.getLink(); // p.ej. http://localhost:5011/api/
 // Usuarios en backend están expuestos en "/usuarios" (sin prefijo /api)
-const USUARIOS_URL = "http://localhost:5011/usuarios/";
-const AUTH_URL = "http://localhost:5011/auth/";
+const BASE_URL = URLService.getBaseUrl();
+const USUARIOS_URL = `${BASE_URL}/usuarios/`;
+const AUTH_URL = `${BASE_URL}/auth/`;
 
 // Instancia Axios para usuarios (reutiliza token si existe)
 const api: AxiosInstance = axios.create({

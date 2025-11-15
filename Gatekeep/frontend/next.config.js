@@ -12,6 +12,8 @@ const nextConfig = {
     images: {
         domains: [],
     },
+    // Deshabilitar static export para evitar problemas con pre-renderizado
+    // output: 'standalone', // Usar standalone para mejor compatibilidad con Docker
     // Aplicar basePath/assetPrefix solo en producción
     ...(isDev ? {} : { basePath: '/Gatekeep', assetPrefix: '/Gatekeep' }),
     // Configuración para PrimeReact

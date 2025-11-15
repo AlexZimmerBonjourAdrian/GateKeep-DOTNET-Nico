@@ -1,3 +1,8 @@
+'use client';
+
+export const dynamic = 'force-dynamic';
+export const ssr = false;
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useRouter } from 'next/navigation';
