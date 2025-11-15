@@ -73,15 +73,22 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "  Grafana:      http://localhost:3001" -ForegroundColor White
     Write-Host ""
     
-    # Preguntar si abrir navegador
-    $openBrowser = Read-Host "Abrir Swagger en el navegador? (S/N)"
-    if ($openBrowser -eq "S" -or $openBrowser -eq "s") {
-        Start-Process "http://localhost:5011/swagger"
+    # Preguntar si abrir aplicaciones
+    $openApps = Read-Host "Abrir aplicaciones y herramientas? (S/N)"
+    if ($openApps -eq "S" -or $openApps -eq "s") {
+        $openAppsScript = Join-Path $PSScriptRoot "open-apps.ps1"
+        if (Test-Path $openAppsScript) {
+            & $openAppsScript -Mode "Docker"
+        } else {
+            Write-Host "Abriendo Swagger..." -ForegroundColor Yellow
+            Start-Process "http://localhost:5011/swagger"
+        }
     }
     
     Write-Host ""
     Write-Host "Para ver logs: docker-compose logs -f api" -ForegroundColor Yellow
     Write-Host "Para detener:  docker-compose down" -ForegroundColor Yellow
+    Write-Host "Para abrir apps: .\open-apps.ps1" -ForegroundColor Yellow
     Write-Host ""
     
 } else {
