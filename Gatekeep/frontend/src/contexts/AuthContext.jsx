@@ -7,7 +7,26 @@ const AuthContext = createContext();
 // Hook personalizado para usar el contexto
 export const useAuth = () => {
   const context = useContext(AuthContext);
+  // Durante el build/pre-renderizado, retornar valores por defecto en lugar de lanzar error
   if (!context) {
+    if (typeof window === 'undefined') {
+      // Server-side rendering o build time
+      return {
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+        login: async () => ({ success: false, error: 'Not available during build' }),
+        register: async () => ({ success: false, error: 'Not available during build' }),
+        logout: () => {},
+        clearError: () => {},
+        updateUser: () => {},
+        refreshUser: async () => ({ success: false, error: 'Not available during build' }),
+        createTestUsers: async () => ({ success: false, error: 'Not available during build' }),
+        listUsers: async () => ({ success: false, error: 'Not available during build' }),
+        checkAuthStatus: async () => {},
+      };
+    }
     throw new Error('useAuth debe ser usado dentro de un AuthProvider');
   }
   return context;

@@ -50,6 +50,42 @@ public static class UsuarioEndpoints
         .Produces(401)
         .Produces(403);
 
+        // PUT /usuarios/{id} - Actualizar datos básicos (Nombre, Apellido, Telefono)
+        group.MapPut("/{id:long}", async (
+            long id,
+            [FromBody] ActualizarUsuarioRequest request,
+            ClaimsPrincipal user,
+            [FromServices] IUsuarioRepository repo
+        ) =>
+        {
+            var userId = long.Parse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var userRole = user.FindFirst(ClaimTypes.Role)?.Value;
+
+            // Solo puede actualizar su propio perfil o ser admin
+            if (userId != id && userRole != "Admin")
+                return Results.Forbid();
+
+            var usuario = await repo.GetByIdAsync(id);
+            if (usuario is null) return Results.NotFound();
+
+            var actualizado = usuario with
+            {
+                Nombre = request.Nombre,
+                Apellido = request.Apellido,
+                Telefono = request.Telefono
+            };
+
+            await repo.UpdateAsync(actualizado);
+            return Results.Ok(actualizado);
+        })
+        .RequireAuthorization("AllUsers")
+        .WithName("ActualizarUsuario")
+        .WithSummary("Actualizar datos básicos del usuario")
+        .Produces<Usuario>(200)
+        .Produces(404)
+        .Produces(401)
+        .Produces(403);
+
         // POST /usuarios - Crear usuario con rol (Admin, Estudiante, Funcionario)
         group.MapPost("/", async (
             UsuarioDto dto,

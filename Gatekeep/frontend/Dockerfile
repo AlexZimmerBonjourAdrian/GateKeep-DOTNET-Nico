@@ -3,6 +3,10 @@ FROM node:18-alpine AS build
 
 WORKDIR /app
 
+# Accept build argument for API URL
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 # Copy package files
 COPY package*.json ./
 
@@ -30,7 +34,8 @@ RUN npm ci --only=production
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
 COPY --from=build /app/next.config.js ./next.config.js
-COPY --from=build /app/node_modules/.cache ./node_modules/.cache 2>/dev/null || true
+# Cache directory is optional, skip if it doesn't exist
+RUN mkdir -p ./node_modules/.cache || true
 
 # Expose port
 EXPOSE 3000

@@ -1,6 +1,5 @@
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
-import withPWA from 'next-pwa'
 
 const __filename = fileURLToPath(
     import.meta.url)
@@ -13,8 +12,10 @@ const nextConfig = {
     images: {
         domains: [],
     },
-    // Aplicar basePath/assetPrefix solo en producción
-    ...(isDev ? {} : { basePath: '/Gatekeep', assetPrefix: '/Gatekeep' }),
+    // Deshabilitar static export para evitar problemas con pre-renderizado
+    // output: 'standalone', // Usar standalone para mejor compatibilidad con Docker
+    // Eliminar basePath/assetPrefix - el frontend está en la raíz del dominio
+    // No usar basePath ya que el ALB enruta directamente a /
     // Configuración para PrimeReact
     transpilePackages: ['primereact', 'primeicons', 'primeflex'],
     // Configuración para evitar conflictos con múltiples lockfiles
@@ -28,24 +29,5 @@ const nextConfig = {
     },
 }
 
-// Configuración PWA
-const pwaConfig = withPWA({
-    dest: 'public',
-    register: true,
-    skipWaiting: true,
-    disable: isDev, // Deshabilitar en desarrollo para evitar problemas
-    runtimeCaching: [
-        {
-            urlPattern: /^https?.*/,
-            handler: 'NetworkFirst',
-            options: {
-                cacheName: 'offlineCache',
-                expiration: {
-                    maxEntries: 200,
-                },
-            },
-        },
-    ],
-})
-
-export default pwaConfig(nextConfig)
+// Exportar configuración sin PWA para evitar dependencia faltante
+export default nextConfig

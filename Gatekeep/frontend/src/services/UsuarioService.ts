@@ -4,8 +4,10 @@ import { URLService } from "./urlService";
 
 // Base URL del backend y recursos específicos
 const API_URL = URLService.getLink(); // p.ej. http://localhost:5011/api/
-const USUARIOS_URL = API_URL + "usuarios/";
-const AUTH_URL = "http://localhost:5011/auth/";
+// Usuarios en backend están expuestos en "/usuarios" (sin prefijo /api)
+const BASE_URL = URLService.getBaseUrl();
+const USUARIOS_URL = `${BASE_URL}/usuarios/`;
+const AUTH_URL = `${BASE_URL}/auth/`;
 
 // Instancia Axios para usuarios (reutiliza token si existe)
 const api: AxiosInstance = axios.create({
@@ -45,6 +47,23 @@ export class UsuarioService {
   }
 
   /**
+   * Actualiza datos básicos del usuario (Nombre, Apellido, Telefono)
+   */
+  static updateUsuario(id: number, data: { nombre: string; apellido: string; telefono?: string | null }) {
+    return api.put(USUARIOS_URL + id, data);
+  }
+
+  /** Actualiza el usuario actual (resuelve id desde cache/token). */
+  static async updateUsuarioActual(data: { nombre: string; apellido: string; telefono?: string | null }) {
+    const current = await this.getUsuarioActual();
+    if (!current?.id) throw new Error("No hay usuario autenticado");
+    const resp = await this.updateUsuario(current.id, data);
+    // refrescar cache local
+    localStorage.setItem("user", JSON.stringify(resp.data));
+    return resp.data;
+  }
+
+  /**
    * Devuelve el usuario actual leyendo primero de localStorage (cache) y opcionalmente refetch del backend.
    */
   static async getUsuarioActual(options: { refresh?: boolean } = {}) {
@@ -53,17 +72,41 @@ export class UsuarioService {
     if (!parsed) {
       // Si no hay cache necesitamos el id. Lo extraemos del token decodificando (simple parse) o abortamos.
       const token = localStorage.getItem("token");
+  // Fallback: si el login guardó directamente el id en localStorage bajo la clave "id" o "userId"
+  const storedId = localStorage.getItem("id") || localStorage.getItem("userId");
       if (!token) return null;
       try {
         const payloadPart = token.split(".")[1];
         const json = JSON.parse(atob(payloadPart));
-        const idClaim = json["nameid"] || json["sub"]; // según cómo emitiste el claim NameIdentifier
-        if (!idClaim) return null;
-        const resp = await this.getUsuario(Number(idClaim));
+        // Intentar múltiples posibles nombres de claim para el identificador
+        const idClaim = json["nameid"] || json["sub"] || json["nameidentifier"] || json["Id"];
+        let resolvedId: number | null = null;
+        if (idClaim) {
+          resolvedId = Number(idClaim);
+        } else if (storedId) {
+          resolvedId = Number(storedId);
+          console.debug("getUsuarioActual: usando storedId porque no se encontró claim en el token", storedId);
+        }
+        if (!resolvedId || Number.isNaN(resolvedId)) {
+          console.warn("getUsuarioActual: no se pudo resolver el id del usuario desde token ni storedId");
+          return null;
+        }
+        const resp = await this.getUsuario(resolvedId);
         parsed = resp.data;
         localStorage.setItem("user", JSON.stringify(parsed));
         return parsed;
       } catch {
+        // Si falla la decodificación, intentar usar storedId directamente si existe
+        if (storedId) {
+          try {
+            const resp = await this.getUsuario(Number(storedId));
+            parsed = resp.data;
+            localStorage.setItem("user", JSON.stringify(parsed));
+            return parsed;
+          } catch (innerErr) {
+            console.error("getUsuarioActual: error usando storedId tras fallo de decodificación", innerErr);
+          }
+        }
         return null;
       }
     }

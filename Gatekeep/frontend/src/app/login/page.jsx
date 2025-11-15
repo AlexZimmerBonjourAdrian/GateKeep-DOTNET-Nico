@@ -1,5 +1,7 @@
 "use client"
 
+export const dynamic = 'force-dynamic'
+
 import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -26,12 +28,20 @@ export default function Login() {
         
         // Guardar datos de autenticación usando SecurityService
         if (response.data.isSuccess && response.data.user) {
+          const user = response.data.user;
+          const normalizedId = user.id ?? user.Id;
+          const normalizedTipo = user.tipoUsuario ?? user.TipoUsuario ?? user.rol ?? user.Rol;
+          // Persistir datos clave
           SecurityService.saveAuthData(
-            response.data.user.id,
-            response.data.user.tipoUsuario,
+            normalizedId,
+            normalizedTipo,
             response.data.token,
             response.data.refreshToken
           );
+          // Guardar objeto de usuario completo también
+          try {
+            localStorage.setItem('user', JSON.stringify(user));
+          } catch {}
           
           // Redirigir al usuario después del login exitoso
           window.location.href = '/';

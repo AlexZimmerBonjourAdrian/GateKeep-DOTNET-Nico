@@ -12,11 +12,16 @@ import { SecurityService } from '../../services/securityService'
 
 export default function Perfil() {
   const pathname = usePathname();
-  SecurityService.checkAuthAndRedirect(pathname);
+  // Verificación de autenticación en cliente
+  useEffect(() => {
+    SecurityService.checkAuthAndRedirect(pathname);
+  }, [pathname]);
 
   const [name, setName] = useState('')
-  const [dob, setDob] = useState('')
+  const [phone, setPhone] = useState('')
   const [role, setRole] = useState('Usuario')
+    const [userId, setUserId] = useState(null)
+    const [editMode, setEditMode] = useState(false)
   const [profileImage, setProfileImage] = useState(null)
   const [preview, setPreview] = useState(null)
   const [qrUrl, setQrUrl] = useState(null)
@@ -41,9 +46,11 @@ export default function Perfil() {
       try {
         const usuario = await UsuarioService.getUsuarioActual({ refresh: true })
         if (usuario) {
+         setUserId(usuario.id ?? null)
           setName(`${usuario.nombre ?? ''} ${usuario.apellido ?? ''}`.trim())
           // rol viene como string por JsonStringEnumConverter
           if (usuario.rol) setRole(usuario.rol)
+          if (usuario.telefono) setPhone(usuario.telefono)
         }
 
         // Obtener QR del token actual como blob url
@@ -67,11 +74,29 @@ export default function Perfil() {
     if (file) setProfileImage(file)
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Aquí puedes integrar el envío al servidor o contexto de auth
-    console.log('Perfil guardado', { name, dob, profileImage })
-    alert('Perfil guardado (demo)')
+    if (!editMode) return
+
+    // Dividir el campo nombre en Nombre y Apellido (heurística simple)
+    const parts = (name || '').trim().split(/\s+/)
+    const first = parts.shift() || ''
+    const last = parts.join(' ') || ''
+
+    try {
+      const updated = await UsuarioService.updateUsuarioActual({
+        nombre: first,
+        apellido: last,
+        telefono: phone || null,
+      })
+      // Refrescar UI
+      setName(`${updated.nombre ?? ''} ${updated.apellido ?? ''}`.trim())
+      setPhone(updated.telefono ?? '')
+      setEditMode(false)
+    } catch (err) {
+      console.error('Error actualizando perfil', err)
+      alert('No se pudo actualizar el perfil')
+    }
   }
 
   // El QR ahora proviene del backend (/auth/qr) a través de un blob URL en qrUrl
@@ -118,7 +143,7 @@ export default function Perfil() {
             <div className="fields-section">
               <label className="field">
                 <span>Nombre</span>
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)} readOnly placeholder="Tu nombre" />
+             <input type="text" value={name} onChange={(e) => setName(e.target.value)} readOnly={!editMode} placeholder="Tu nombre" />
               </label>
 
               <label className="field">
@@ -127,9 +152,19 @@ export default function Perfil() {
               </label>
 
               <label className="field">
-                <span>Fecha de nacimiento</span>
-                <input type="date" value={dob} onChange={(e) => setDob(e.target.value)}  readOnly/>
+                <span>Teléfono</span>
+                  <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} readOnly={!editMode} placeholder="Tu teléfono" />
               </label>
+            <div style={{ display: 'flex', gap: 12, padding: '0 18px 12px', alignItems: 'center' }}>
+              {!editMode ? (
+                <button type="button" className="save-btn" onClick={() => setEditMode(true)}>Editar</button>
+              ) : (
+                <>
+                  <button type="button" className="save-btn" style={{ background: '#666' }} onClick={() => { setEditMode(false); }}>Cancelar</button>
+                  <button type="submit" className="save-btn">Guardar</button>
+                </>
+              )}
+            </div>
             </div>
           </div>
           <div className="qr-section">

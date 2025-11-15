@@ -140,6 +140,43 @@ public static class AuthEndpoints
             // 2) Si no viene por query, intentar extraer del header Authorization: Bearer <token>
             if (string.IsNullOrWhiteSpace(token))
             {
+        ;
+
+        // Validar el JWT actual y devolver información básica del usuario (para lectores de QR)
+        group.MapGet("/validate", (HttpContext httpContext) =>
+        {
+            var user = httpContext.User;
+            if (user?.Identity is not { IsAuthenticated: true })
+            {
+                return Results.Unauthorized();
+            }
+
+            string? id = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirst("sub")?.Value;
+            string? email = user.FindFirstValue(ClaimTypes.Email) ?? user.FindFirst("email")?.Value;
+            string? nombre = user.FindFirst("Nombre")?.Value ?? user.FindFirst("given_name")?.Value;
+            string? apellido = user.FindFirst("Apellido")?.Value ?? user.FindFirst("family_name")?.Value;
+            string? rol = user.FindFirstValue(ClaimTypes.Role) ?? user.FindFirst("role")?.Value;
+
+            var response = new
+            {
+                isValid = true,
+                user = new
+                {
+                    id,
+                    email,
+                    nombre,
+                    apellido,
+                    rol
+                }
+            };
+
+            return Results.Ok(response);
+        })
+        .WithName("ValidateCurrentToken")
+        .WithSummary("Valida el JWT del header Authorization y retorna datos básicos del usuario.")
+        .WithDescription("El lector debe enviar Authorization: Bearer <token escaneado del QR>.")
+        .RequireAuthorization();
+
                 if (httpContext.Request.Headers.TryGetValue("Authorization", out var authHeader))
                 {
                     var value = authHeader.ToString();

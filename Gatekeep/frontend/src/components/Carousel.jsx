@@ -8,6 +8,20 @@ const Carousel = ({ items, route }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const router = useRouter();
   
+  // Derivar ruta de detalle en base a la ruta de listado provista
+  const getDetailPath = (item) => {
+    const id = item?.id ?? item?.Id;
+    if (!id || !route) return null;
+    if (route.includes('/evento')) return `/evento/${id}`;
+    if (route.includes('/anuncio')) return `/anuncio/${id}`;
+    return null;
+  };
+  
+  const goToDetail = (item) => {
+    const path = getDetailPath(item);
+    if (path) router.push(path);
+  };
+  
   // Lógica adaptable:
   // - Si hay <= 8 items: mostrar 3 + "Ver más"
   // - Si hay > 8 items: mostrar 4 por página, excepto la última que será 3 + "Ver más"
@@ -72,15 +86,33 @@ const Carousel = ({ items, route }) => {
       <div className="carousel">
         {/* Renderizar items normales */}
         {visibleItems.map((item, index) => {
+          const detailPath = getDetailPath(item);
+          const title = item.nombre || item.Nombre || item.title;
+          const dateValue = item.fecha || item.Fecha || item.date;
+          const handleItemKeyDown = (e) => {
+            if (!detailPath) return;
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              goToDetail(item);
+            }
+          };
           return (
-            <div key={item.id || `item-${currentIndex + index}`} className="carousel-item" tabIndex={0}>
+            <div
+              key={item.id || item.Id || `item-${currentIndex + index}`}
+              className={`carousel-item${detailPath ? ' clickable' : ''}`}
+              tabIndex={0}
+              role={detailPath ? 'button' : undefined}
+              onClick={() => detailPath && goToDetail(item)}
+              onKeyDown={handleItemKeyDown}
+              aria-label={detailPath ? `Ver detalle de ${title ?? 'item'}` : undefined}
+            >
               {/* Soportar tanto el modelo con mayúsculas como minúsculas */}
-              {(item.nombre || item.Nombre || item.title) && (
-                <h3>{item.nombre || item.Nombre || item.title}</h3>
+              {title && (
+                <h3>{title}</h3>
               )}
-              {(item.fecha || item.Fecha || item.date) && (
+              {dateValue && (
                 <p>
-                  {new Date(item.fecha || item.Fecha || item.date).toLocaleDateString('es-ES', { 
+                  {new Date(dateValue).toLocaleDateString('es-ES', { 
                     year: 'numeric', 
                     month: 'long', 
                     day: 'numeric' 
@@ -158,6 +190,10 @@ const Carousel = ({ items, route }) => {
           transition: transform 0.2s ease, box-shadow 0.2s ease;
           outline: none; /* remove default focus outline */
           box-sizing: border-box;
+        }
+
+        .carousel-item.clickable {
+          cursor: pointer;
         }
 
         .carousel-item:hover {
