@@ -50,10 +50,39 @@ if ($existingContainers) {
 
 # Levantar servicios
 Write-Host ""
-Write-Host "[5/5] Levantando servicios con Docker Compose..." -ForegroundColor Yellow
+Write-Host "[5/6] Levantando servicios con Docker Compose..." -ForegroundColor Yellow
 docker-compose up -d
 
 if ($LASTEXITCODE -eq 0) {
+    # Esperar a que los servicios se inicien
+    Write-Host ""
+    Write-Host "[6/6] Esperando a que los servicios se estabilicen..." -ForegroundColor Yellow
+    Write-Host "  Esto puede tardar hasta 2 minutos..." -ForegroundColor Gray
+    Start-Sleep -Seconds 30
+    
+    # Verificar estado de los servicios
+    $maxWait = 120  # 2 minutos máximo
+    $elapsed = 0
+    $allHealthy = $false
+    
+    while ($elapsed -lt $maxWait -and -not $allHealthy) {
+        Start-Sleep -Seconds 10
+        $elapsed += 10
+        
+        $psOutput = docker-compose ps
+        $unhealthyCount = ($psOutput | Select-String -Pattern "unhealthy|Error|Exited" | Measure-Object).Count
+        
+        if ($unhealthyCount -eq 0) {
+            $allHealthy = $true
+            Write-Host "  Todos los servicios están listos" -ForegroundColor Green
+        } else {
+            Write-Host "  Esperando... ($elapsed/$maxWait segundos)" -ForegroundColor Gray
+        }
+    }
+    
+    if (-not $allHealthy) {
+        Write-Host "  Algunos servicios pueden necesitar más tiempo" -ForegroundColor Yellow
+    }
     Write-Host ""
     Write-Host "==================================" -ForegroundColor Green
     Write-Host "  Servicios iniciados con éxito  " -ForegroundColor Green
@@ -94,7 +123,96 @@ if ($LASTEXITCODE -eq 0) {
 } else {
     Write-Host ""
     Write-Host "ERROR: Falló al iniciar los servicios" -ForegroundColor Red
-    Write-Host "Revisa los logs con: docker-compose logs" -ForegroundColor Yellow
+    Write-Host ""
+    
+    # Mostrar estado de los servicios
+    Write-Host "Estado de los servicios:" -ForegroundColor Cyan
+    docker-compose ps
+    Write-Host ""
+    
+    # Identificar servicios con problemas
+    Write-Host "Servicios con problemas:" -ForegroundColor Yellow
+    
+    # Obtener lista de servicios problemáticos
+    $problematicServices = @()
+    $psOutput = docker-compose ps
+    $lines = $psOutput -split "`n"
+    
+    foreach ($line in $lines) {
+        if ($line -match "unhealthy|Error|Exited" -and $line -match "gatekeep-") {
+            $parts = $line -split '\s+', 5
+            if ($parts.Length -ge 2) {
+                $containerName = $parts[0]
+                $state = $parts[3]
+                if ($state -like "*unhealthy*" -or $state -like "*Error*" -or $state -like "*Exited*") {
+                    $problematicServices += @{
+                        Name = $containerName
+                        State = $state
+                        ServiceName = $containerName -replace 'gatekeep-', ''
+                    }
+                    Write-Host "  - $containerName : $state" -ForegroundColor Red
+                }
+            }
+        }
+    }
+    
+    if ($problematicServices.Count -gt 0) {
+        Write-Host ""
+        
+        # Mostrar logs de los servicios problemáticos
+        Write-Host "Mostrando logs de los servicios con problemas (últimas 20 líneas):" -ForegroundColor Cyan
+        Write-Host ""
+        
+        foreach ($service in $problematicServices) {
+            Write-Host "=== Logs de $($service.Name) ===" -ForegroundColor Yellow
+            docker-compose logs --tail 20 $service.ServiceName 2>&1
+            Write-Host ""
+        }
+        
+        Write-Host "Opciones:" -ForegroundColor Cyan
+        Write-Host "  1. Reintentar iniciar los servicios" -ForegroundColor White
+        Write-Host "  2. Ver todos los logs: docker-compose logs" -ForegroundColor White
+        Write-Host "  3. Reiniciar servicios problemáticos: docker-compose restart [nombre-servicio]" -ForegroundColor White
+        Write-Host "  4. Continuar de todas formas (algunos servicios pueden no estar listos)" -ForegroundColor White
+        Write-Host ""
+        
+        $opcion = Read-Host "Selecciona una opción (1-4) o presiona Enter para salir"
+        
+        switch ($opcion) {
+            "1" {
+                Write-Host ""
+                Write-Host "Reintentando iniciar servicios..." -ForegroundColor Yellow
+                docker-compose up -d
+                Write-Host ""
+                Write-Host "Esperando 10 segundos para que los servicios se estabilicen..." -ForegroundColor Gray
+                Start-Sleep -Seconds 10
+                docker-compose ps
+            }
+            "2" {
+                Write-Host ""
+                Write-Host "Mostrando todos los logs..." -ForegroundColor Yellow
+                docker-compose logs
+            }
+            "4" {
+                Write-Host ""
+                Write-Host "Continuando de todas formas..." -ForegroundColor Yellow
+                Write-Host "Algunos servicios pueden no estar completamente listos." -ForegroundColor Yellow
+                Write-Host "Puedes intentar iniciar la API manualmente:" -ForegroundColor Cyan
+                Write-Host "  docker-compose up -d api" -ForegroundColor White
+            }
+            default {
+                Write-Host ""
+                Write-Host "Saliendo..." -ForegroundColor Yellow
+            }
+        }
+    } else {
+        Write-Host "No se detectaron servicios con problemas obvios en el análisis." -ForegroundColor Yellow
+        Write-Host "Revisa los logs con: docker-compose logs" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Si algunos servicios están 'unhealthy', pueden necesitar más tiempo." -ForegroundColor Gray
+        Write-Host "Intenta esperar unos minutos y verificar con: docker-compose ps" -ForegroundColor Gray
+    }
+    
     Write-Host ""
 }
 

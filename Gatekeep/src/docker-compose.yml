@@ -51,10 +51,11 @@ services:
     volumes:
       - mongodb_data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD-SHELL", "mongosh --eval 'db.adminCommand(\"ping\")' --quiet || exit 1"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 10s
+      retries: 10
+      start_period: 40s
     networks:
       - gatekeep-network
 
@@ -140,11 +141,11 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq
       - rabbitmq_log:/var/log/rabbitmq
     healthcheck:
-      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping || exit 1"]
       interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
     networks:
       - gatekeep-network
 
@@ -191,11 +192,11 @@ services:
       redis:
         condition: service_healthy
       mongodb:
-        condition: service_healthy
+        condition: service_started
       seq:
         condition: service_healthy
       rabbitmq:
-        condition: service_healthy
+        condition: service_started
     networks:
       - gatekeep-network
     healthcheck:
