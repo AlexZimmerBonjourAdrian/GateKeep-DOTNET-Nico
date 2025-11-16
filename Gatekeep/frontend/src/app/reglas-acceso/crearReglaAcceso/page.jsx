@@ -3,14 +3,16 @@
 import React, { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import logo from '/public/assets/LogoGateKeep.webp'
 import harvard from '/public/assets/Harvard.webp'
 import { SecurityService } from '../../../services/securityService'
+import { ReglaAccesoService } from '../../../services/ReglaAccesoService'
 
 export default function crearReglaAcceso() {
 
   const pathname = usePathname();
+  const router = useRouter();
   SecurityService.checkAuthAndRedirect(pathname);
 
   const [horarioApertura, setHorarioApertura] = useState('');
@@ -23,12 +25,70 @@ export default function crearReglaAcceso() {
     Funcionario: false,
     Admin: false
   });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
 
   const handleRoleChange = (role) => {
     setRolesPermitidos(prev => ({
       ...prev,
       [role]: !prev[role]
     }));
+  };
+
+  const handleSubmit = async () => {
+    setError(null);
+    setSuccess(false);
+    // Validaciones básicas
+    if (!espacioId || !horarioApertura || !horarioCierre || !vigenciaApertura || !vigenciaCierre) {
+      setError('Completa todos los campos obligatorios.');
+      return;
+    }
+    const rolesSeleccionados = Object.entries(rolesPermitidos)
+      .filter(([, v]) => v)
+      .map(([k]) => k);
+    if (rolesSeleccionados.length === 0) {
+      setError('Selecciona al menos un rol permitido.');
+      return;
+    }
+
+    // Construir payload ajustando formatos (time + date -> ISO aproximado)
+    // Se asume que horarioApertura/Cierre son HH:MM y vigenciaApertura/Cierre son YYYY-MM-DD
+    const hoy = new Date().toISOString().split('T')[0];
+    const toIsoTime = (hhmm) => {
+      const [h, m] = hhmm.split(':');
+      const base = new Date();
+      base.setHours(Number(h), Number(m), 0, 0);
+      return base.toISOString();
+    };
+    const toIsoDateStart = (dateStr) => new Date(dateStr + 'T00:00:00').toISOString();
+    const toIsoDateEnd = (dateStr) => new Date(dateStr + 'T23:59:59').toISOString();
+
+    const payload = {
+      horarioApertura: toIsoTime(horarioApertura),
+      horarioCierre: toIsoTime(horarioCierre),
+      vigenciaApertura: toIsoDateStart(vigenciaApertura),
+      vigenciaCierre: toIsoDateEnd(vigenciaCierre),
+      rolesPermitidos: rolesSeleccionados,
+      espacioId: Number(espacioId),
+    };
+
+    setSubmitting(true);
+    try {
+      const response = await ReglaAccesoService.crearReglaAcceso(payload);
+      if (response.status >= 200 && response.status < 300) {
+        setSuccess(true);
+        // Redirigir después de breve retraso para mostrar mensaje
+        setTimeout(() => router.push('/reglas-acceso/listadoReglasAcceso'), 800);
+      } else {
+        setError('No se pudo crear la regla.');
+      }
+    } catch (e) {
+      console.error('Error creando regla de acceso:', e);
+      setError(e.response?.data?.message || 'Error al crear la regla');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -46,7 +106,7 @@ export default function crearReglaAcceso() {
       </div>
             
       <div className="header-middle-bar">
-        <form className="text-card">
+        <form className="text-card" onSubmit={(e) => { e.preventDefault(); if (!submitting) handleSubmit(); }}>
           <div style={{alignItems: 'center', width: '100%'}}>
             <h1 className="text-3xl font-bold text-white">Crear Regla de Acceso</h1>
             <hr />
@@ -135,8 +195,20 @@ export default function crearReglaAcceso() {
 
           </div>
          
+          {error && (
+            <div style={{ color: '#ffdddd', background:'#7e1e1e', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>
+              {error}
+            </div>
+          )}
+          {success && (
+            <div style={{ color: '#e9ffe9', background:'#1e7e3a', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>
+              Regla creada correctamente. Redirigiendo...
+            </div>
+          )}
           <div className='button-container'>
-            <button type="button">Crear Regla de Acceso</button>
+            <button type="submit" disabled={submitting} style={{ opacity: submitting ? 0.6 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }}>
+              {submitting ? 'Creando...' : 'Crear Regla de Acceso'}
+            </button>
           </div>
           
 

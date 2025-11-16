@@ -1,21 +1,55 @@
 "use client"
 
-import React from 'react'
+import React, { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import logo from '/public/assets/LogoGateKeep.webp'
 import harvard from '/public/assets/Harvard.webp'
 import BasketballIcon from '/public/assets/basketball-icon.svg'
 import { SecurityService } from '../../../services/securityService'
+import { AnuncioService } from '../../../services/AnuncioService'
 
 export default function crearAnuncio() {
 
   const pathname = usePathname();
+  const router = useRouter();
   const isAuthenticated = SecurityService.checkAuthAndRedirect(pathname);
 
-  if (isAuthenticated){
-    
+  const [nombre, setNombre] = useState("");
+  const [fecha, setFecha] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [puntoControl, setPuntoControl] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    if (!nombre || !fecha) {
+      setError("Nombre y Fecha son obligatorios");
+      return;
+    }
+    // Validación: no permitir fechas anteriores a hoy (comparación a nivel de día)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selected = new Date(fecha);
+    selected.setHours(0, 0, 0, 0);
+    if (selected < today) {
+      setError("La fecha del anuncio no puede ser anterior a hoy");
+      return;
+    }
+    setError("");
+    setSubmitting(true);
+    try {
+      const fechaIso = new Date(fecha).toISOString();
+      await AnuncioService.createAnuncio({ nombre, fecha: fechaIso, descripcion, puntoControl });
+      router.push('/anuncio/listadoAnuncios');
+    } catch (err) {
+      console.error('Error creando anuncio', err);
+      setError("No se pudo crear el anuncio. Revisa tus permisos o intenta nuevamente.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -33,37 +67,37 @@ export default function crearAnuncio() {
       </div>
             
       <div className="header-middle-bar">
-        <form className="text-card">
+        <form className="text-card" onSubmit={onSubmit}>
           <div style={{alignItems: 'center', width: '100%'}}>
-            <h1 className="text-3xl font-bold text-white">Crear Evento</h1>
+            <h1 className="text-3xl font-bold text-white">Crear Anuncio</h1>
             <hr />
           </div>
 
           <div className='input-container'>
             <div className='w-full'>
               <span>Nombre</span>
-              <input type="text" placeholder="Nombre del Evento"  />
+              <input type="text" placeholder="Nombre del Anuncio" value={nombre} onChange={(e)=>setNombre(e.target.value)} />
             </div>
 
             <div className='w-full'>
               <span>Fecha</span>
-              <input type="date" placeholder="Fecha del Evento"  />
+              <input type="date" placeholder="Fecha del Anuncio" value={fecha} onChange={(e)=>setFecha(e.target.value)} />
             </div>
 
             <div className='w-full'>
-              <span>Resultado</span>
-              <input type="text" placeholder="Resultado del Evento"  />
+              <span>Descripción</span>
+              <input type="text" placeholder="Descripción del Anuncio" value={descripcion} onChange={(e)=>setDescripcion(e.target.value)} />
             </div>
 
             <div className='w-full'>
               <span>Punto de Control</span>
-              <input type="text" placeholder="Punto de Control del Evento"  />
+              <input type="text" placeholder="Punto de Control del Anuncio" value={puntoControl} onChange={(e)=>setPuntoControl(e.target.value)} />
             </div>
 
           </div>
-         
+         {error && <p style={{ color: '#ffb4a6', marginLeft: '1vw', marginRight: '1vw' }}>{error}</p>}
           <div className='button-container'>
-            <button>Crear Evento</button>
+            <button disabled={submitting}>{submitting ? 'Creando...' : 'Crear Anuncio'}</button>
           </div>
           
 

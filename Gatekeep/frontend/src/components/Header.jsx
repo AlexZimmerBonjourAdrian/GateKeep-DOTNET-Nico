@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
@@ -14,6 +14,9 @@ export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const [notificaciones, setNotificaciones] = useState(0);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
+  const adminMenuRef = useRef(null);
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -21,6 +24,24 @@ export default function Header() {
 
       // Si está autenticado, obtener datos del usuario y notificaciones
         const storedUserId = SecurityService.getUserId();
+        const tipo = SecurityService.getTipoUsuario?.() || null;
+        try {
+          let admin = false;
+          if (tipo) {
+            admin = /admin|administrador/i.test(String(tipo));
+          } else {
+            // fallback: intentar con el objeto user del localStorage
+            const rawUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+            if (rawUser) {
+              const user = JSON.parse(rawUser);
+              const role = user?.TipoUsuario || user?.tipoUsuario || user?.Rol || user?.rol;
+              if (role) admin = /admin|administrador/i.test(String(role));
+            }
+          }
+          setIsAdmin(admin);
+        } catch {
+          setIsAdmin(false);
+        }
         
         if (storedUserId) {
           try {
@@ -85,6 +106,33 @@ export default function Header() {
               </div>
             </Link>
 
+            {isAdmin && (
+              <div className="admin-menu-wrapper" ref={adminMenuRef}>
+                <button
+                  type="button"
+                  className="item-card admin-trigger"
+                  aria-haspopup="true"
+                  aria-expanded={adminMenuOpen}
+                  aria-label="Recursos administrativos"
+                  onClick={() => setAdminMenuOpen(o => !o)}
+                  onBlur={(e) => {
+                    // Cerrar si el foco sale completamente del contenedor
+                    if (adminMenuRef.current && !adminMenuRef.current.contains(e.relatedTarget)) {
+                      setAdminMenuOpen(false);
+                    }
+                  }}
+                >
+                  <i className="pi pi-sliders-h item-icon" aria-hidden={true}></i>
+                </button>
+                {adminMenuOpen && (
+                  <div className="admin-dropdown" role="menu">
+                    <Link href="/reglas-acceso/listadoReglasAcceso" role="menuitem" tabIndex={0} className="admin-dropdown-item">Reglas</Link>
+                    <Link href="/edificios/listadoEdificios" role="menuitem" tabIndex={0} className="admin-dropdown-item">Edificios</Link>
+                  </div>
+                )}
+              </div>
+            )}
+
             <Link href="/perfil" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Perfil" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
               <div className="item-card">
                 <i className="pi pi-user item-icon" aria-hidden={true}></i>
@@ -136,6 +184,15 @@ export default function Header() {
             <p className="item-text">Anuncios</p>
           </div>
         </Link>
+
+        {isAdmin && (
+          <Link href="/edificios/listadoEdificios" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Edificios" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
+            <div className="item-card">
+              <i className="pi pi-building item-icon" aria-hidden={true}></i>
+              <p className="item-text">Edificios</p>
+            </div>
+          </Link>
+        )}
 
         <Link href="/perfil" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Perfil" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
           <div className="item-card">
@@ -270,6 +327,34 @@ export default function Header() {
           font-size: 0.875rem; /* 14px */
           font-weight: bold;
           box-sizing: border-box;
+        }
+
+        .admin-menu-wrapper { position: relative; }
+        .admin-trigger { position: relative; }
+        .admin-dropdown {
+          position: absolute;
+          top: 64px;
+          left: 0;
+          background: #231F20;
+          padding: 8px 0;
+          border-radius: 16px;
+          display: flex;
+          flex-direction: column;
+          min-width: 160px;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+          z-index: 10;
+          border: 2px solid #F37426;
+        }
+        .admin-dropdown-item {
+          color: #fff;
+          text-decoration: none;
+          padding: 10px 16px;
+          font-size: 0.85rem;
+          outline: none;
+        }
+        .admin-dropdown-item:hover, .admin-dropdown-item:focus-visible {
+          background: #F37426;
+          color: #231F20;
         }
 
     .text-card {

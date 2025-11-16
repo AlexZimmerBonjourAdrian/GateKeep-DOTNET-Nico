@@ -32,6 +32,20 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 
 export class UsuarioService {
   /**
+   * Registro de usuario nuevo.
+   */
+  static register(payload: { 
+    email: string; 
+    password: string; 
+    confirmPassword: string; 
+    nombre: string; 
+    apellido: string; 
+    telefono?: string | null; 
+    rol: string; 
+  }) {
+    return axios.post(AUTH_URL + "register", payload);
+  }
+  /**
    * Login de usuario con email y contraseña.
    */
   static login(credentials: { email: string; password: string }) {

@@ -3,24 +3,84 @@
 import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import logo from '/public/assets/LogoGateKeep.webp'
 import harvard from '/public/assets/Harvard.webp'
 import BasketballIcon from '/public/assets/basketball-icon.svg'
+import { UsuarioService } from '../../services/UsuarioService'
+import { SecurityService } from '../../services/securityService'
 
 export default function Register() {
+  const router = useRouter()
   const [nombre, setNombre] = useState('')
   const [apellido, setApellido] = useState('')
   const [email, setEmail] = useState('')
   const [dob, setDob] = useState('')
   const [role, setRole] = useState('')
+  const [telefono, setTelefono] = useState('')
   const [password, setPassword] = useState('')
   const [repeatPassword, setRepeatPassword] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Aquí puedes integrar el envío al servidor o contexto de auth
-    console.log('Perfil guardado', { nombre, apellido, email, dob, profileImage, password, repeatPassword, role })
-    alert('Perfil guardado (demo)')
+    setError('')
+    if (!nombre || !apellido || !email || !password || !role) {
+      setError('Completa nombre, apellido, email, rol y contraseña')
+      return
+    }
+    if (password !== repeatPassword) {
+      setError('Las contraseñas no coinciden')
+      return
+    }
+    // Verificar rol admin para permitir creación; backend exige AdminOnly
+    const storedUserRaw = typeof window !== 'undefined' ? localStorage.getItem('user') : null
+    let isAdmin = false
+    if (storedUserRaw) {
+      try {
+        const u = JSON.parse(storedUserRaw)
+        const r = u?.TipoUsuario || u?.tipoUsuario || u?.Rol || u?.rol
+        if (r) isAdmin = /admin/i.test(String(r))
+      } catch {}
+    }
+    if (!isAdmin) {
+      setError('Solo un administrador puede registrar nuevos usuarios (401).')
+      return
+    }
+    setSubmitting(true)
+    try {
+      const rolMap = { ADMIN: 'Admin', FUNCIONARIO: 'Funcionario', ESTUDIANTE: 'Estudiante' }
+      const resp = await UsuarioService.register({ 
+        email, 
+        password, 
+        confirmPassword: repeatPassword, 
+        nombre, 
+        apellido, 
+        telefono: telefono || null, 
+        rol: rolMap[role] || 'Estudiante' 
+      })
+      if (resp?.data?.isSuccess && resp.data.user) {
+        const user = resp.data.user
+        const normalizedId = user.id ?? user.Id
+        const normalizedTipo = user.tipoUsuario ?? user.TipoUsuario ?? user.rol ?? user.Rol
+        // Persistir auth
+        SecurityService.saveAuthData(normalizedId, normalizedTipo, resp.data.token, resp.data.refreshToken)
+        try {
+          localStorage.setItem('user', JSON.stringify(user))
+          if (resp.data.expiresAt) localStorage.setItem('tokenExpiry', resp.data.expiresAt)
+        } catch {}
+        router.push('/')
+      } else {
+        setError(resp?.data?.message || 'No se pudo registrar')
+      }
+    } catch (err) {
+      console.error('Error en registro', err)
+      const msg = err?.response?.data?.message || err?.message || 'Error al registrar'
+      setError(msg)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -115,6 +175,11 @@ export default function Register() {
                 </label>
 
                 <label className="field">
+                  <span>Teléfono</span>
+                  <input type="text" value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="Teléfono (opcional)" />
+                </label>
+
+                <label className="field">
                   <span>Rol</span>
                   <select value={role} onChange={(e) => setRole(e.target.value)}>
                     <option value="">Selecciona un rol</option>
@@ -129,8 +194,15 @@ export default function Register() {
 
           </div>
 
+          {error && (
+            <div style={{ color: '#ffdddd', background:'#7e1e1e', borderRadius:12, padding:'8px 14px', margin:'10px 0', width:'100%', maxWidth:'640px' }}>
+              {error}
+            </div>
+          )}
           <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 8 }}>
-            <button type="submit" className="save-btn">Registrarse</button>
+            <button type="submit" className="save-btn" disabled={submitting} style={{ opacity: submitting ? 0.7 : 1 }}>
+              {submitting ? 'Registrando...' : 'Registrarse'}
+            </button>
           </div>
 
           <div className="divider-row" role="separator" aria-hidden="true">

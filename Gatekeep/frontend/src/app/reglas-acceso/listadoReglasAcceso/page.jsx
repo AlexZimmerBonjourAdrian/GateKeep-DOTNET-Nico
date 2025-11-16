@@ -1,27 +1,59 @@
 "use client"
 
-import React, { useState, useMemo, useRef } from 'react';
-import { usePathname } from 'next/navigation';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import Header from '../../../components/Header';
 import { SecurityService } from '../../../services/securityService';
+import { ReglaAccesoService } from '../../../services/ReglaAccesoService';
 
 export default function listadoReglasAcceso() {
 
   const pathname = usePathname();
-  SecurityService.checkAuthAndRedirect(pathname);
+  const router = useRouter();
+  useEffect(() => {
+    SecurityService.checkAuthAndRedirect(pathname);
+  }, [pathname]);
 
-  // Datos de ejemplo - reemplazar con llamada al servicio
-  const reglas = [
-    { 
-      Id: 1, 
-      EspacioId: 1, 
-      HorarioApertura: '2024-01-01T08:00:00', 
-      HorarioCierre: '2024-01-01T18:00:00',
-      VigenciaApertura: '2024-01-01T00:00:00',
-      VigenciaCierre: '2024-12-31T23:59:59',
-      RolesPermitidos: ['Estudiante', 'Funcionario']
-    },
-  ]
+  const [reglas, setReglas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  // Fetch reglas al montar
+  useEffect(() => {
+    const fetchReglas = async () => {
+      try {
+        const response = await ReglaAccesoService.getReglasAcceso();
+        // Asumimos response.data es array; fallback a []
+        setReglas(Array.isArray(response.data) ? response.data : []);
+      } catch (error) {
+        console.error('Error al cargar reglas de acceso:', error);
+        setReglas([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchReglas();
+  }, []);
+
+  // Admin flag (solo muestra botón crear)
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    try {
+      const tipo = SecurityService.getTipoUsuario?.() || null;
+      let admin = false;
+      if (tipo) {
+        admin = /admin|administrador/i.test(String(tipo));
+      } else if (typeof window !== 'undefined') {
+        const raw = localStorage.getItem('user');
+        if (raw) {
+          const user = JSON.parse(raw);
+          const role = user?.TipoUsuario || user?.tipoUsuario || user?.Rol || user?.rol;
+          if (role) admin = /admin|administrador/i.test(String(role));
+        }
+      }
+      setIsAdmin(admin);
+    } catch {
+      setIsAdmin(false);
+    }
+  }, []);
 
   // Controlled states for search and date filters
   const [searchInput, setSearchInput] = useState('');
@@ -119,12 +151,28 @@ export default function listadoReglasAcceso() {
                   aria-label="Fecha hasta"
                 />
               </div>
+              {isAdmin && (
+                <div className="actions-inline">
+                  <button
+                    type="button"
+                    className="create-button"
+                    onClick={() => router.push('/reglas-acceso/crearReglaAcceso')}
+                    aria-label="Crear nueva regla de acceso"
+                  >
+                    Crear Regla
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Reglas list */}
           <div className="events-grid">
-            {filteredReglas.length === 0 ? (
+            {loading ? (
+              <div className="event-card" style={{ background: '#fff6ee' }}>
+                <h3>Cargando reglas...</h3>
+              </div>
+            ) : filteredReglas.length === 0 ? (
               <div className="event-card" style={{ background: '#fff6ee' }}>
                 <h3>No se encontraron reglas</h3>
                 <p>Prueba otro término o rango de fecha.</p>
@@ -135,9 +183,13 @@ export default function listadoReglasAcceso() {
                   {group.map((regla) => (
                     <div key={regla.Id} className="event-card" tabIndex={0}>
                       <h3>Espacio ID: {regla.EspacioId}</h3>
-                      <p><strong>Horario:</strong> {new Date(regla.HorarioApertura).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} - {new Date(regla.HorarioCierre).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p>
-                      <p><strong>Vigencia:</strong> {new Date(regla.VigenciaApertura).toLocaleDateString('es-ES')} - {new Date(regla.VigenciaCierre).toLocaleDateString('es-ES')}</p>
-                      <p><strong>Roles:</strong> {regla.RolesPermitidos?.join(', ') || 'N/A'}</p>
+                      {regla.HorarioApertura && regla.HorarioCierre && (
+                        <p><strong>Horario:</strong> {new Date(regla.HorarioApertura).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} - {new Date(regla.HorarioCierre).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p>
+                      )}
+                      {regla.VigenciaApertura && regla.VigenciaCierre && (
+                        <p><strong>Vigencia:</strong> {new Date(regla.VigenciaApertura).toLocaleDateString('es-ES')} - {new Date(regla.VigenciaCierre).toLocaleDateString('es-ES')}</p>
+                      )}
+                      <p><strong>Roles:</strong> {regla.RolesPermitidos?.join(', ') || regla.rolesPermitidos?.join(', ') || 'N/A'}</p>
                     </div>
                   ))}
                 </div>
@@ -152,6 +204,11 @@ export default function listadoReglasAcceso() {
           /* Base layout tweaks */
           .container-header{ padding-left: 1.111vw; width: auto; }
           .container-nothing { margin: 0; width: 100%; height: 100%; }
+          .actions-inline{ display:flex; align-items:center; gap:12px; margin-left:auto; margin-right: clamp(12px, 1.111vw, 24px); }
+          .create-button{ background:#f37426; color:#fff; border:none; padding:8px 16px; border-radius:20px; cursor:pointer; font-size:0.85rem; font-weight:600; letter-spacing:0.3px; box-shadow:0 2px 6px rgba(0,0,0,0.15); transition:background 0.15s ease, transform 0.15s ease; }
+          .create-button:hover{ background:#ff8d45; transform:translateY(-2px); }
+          .create-button:active{ transform:translateY(0); }
+          .create-button:focus-visible{ outline:2px solid rgba(37,99,235,0.4); outline-offset:2px; }
 
           /* Filters row */
           .filtros-container{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }

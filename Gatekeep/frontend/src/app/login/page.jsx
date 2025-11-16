@@ -114,6 +114,12 @@ export default function Login() {
           <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 8 }}>
             <button type="submit" className="save-btn">Login</button>
           </div>
+          <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 12 }}>
+            <span style={{ color: '#eee', fontSize: 14 }}>
+              ¿No tienes cuenta?{' '}
+              <Link href="/register" style={{ color: '#ffd7c2', textDecoration: 'underline' }}>Regístrate</Link>
+            </span>
+          </div>
          
         </form>
         </div>
