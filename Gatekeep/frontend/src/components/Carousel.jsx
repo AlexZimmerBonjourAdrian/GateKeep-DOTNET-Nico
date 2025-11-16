@@ -123,8 +123,8 @@ const Carousel = ({ items, route }) => {
           );
         })}
         
-        {/* Siempre mostrar tarjeta "Ver más" si hay ruta y hay items */}
-        {route && items.length > 0 && (
+        {/* Siempre mostrar tarjeta "Ver más" si hay ruta */}
+        {route && (
           <div
             key="see-more"
             className="carousel-item see-more"

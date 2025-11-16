@@ -1,1 +1,181 @@
-"use client"\n\nimport React, { useState, useEffect } from 'react';\nimport Image from 'next/image';\nimport Link from 'next/link';\nimport { usePathname, useRouter } from 'next/navigation';\nimport logo from '/public/assets/LogoGateKeep.webp';\nimport harvard from '/public/assets/Harvard.webp';\nimport { SecurityService } from '../../../services/securityService';\nimport { EdificioService } from '../../../services/EdificioService';\n\nexport default function crearEdificio() {\n  const pathname = usePathname();\n  const router = useRouter();\n  SecurityService.checkAuthAndRedirect(pathname);\n\n  const [isAdmin, setIsAdmin] = useState(false);\n  useEffect(() => {\n    try {\n      const tipo = SecurityService.getTipoUsuario?.() || null;\n      let admin = false;\n      if (tipo) {\n        admin = /admin|administrador/i.test(String(tipo));\n      } else if (typeof window !== 'undefined') {\n        const raw = localStorage.getItem('user');\n        if (raw) {\n          const user = JSON.parse(raw);\n          const role = user?.TipoUsuario || user?.tipoUsuario || user?.Rol || user?.rol;\n          if (role) admin = /admin|administrador/i.test(String(role));\n        }\n      }\n      setIsAdmin(admin);\n      if (!admin) router.replace('/');\n    } catch {\n      setIsAdmin(false);\n      router.replace('/');\n    }\n  }, [router]);\n\n  const [nombre, setNombre] = useState('');\n  const [descripcion, setDescripcion] = useState('');\n  const [ubicacion, setUbicacion] = useState('');\n  const [capacidad, setCapacidad] = useState('');\n  const [numeroPisos, setNumeroPisos] = useState('');\n  const [codigoEdificio, setCodigoEdificio] = useState('');\n  const [activo, setActivo] = useState(true);\n  const [submitting, setSubmitting] = useState(false);\n  const [error, setError] = useState(null);\n  const [success, setSuccess] = useState(false);\n\n  const validate = () => {\n    if (!nombre || !ubicacion || !capacidad || !numeroPisos) return 'Completa los campos obligatorios.';\n    if (Number(capacidad) < 0) return 'Capacidad debe ser >= 0.';\n    if (Number(numeroPisos) < 1) return 'Número de pisos debe ser >= 1.';\n    return null;\n  };\n\n  const handleSubmit = async () => {\n    setError(null);\n    setSuccess(false);\n    const v = validate();\n    if (v) { setError(v); return; }\n    const payload = {\n      nombre,\n      descripcion: descripcion || undefined,\n      ubicacion,\n      capacidad: Number(capacidad),\n      activo,\n      numeroPisos: Number(numeroPisos),\n      codigoEdificio: codigoEdificio || undefined\n    };\n    setSubmitting(true);\n    try {\n      const response = await EdificioService.crearEdificio(payload);\n      if (response.status >= 200 && response.status < 300) {\n        setSuccess(true);\n        setTimeout(() => router.push('/edificios/listadoEdificios'), 800);\n      } else {\n        setError('No se pudo crear el edificio.');\n      }\n    } catch (e) {\n      console.error('Error creando edificio:', e);\n      setError(e.response?.data?.error || e.response?.data?.message || 'Error al crear el edificio');\n    } finally {\n      setSubmitting(false);\n    }\n  };\n\n  if (!isAdmin) return null;\n\n  return (\n    <div className="header-root">\n      <div className="header-hero">\n        <Image src={harvard} alt="Harvard" fill className="harvard-image" priority />\n        <div className="header-overlay" />\n        <div className="header-topbar">\n          <div className="icon-group">\n            <Link href="/">\n              <Image src={logo} alt="Logo GateKeep" width={160} priority className="logo-image" />\n            </Link>\n          </div>\n        </div>\n        <div className="header-middle-bar">\n          <form className="text-card" onSubmit={(e) => { e.preventDefault(); if (!submitting) handleSubmit(); }} aria-label="Formulario crear edificio">\n            <div style={{alignItems: 'center', width: '100%'}}><h1 className="text-3xl font-bold text-white">Crear Edificio</h1><hr /></div>\n            <div className='input-container'>\n              <div className='w-full'><span>Nombre *</span><input type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre" /></div>\n              <div className='w-full'><span>Ubicación *</span><input type="text" value={ubicacion} onChange={(e) => setUbicacion(e.target.value)} placeholder="Ubicación" /></div>\n              <div className='w-full'><span>Capacidad *</span><input type="number" value={capacidad} onChange={(e) => setCapacidad(e.target.value)} placeholder="Capacidad" /></div>\n              <div className='w-full'><span>Número de pisos *</span><input type="number" value={numeroPisos} onChange={(e) => setNumeroPisos(e.target.value)} placeholder="Pisos" /></div>\n              <div className='w-full'><span>Código (opcional)</span><input type="text" value={codigoEdificio} onChange={(e) => setCodigoEdificio(e.target.value)} placeholder="Código único" /></div>\n              <div className='w-full'><span>Descripción (opcional)</span><textarea style={{borderRadius:'20px', width:'calc(100% - 2vw)', marginLeft:'1vw', marginRight:'1vw', padding:'8px', minHeight:'80px'}} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción" /></div>\n              <div className='w-full' style={{display:'flex', alignItems:'center', gap:'8px', marginLeft:'1vw', marginRight:'1vw'}}><input id="activo-edificio" type="checkbox" checked={activo} onChange={(e) => setActivo(e.target.checked)} /><label htmlFor="activo-edificio" style={{margin:0, fontSize:'0.8rem'}}>Activo</label></div>\n            </div>\n            {error && (<div style={{ color: '#ffdddd', background:'#7e1e1e', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>{error}</div>)}\n            {success && (<div style={{ color: '#e9ffe9', background:'#1e7e3a', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>Edificio creado. Redirigiendo...</div>)}\n            <div className='button-container'>\n              <button type="submit" disabled={submitting} style={{ opacity: submitting ? 0.6 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }}>\n                {submitting ? 'Creando...' : 'Crear Edificio'}\n              </button>\n            </div>\n          </form>\n        </div>\n      </div>\n      <style jsx>{`\n        .header-root { width: 100%; display: block; }\n        .header-hero { width: 100%; height: 768px; position: relative; display: flex; flex-direction: column; gap: 5px; padding: 24px; box-sizing: border-box; }\n        @media (max-width: 768px) { .header-hero { padding: 16px; height: 600px; } }\n        @media (max-width: 425px) { .header-hero { padding: 12px; height: auto; } }\n        .harvard-image { object-fit: cover; position: absolute; inset: 0; z-index: 0; }\n        @media (max-width: 425px) { .harvard-image { display: none; } }\n        .header-overlay { position: absolute; inset: 0; z-index: 1; pointer-events: none; box-shadow: inset 0 80px 120px rgba(0, 0, 0, 0.6), inset 0 -80px 120px rgba(0, 0, 0, 0.6); }\n        .header-topbar { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 72px; }\n        .logo-image { width: 160px; height: auto; cursor: pointer; opacity: 0.9; }\n        @media (max-width: 425px) { .logo-image { width: 120px; } }\n        .icon-group { display: inline-flex; align-items: center; gap: 10px; }\n        span { font-size: 0.8rem; margin-left: 1vw; margin-right: 1vw; margin-bottom: 0; }\n        h1 { color: #F37426; margin-left: 1vw; margin-right: 1vw; text-align: center; }\n        input { border-radius: 20px; width: calc(100% - 2vw); margin-left: 1vw; margin-right: 1vw; margin-top: 0; padding: 8px; }\n        @media (max-width: 425px) { input { padding: 6px; } }\n        hr { width: 100%; border: 1.5px solid #F37426; }\n        .input-container { display: flex; flex-direction: column; gap: 16px; width: 100%; }\n        .button-container { width: 100%; display: flex; justify-content: center; align-items: center; }\n        button { margin-top: 30px; border-radius: 20px; width: calc(80% - 2vw); padding: 8px; background: #F37426; margin-bottom: 20px; }\n        @media (max-width: 425px) { button { width: 100%; padding: 10px; } }\n        .text-card { display: flex; flex-direction: column; align-items: flex-start; width: 42.97vw; height: auto; background-color: #231F20; opacity: 0.75; padding: 0vw; border-radius: 20px; border: 3px solid #F37426; }\n        @media (max-width: 768px) { .text-card { width: 90%; } }\n        @media (max-width: 425px) { .text-card { width: 100%; } }\n        .header-middle-bar { position: relative; z-index: 2; display: flex; justify-content: center; width: 100%; }\n      `}</style>\n    </div>\n  );\n}\n
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import logo from '/public/assets/LogoGateKeep.webp';
+import harvard from '/public/assets/Harvard.webp';
+import { SecurityService } from '../../../services/securityService';
+import { EdificioService } from '../../../services/EdificioService';
+
+export default function CrearEdificioPage() {
+	const pathname = usePathname();
+	const router = useRouter();
+	SecurityService.checkAuthAndRedirect(pathname);
+
+	const [isAdmin, setIsAdmin] = useState(false);
+	useEffect(() => {
+		try {
+			const tipo = SecurityService.getTipoUsuario?.() || null;
+			let admin = false;
+			if (tipo) {
+				admin = /admin|administrador/i.test(String(tipo));
+			} else if (typeof window !== 'undefined') {
+				const raw = localStorage.getItem('user');
+				if (raw) {
+					const user = JSON.parse(raw);
+					const role = user?.TipoUsuario || user?.tipoUsuario || user?.Rol || user?.rol;
+					if (role) admin = /admin|administrador/i.test(String(role));
+				}
+			}
+			setIsAdmin(admin);
+			if (!admin) router.replace('/');
+		} catch {
+			setIsAdmin(false);
+			router.replace('/');
+		}
+	}, [router]);
+
+	const [nombre, setNombre] = useState('');
+	const [descripcion, setDescripcion] = useState('');
+	const [ubicacion, setUbicacion] = useState('');
+	const [capacidad, setCapacidad] = useState('');
+	const [numeroPisos, setNumeroPisos] = useState('');
+	const [codigoEdificio, setCodigoEdificio] = useState('');
+	const [activo, setActivo] = useState(true);
+	const [submitting, setSubmitting] = useState(false);
+	const [error, setError] = useState(null);
+	const [success, setSuccess] = useState(false);
+
+	const validate = () => {
+		if (!nombre || !ubicacion || !capacidad || !numeroPisos) return 'Completa los campos obligatorios.';
+		if (Number(capacidad) < 0) return 'Capacidad debe ser >= 0.';
+		if (Number(numeroPisos) < 1) return 'Número de pisos debe ser >= 1.';
+		return null;
+	};
+
+	const handleSubmit = async () => {
+		setError(null);
+		setSuccess(false);
+		const v = validate();
+		if (v) { setError(v); return; }
+		const payload = {
+			nombre,
+			descripcion: descripcion || undefined,
+			ubicacion,
+			capacidad: Number(capacidad),
+			activo,
+			numeroPisos: Number(numeroPisos),
+			codigoEdificio: codigoEdificio || undefined
+		};
+		setSubmitting(true);
+		try {
+			const response = await EdificioService.crearEdificio(payload);
+			if (response.status >= 200 && response.status < 300) {
+				setSuccess(true);
+				setTimeout(() => router.push('/edificios/listadoEdificios'), 900);
+			} else {
+				setError('No se pudo crear el edificio.');
+			}
+		} catch (e) {
+			console.error('Error creando edificio:', e);
+			setError(e.response?.data?.error || e.response?.data?.message || 'Error al crear el edificio');
+		} finally {
+			setSubmitting(false);
+		}
+	};
+
+	if (!isAdmin) return null;
+
+	return (
+		<div className="header-root">
+			<div className="header-hero">
+				<Image src={harvard} alt="Harvard" fill className="harvard-image" priority />
+				<div className="header-overlay" />
+				<div className="header-topbar">
+					<div className="icon-group">
+						<Link href="/">
+							<Image src={logo} alt="Logo GateKeep" width={160} priority className="logo-image" />
+						</Link>
+					</div>
+				</div>
+				<div className="header-middle-bar">
+					<form className="text-card" onSubmit={(e) => { e.preventDefault(); if (!submitting) handleSubmit(); }} aria-label="Formulario crear edificio">
+						<div style={{alignItems: 'center', width: '100%'}}>
+							<h1 className="text-3xl font-bold text-white">Crear Edificio</h1>
+							<hr />
+						</div>
+						<div className='input-container'>
+							<div className='w-full'>
+								<span>Nombre *</span>
+								<input type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre" />
+							</div>
+							<div className='w-full'>
+								<span>Ubicación *</span>
+								<input type="text" value={ubicacion} onChange={(e) => setUbicacion(e.target.value)} placeholder="Ubicación" />
+							</div>
+							<div className='w-full'>
+								<span>Capacidad *</span>
+								<input type="number" value={capacidad} onChange={(e) => setCapacidad(e.target.value)} placeholder="Capacidad" />
+							</div>
+							<div className='w-full'>
+								<span>Número de pisos *</span>
+								<input type="number" value={numeroPisos} onChange={(e) => setNumeroPisos(e.target.value)} placeholder="Pisos" />
+							</div>
+							<div className='w-full'>
+								<span>Código (opcional)</span>
+								<input type="text" value={codigoEdificio} onChange={(e) => setCodigoEdificio(e.target.value)} placeholder="Código único" />
+							</div>
+							<div className='w-full'>
+								<span>Descripción (opcional)</span>
+								<textarea style={{borderRadius:'20px', width:'calc(100% - 2vw)', marginLeft:'1vw', marginRight:'1vw', padding:'8px', minHeight:'80px'}} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción" />
+							</div>
+							<div className='w-full' style={{display:'flex', alignItems:'center', gap:'8px', marginLeft:'1vw', marginRight:'1vw'}}>
+								<input id="activo-edificio" type="checkbox" checked={activo} onChange={(e) => setActivo(e.target.checked)} />
+								<label htmlFor="activo-edificio" style={{margin:0, fontSize:'0.8rem'}}>Activo</label>
+							</div>
+						</div>
+						{error && (
+							<div style={{ color: '#ffdddd', background:'#7e1e1e', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>{error}</div>
+						)}
+						{success && (
+							<div style={{ color: '#e9ffe9', background:'#1e7e3a', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>Edificio creado. Redirigiendo...</div>
+						)}
+						<div className='button-container'>
+							<button type="submit" disabled={submitting} style={{ opacity: submitting ? 0.6 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }}>
+								{submitting ? 'Creando...' : 'Crear Edificio'}
+							</button>
+						</div>
+					</form>
+				</div>
+			</div>
+			<style jsx>{`
+				.header-root { width: 100%; display: block; }
+				.header-hero { width: 100%; height: 768px; position: relative; display: flex; flex-direction: column; gap: 5px; padding: 24px; box-sizing: border-box; }
+				@media (max-width: 768px) { .header-hero { padding: 16px; height: 600px; } }
+				@media (max-width: 425px) { .header-hero { padding: 12px; height: auto; } }
+				.harvard-image { object-fit: cover; position: absolute; inset: 0; z-index: 0; }
+				@media (max-width: 425px) { .harvard-image { display: none; } }
+				.header-overlay { position: absolute; inset: 0; z-index: 1; pointer-events: none; box-shadow: inset 0 80px 120px rgba(0, 0, 0, 0.6), inset 0 -80px 120px rgba(0, 0, 0, 0.6); }
+				.header-topbar { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 72px; }
+				.logo-image { width: 160px; height: auto; cursor: pointer; opacity: 0.9; }
+				@media (max-width: 425px) { .logo-image { width: 120px; } }
+				.icon-group { display: inline-flex; align-items: center; gap: 10px; }
+				span { font-size: 0.8rem; margin-left: 1vw; margin-right: 1vw; margin-bottom: 0; }
+				h1 { color: #F37426; margin-left: 1vw; margin-right: 1vw; text-align: center; }
+				input { border-radius: 20px; width: calc(100% - 2vw); margin-left: 1vw; margin-right: 1vw; margin-top: 0; padding: 8px; }
+				@media (max-width: 425px) { input { padding: 6px; } }
+				hr { width: 100%; border: 1.5px solid #F37426; }
+				.input-container { display: flex; flex-direction: column; gap: 16px; width: 100%; }
+				.button-container { width: 100%; display: flex; justify-content: center; align-items: center; }
+				button { margin-top: 30px; border-radius: 20px; width: calc(80% - 2vw); padding: 8px; background: #F37426; margin-bottom: 20px; }
+				@media (max-width: 425px) { button { width: 100%; padding: 10px; } }
+				.text-card { display: flex; flex-direction: column; align-items: flex-start; width: 42.97vw; height: auto; background-color: #231F20; opacity: 0.75; padding: 0vw; border-radius: 20px; border: 3px solid #F37426; }
+				@media (max-width: 768px) { .text-card { width: 90%; } }
+				@media (max-width: 425px) { .text-card { width: 100%; } }
+				.header-middle-bar { position: relative; z-index: 2; display: flex; justify-content: center; width: 100%; }
+			`}</style>
+		</div>
+	);
+}

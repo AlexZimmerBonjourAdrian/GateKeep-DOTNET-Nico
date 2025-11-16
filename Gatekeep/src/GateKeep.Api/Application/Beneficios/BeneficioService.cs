@@ -26,13 +26,13 @@ public sealed class BeneficioService : IBeneficioService
 
     public async Task<BeneficioDto> CrearAsync(CrearBeneficioRequest request)
     {
-        var beneficio = new Beneficio(
-            Id: 0, // Se asignará automáticamente
-            Tipo: request.Tipo,
-            Vigencia: request.Vigencia,
-            FechaDeVencimiento: request.FechaDeVencimiento,
-            Cupos: request.Cupos
-        );
+        var beneficio = new Beneficio
+        {
+            Tipo = request.Tipo,
+            Vigencia = request.Vigencia,
+            FechaDeVencimiento = request.FechaDeVencimiento,
+            Cupos = request.Cupos
+        };
 
         var beneficioCreado = await _repository.CrearAsync(beneficio);
         return MapToDto(beneficioCreado);

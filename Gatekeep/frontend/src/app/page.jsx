@@ -6,6 +6,7 @@ import Header from '../components/Header';
 import Carousel from '../components/Carousel';
 import { EventoService } from '../services/EventoService';
 import { AnuncioService } from '../services/AnuncioService';
+import { BeneficioService } from '../services/BeneficioService';
 import { SecurityService } from '../services/securityService';
 
 export default function Home() {
@@ -16,8 +17,10 @@ export default function Home() {
 
   const [eventos, setEventos] = useState([]);
   const [anuncios, setAnuncios] = useState([]);
+  const [beneficios, setBeneficios] = useState([]);
   const [loadingEventos, setLoadingEventos] = useState(true);
   const [loadingAnuncios, setLoadingAnuncios] = useState(true);
+  const [loadingBeneficios, setLoadingBeneficios] = useState(true);
 
   // Cargar eventos al montar el componente
   useEffect(() => {
@@ -54,6 +57,23 @@ export default function Home() {
     fetchAnuncios();
   }, []);
 
+  // Cargar beneficios al montar el componente
+  useEffect(() => {
+    const fetchBeneficios = async () => {
+      try {
+        const response = await BeneficioService.getBeneficios();
+        setBeneficios(response.data || []);
+      } catch (error) {
+        console.error('Error al cargar beneficios:', error);
+        setBeneficios([]);
+      } finally {
+        setLoadingBeneficios(false);
+      }
+    };
+
+    fetchBeneficios();
+  }, []);
+
   return (
     <div className="container-nothing">
 
@@ -76,6 +96,16 @@ export default function Home() {
         
         <div className="carrusel-container">
           <Carousel items={anuncios} route="/anuncio/listadoAnuncios" />
+        </div>
+      </div>
+
+      <div className="container container-beneficios">
+        <div className="container-header">
+          <h2>Beneficios</h2>
+        </div>
+        
+        <div className="carrusel-container">
+          <Carousel items={beneficios} route="/beneficio/listadoBeneficios" />
         </div>
       </div>
     
@@ -196,6 +226,10 @@ export default function Home() {
         }
 
         .container-anuncios {
+          padding-bottom: 20px;
+        }
+
+        .container-beneficios {
           padding-bottom: 90px;
         }
 

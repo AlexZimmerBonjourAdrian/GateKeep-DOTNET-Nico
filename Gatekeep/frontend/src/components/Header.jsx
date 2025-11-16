@@ -58,6 +58,19 @@ export default function Header() {
     fetchNotifications();
   }, [pathname, router]);
 
+  // Cierre por click fuera del menú admin
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (adminMenuRef.current && !adminMenuRef.current.contains(e.target)) {
+        setAdminMenuOpen(false);
+      }
+    };
+    if (adminMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [adminMenuOpen]);
+
   const handleLogout = (e) => {
     e.preventDefault();
     SecurityService.logout();
@@ -126,8 +139,14 @@ export default function Header() {
                 </button>
                 {adminMenuOpen && (
                   <div className="admin-dropdown" role="menu">
-                    <Link href="/reglas-acceso/listadoReglasAcceso" role="menuitem" tabIndex={0} className="admin-dropdown-item">Reglas</Link>
-                    <Link href="/edificios/listadoEdificios" role="menuitem" tabIndex={0} className="admin-dropdown-item">Edificios</Link>
+                    <Link href="/reglas-acceso/listadoReglasAcceso" role="menuitem" tabIndex={0} className="admin-dropdown-item">
+                      <i className="pi pi-sliders-h" aria-hidden={true}></i>
+                      <span>Reglas</span>
+                    </Link>
+                    <Link href="/edificios/listadoEdificios" role="menuitem" tabIndex={0} className="admin-dropdown-item">
+                      <i className="pi pi-building" aria-hidden={true}></i>
+                      <span>Edificios</span>
+                    </Link>
                   </div>
                 )}
               </div>
@@ -335,26 +354,61 @@ export default function Header() {
           position: absolute;
           top: 64px;
           left: 0;
-          background: #231F20;
-          padding: 8px 0;
-          border-radius: 16px;
+          background: rgba(35,31,32,0.92);
+          padding: 10px;
+          border-radius: 20px;
           display: flex;
           flex-direction: column;
-          min-width: 160px;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+          gap: 10px;
+          min-width: 200px;
+          box-shadow: 0 12px 32px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.05);
           z-index: 10;
-          border: 2px solid #F37426;
+          border: 1px solid #423a3a;
+          animation: adminMenuFade 140ms ease;
+          backdrop-filter: blur(6px);
         }
         .admin-dropdown-item {
-          color: #fff;
-          text-decoration: none;
-          padding: 10px 16px;
-          font-size: 0.85rem;
-          outline: none;
-        }
-        .admin-dropdown-item:hover, .admin-dropdown-item:focus-visible {
-          background: #F37426;
+          background: linear-gradient(135deg, #F37426 0%, #ff9e5a 100%);
           color: #231F20;
+          text-decoration: none;
+          padding: 14px 20px;
+          font-size: 0.82rem;
+          outline: none;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+          position: relative;
+          border-radius: 50px;
+          box-shadow: 0 3px 6px rgba(0,0,0,0.20), 0 1px 0 rgba(255,255,255,0.35) inset;
+          transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+          border: 1px solid rgba(255,255,255,0.18);
+          overflow: hidden;
+        }
+        .admin-dropdown-item::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.28), transparent 60%);
+          opacity: 0.55;
+          pointer-events: none;
+        }
+        .admin-dropdown-item i { font-size: 1.1rem; color: #231F20; }
+        .admin-dropdown-item:hover, .admin-dropdown-item:focus-visible {
+          transform: translateY(-4px);
+          box-shadow: 0 10px 22px rgba(0,0,0,0.30), 0 0 0 2px rgba(255,255,255,0.15);
+          filter: brightness(1.06);
+        }
+        .admin-dropdown-item:active {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(0,0,0,0.26);
+        }
+        .admin-dropdown-item span { flex: 1; text-align: left; text-transform: uppercase; letter-spacing: 0.8px; }
+        @keyframes adminMenuFade {
+          from { opacity: 0; transform: translateY(-8px) scale(.96); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
     .text-card {

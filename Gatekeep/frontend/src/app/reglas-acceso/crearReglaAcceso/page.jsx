@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -14,6 +14,29 @@ export default function crearReglaAcceso() {
   const pathname = usePathname();
   const router = useRouter();
   SecurityService.checkAuthAndRedirect(pathname);
+
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    try {
+      const tipo = SecurityService.getTipoUsuario?.() || null;
+      let admin = false;
+      if (tipo) {
+        admin = /admin|administrador/i.test(String(tipo));
+      } else if (typeof window !== 'undefined') {
+        const raw = localStorage.getItem('user');
+        if (raw) {
+          const user = JSON.parse(raw);
+          const role = user?.TipoUsuario || user?.tipoUsuario || user?.Rol || user?.rol;
+          if (role) admin = /admin|administrador/i.test(String(role));
+        }
+      }
+      setIsAdmin(admin);
+      if (!admin) router.replace('/');
+    } catch {
+      setIsAdmin(false);
+      router.replace('/');
+    }
+  }, [router]);
 
   const [horarioApertura, setHorarioApertura] = useState('');
   const [horarioCierre, setHorarioCierre] = useState('');
@@ -52,29 +75,21 @@ export default function crearReglaAcceso() {
       return;
     }
 
-    // Construir payload ajustando formatos (time + date -> ISO aproximado)
-    // Se asume que horarioApertura/Cierre son HH:MM y vigenciaApertura/Cierre son YYYY-MM-DD
+    // El backend espera DateTime en formato ISO para horarios
+    // Combinamos una fecha base con las horas seleccionadas
     const hoy = new Date().toISOString().split('T')[0];
-    const toIsoTime = (hhmm) => {
-      const [h, m] = hhmm.split(':');
-      const base = new Date();
-      base.setHours(Number(h), Number(m), 0, 0);
-      return base.toISOString();
-    };
-    const toIsoDateStart = (dateStr) => new Date(dateStr + 'T00:00:00').toISOString();
-    const toIsoDateEnd = (dateStr) => new Date(dateStr + 'T23:59:59').toISOString();
-
     const payload = {
-      horarioApertura: toIsoTime(horarioApertura),
-      horarioCierre: toIsoTime(horarioCierre),
-      vigenciaApertura: toIsoDateStart(vigenciaApertura),
-      vigenciaCierre: toIsoDateEnd(vigenciaCierre),
+      horarioApertura: `${hoy}T${horarioApertura}:00.000Z`,
+      horarioCierre: `${hoy}T${horarioCierre}:00.000Z`,
+      vigenciaApertura: `${vigenciaApertura}T00:00:00.000Z`,
+      vigenciaCierre: `${vigenciaCierre}T23:59:59.000Z`,
       rolesPermitidos: rolesSeleccionados,
       espacioId: Number(espacioId),
     };
 
     setSubmitting(true);
     try {
+      console.log('Payload enviado:', payload);
       const response = await ReglaAccesoService.crearReglaAcceso(payload);
       if (response.status >= 200 && response.status < 300) {
         setSuccess(true);
@@ -84,12 +99,16 @@ export default function crearReglaAcceso() {
         setError('No se pudo crear la regla.');
       }
     } catch (e) {
-      console.error('Error creando regla de acceso:', e);
-      setError(e.response?.data?.message || 'Error al crear la regla');
+      console.error('Error completo:', e);
+      console.error('Respuesta del servidor:', e.response?.data);
+      const errorMsg = e.response?.data?.message || e.response?.data?.error || e.response?.data?.title || 'Error al crear la regla';
+      setError(errorMsg);
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (!isAdmin) return null;
 
   return (
     <div className="header-root">

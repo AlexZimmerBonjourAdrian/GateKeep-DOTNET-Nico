@@ -35,7 +35,16 @@ export class ReglaAccesoService {
     rolesPermitidos: string[];
     espacioId: number;
   }) {
-    return axios.post(API_URL, data, this.getAuthHeaders());
+    // Backend espera propiedades con PascalCase
+    const payload = {
+      HorarioApertura: data.horarioApertura,
+      HorarioCierre: data.horarioCierre,
+      VigenciaApertura: data.vigenciaApertura,
+      VigenciaCierre: data.vigenciaCierre,
+      RolesPermitidos: data.rolesPermitidos,
+      EspacioId: data.espacioId,
+    };
+    return axios.post(API_URL, payload, this.getAuthHeaders());
   }
 
   static async actualizarReglaAcceso(
@@ -49,7 +58,16 @@ export class ReglaAccesoService {
       espacioId: number;
     }
   ) {
-    return axios.put(`${API_URL}/${id}`, data, this.getAuthHeaders());
+    // Backend espera propiedades con PascalCase
+    const payload = {
+      HorarioApertura: data.horarioApertura,
+      HorarioCierre: data.horarioCierre,
+      VigenciaApertura: data.vigenciaApertura,
+      VigenciaCierre: data.vigenciaCierre,
+      RolesPermitidos: data.rolesPermitidos,
+      EspacioId: data.espacioId,
+    };
+    return axios.put(`${API_URL}/${id}`, payload, this.getAuthHeaders());
   }
 
   static async eliminarReglaAcceso(id: number) {
