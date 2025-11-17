@@ -8,6 +8,7 @@ import logo from '/public/assets/LogoGateKeep.webp'
 import harvard from '/public/assets/Harvard.webp'
 import BasketballIcon from '/public/assets/basketball-icon.svg'
 import { UsuarioService } from '../services/UsuarioService'
+import { NotificacionService } from '../services/NotificacionService'
 import { SecurityService } from '../services/securityService'
 
 export default function Header() {
@@ -44,12 +45,25 @@ export default function Header() {
         }
         
         if (storedUserId) {
-          try {
-            const response = await UsuarioService.getNotificacionesSinLeer(storedUserId);
-            setNotificaciones(response.data || 0);
-          } catch (error) {
-            console.error('Error al cargar notificaciones:', error);
-            setNotificaciones(0);
+          const userId = parseInt(storedUserId, 10);
+          if (!isNaN(userId)) {
+            // Función para obtener notificaciones con reintentos
+            const fetchNotifications = async (retryCount = 0) => {
+              try {
+                const count = await NotificacionService.getNoLeidasCount(userId);
+                setNotificaciones(count || 0);
+              } catch (error) {
+                console.error('Error al cargar notificaciones:', error);
+                if (retryCount < 2) {
+                  // Reintentar después de 500ms
+                  setTimeout(() => fetchNotifications(retryCount + 1), 500);
+                } else {
+                  setNotificaciones(0);
+                }
+              }
+            };
+            
+            fetchNotifications();
           }
         }
       
@@ -146,6 +160,10 @@ export default function Header() {
                     <Link href="/edificios/listadoEdificios" role="menuitem" tabIndex={0} className="admin-dropdown-item">
                       <i className="pi pi-building" aria-hidden={true}></i>
                       <span>Edificios</span>
+                    </Link>
+                    <Link href="/salones/listadoSalones" role="menuitem" tabIndex={0} className="admin-dropdown-item">
+                      <i className="pi pi-th-large" aria-hidden={true}></i>
+                      <span>Salones</span>
                     </Link>
                   </div>
                 )}

@@ -16,11 +16,11 @@ export class AnuncioService {
   }
 
   static getAnuncios() {
-    return axios.get(API_URL);
+    return axios.get(API_URL, this.getAuthHeaders());
   }
 
   static getAnuncio(id: number) {
-    return axios.get(`${API_URL}/${id}`);
+    return axios.get(`${API_URL}/${id}`, this.getAuthHeaders());
   }
 
   static createAnuncio(data: { nombre: string; fecha: string; descripcion?: string; puntoControl?: string }) {

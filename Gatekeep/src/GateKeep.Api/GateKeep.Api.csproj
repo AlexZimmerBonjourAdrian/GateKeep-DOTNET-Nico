@@ -29,9 +29,7 @@
     <PackageReference Include="System.Drawing.Common" Version="9.0.10" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.2.1" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
-    <PackageReference Include="ZXing.Net" Version="0.16.11" />
-    <!-- Binding para soporte de System.Drawing (BitmapRenderer, BarcodeWriter<Bitmap>) -->
-    <PackageReference Include="ZXing.Net.Bindings.Windows.Compatibility" Version="0.16.14" />
+    <PackageReference Include="QRCoder" Version="1.6.0" />
     
     <!-- Paquetes de Redis para Caching -->
     <PackageReference Include="StackExchange.Redis" Version="2.8.16" />

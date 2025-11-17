@@ -1,33 +1,22 @@
-﻿using ZXing;
-using ZXing.Common;
-using ZXing.Windows.Compatibility;
-using System.Drawing;
-using System.Drawing.Imaging;
+﻿using QRCoder;
 using System.IO;
-using System.Runtime.Versioning;
 
 namespace GateKeep.Infrastructure.QrCodes
 {
   public class QrCodeGenerator
   {
-    [SupportedOSPlatform("windows")]
     public byte[] Generate(string content, int width = 250, int height = 250)
     {
-      var writer = new BarcodeWriter()
-      {
-        Format = BarcodeFormat.QR_CODE,
-        Options = new EncodingOptions
-        {
-          Width = width,
-          Height = height,
-          Margin = 1
-        },
-      };
-
-      using var bitmap = writer.Write(content);
-      using var stream = new MemoryStream();
-      bitmap.Save(stream, ImageFormat.Png);
-      return stream.ToArray();
+      using var qrGenerator = new QRCodeGenerator();
+      // ECCLevel.L = corrección de errores baja (genera QR más simple con menos módulos)
+      using var qrCodeData = qrGenerator.CreateQrCode(content, QRCodeGenerator.ECCLevel.L);
+      using var qrCode = new PngByteQRCode(qrCodeData);
+      
+      // Aumentar pixelsPerModule para que los módulos sean más grandes y fáciles de escanear
+      // Para un JWT largo, necesitamos módulos más grandes
+      int pixelsPerModule = Math.Max(3, width / 80); // Módulos más grandes
+      
+      return qrCode.GetGraphic(pixelsPerModule);
     }
   }
 }

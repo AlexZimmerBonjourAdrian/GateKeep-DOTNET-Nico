@@ -16,11 +16,11 @@ export class EventoService {
   }
 
   static getEventos() {
-    return axios.get(API_URL);
+    return axios.get(API_URL, this.getAuthHeaders());
   }
 
   static getEvento(id: number) {
-    return axios.get(`${API_URL}/${id}`);
+    return axios.get(`${API_URL}/${id}`, this.getAuthHeaders());
   }
 
   static createEvento(data: { nombre: string; fecha: string; resultado?: string; puntoControl?: string }) {

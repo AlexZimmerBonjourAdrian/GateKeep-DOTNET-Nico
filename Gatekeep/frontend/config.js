@@ -3,7 +3,7 @@
 
 export const config = {
   // URL del backend API
-  apiUrl: 'http://localhost:5000',
+  apiUrl: 'http://localhost:5011',
 
   // Configuración de la aplicación
   appName: 'React Template',

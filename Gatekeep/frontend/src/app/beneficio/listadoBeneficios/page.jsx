@@ -66,28 +66,30 @@ export default function listadoBeneficios() {
   const filteredBeneficios = useMemo(() => {
     const q = searchInput.trim().toLowerCase();
     return beneficios.filter((beneficio) => {
-      const nombreSrc = beneficio.Nombre ?? beneficio.nombre ?? '';
-      const fechaInicio = beneficio.FechaInicio ?? beneficio.fechaInicio ?? null;
-      const fechaFin = beneficio.FechaFin ?? beneficio.fechaFin ?? null;
-      const activo = beneficio.Activo ?? beneficio.activo ?? false;
+      const tipo = beneficio.Tipo ?? beneficio.tipo;
+      const vigencia = beneficio.Vigencia ?? beneficio.vigencia ?? false;
+      const fechaVencimiento = beneficio.FechaDeVencimiento ?? beneficio.fechaDeVencimiento ?? null;
       
-      // Filter by activo
-      if (soloActivos && !activo) return false;
+      // Filter by vigencia (soloActivos checkbox)
+      if (soloActivos && !vigencia) return false;
       
-      // Filter by query on Nombre
+      // Filter by query on tipo (convertir a texto y buscar)
       if (q) {
-        const nombre = typeof nombreSrc === 'string' ? nombreSrc.toLowerCase() : '';
-        if (!nombre.includes(q)) return false;
+        let tipoTexto = '';
+        if (tipo == 0 || tipo === 'Canje' || (typeof tipo === 'string' && tipo.toLowerCase() === 'canje')) {
+          tipoTexto = 'canje';
+        } else if (tipo == 1 || tipo === 'Consumo' || (typeof tipo === 'string' && tipo.toLowerCase() === 'consumo')) {
+          tipoTexto = 'consumo';
+        }
+        if (!tipoTexto.includes(q)) return false;
       }
 
-      // Filter by date range if provided
-      if (dateFrom && fechaInicio) {
-        const fechaInicioIso = new Date(fechaInicio).toISOString().split('T')[0];
-        if (fechaInicioIso < dateFrom) return false;
-      }
-      if (dateTo && fechaFin) {
-        const fechaFinIso = new Date(fechaFin).toISOString().split('T')[0];
-        if (fechaFinIso > dateTo) return false;
+      // Filter by date range if provided (filtrar por fecha de vencimiento)
+      if (fechaVencimiento) {
+        const fechaVencimientoIso = new Date(fechaVencimiento).toISOString().split('T')[0];
+        
+        if (dateFrom && fechaVencimientoIso < dateFrom) return false;
+        if (dateTo && fechaVencimientoIso > dateTo) return false;
       }
 
       return true;
@@ -116,14 +118,14 @@ export default function listadoBeneficios() {
             <h2>Beneficios</h2>
             <div className="filtros-container">
               <div className="field">
-                <label className="field-label" htmlFor="search-input">Buscar</label>
+                <label className="field-label" htmlFor="search-input">Buscar por tipo</label>
                 <form className="search-bar" onSubmit={handleSearchSubmit}>
                   <input
                     id="search-input"
                     ref={inputRef}
                     className="search-input"
                     type="text"
-                    placeholder="Buscar beneficios..."
+                    placeholder="Buscar: canje, consumo..."
                     aria-label="Buscar beneficios"
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
@@ -138,7 +140,7 @@ export default function listadoBeneficios() {
               </div>
 
               <div className="field">
-                <label className="field-label" htmlFor="date-from">Desde</label>
+                <label className="field-label" htmlFor="date-from">Vence desde</label>
                 <input
                   id="date-from"
                   className="date-input"
@@ -150,7 +152,7 @@ export default function listadoBeneficios() {
               </div>
 
               <div className="field">
-                <label className="field-label" htmlFor="date-to">Hasta</label>
+                <label className="field-label" htmlFor="date-to">Vence hasta</label>
                 <input
                   id="date-to"
                   className="date-input"
@@ -162,16 +164,16 @@ export default function listadoBeneficios() {
               </div>
 
               <div className="field" style={{ minWidth: '140px' }}>
-                <label className="field-label" htmlFor="solo-activos">Solo activos</label>
+                <label className="field-label" htmlFor="solo-activos">Solo vigentes</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', background:'#f8fafc', border:'1px solid #e5e7eb', borderRadius: '20px' }}>
                   <input
                     id="solo-activos"
                     type="checkbox"
                     checked={soloActivos}
                     onChange={(e) => setSoloActivos(e.target.checked)}
-                    aria-label="Filtrar activos"
+                    aria-label="Filtrar vigentes"
                   />
-                  <span style={{ fontSize: '0.8rem', color:'#111827' }}>Activos</span>
+                  <span style={{ fontSize: '0.8rem', color:'#111827' }}>Vigentes</span>
                 </div>
               </div>
 
@@ -206,11 +208,18 @@ export default function listadoBeneficios() {
                 <div className="event-group" key={`group-${gi}`}>
                   {group.map((beneficio) => {
                     const id = beneficio.Id ?? beneficio.id;
-                    const nombre = beneficio.Nombre ?? beneficio.nombre;
-                    const descripcion = beneficio.Descripcion ?? beneficio.descripcion;
-                    const fechaInicio = beneficio.FechaInicio ?? beneficio.fechaInicio;
-                    const fechaFin = beneficio.FechaFin ?? beneficio.fechaFin;
-                    const activo = beneficio.Activo ?? beneficio.activo ?? false;
+                    const tipo = beneficio.Tipo ?? beneficio.tipo;
+                    const vigencia = beneficio.Vigencia ?? beneficio.vigencia ?? false;
+                    const fechaVencimiento = beneficio.FechaDeVencimiento ?? beneficio.fechaDeVencimiento;
+                    const cupos = beneficio.Cupos ?? beneficio.cupos;
+                    
+                    // El backend envía el nombre del enum como string
+                    let tipoTexto = 'Desconocido';
+                    if (tipo == 0 || tipo === 'Canje' || (typeof tipo === 'string' && tipo.toLowerCase() === 'canje')) {
+                      tipoTexto = 'Canje';
+                    } else if (tipo == 1 || tipo === 'Consumo' || (typeof tipo === 'string' && tipo.toLowerCase() === 'consumo')) {
+                      tipoTexto = 'Consumo';
+                    }
                     
                     return (
                       <div
@@ -221,14 +230,15 @@ export default function listadoBeneficios() {
                         onClick={() => router.push(`/beneficio/${id}`)}
                         onKeyDown={(e) => { if (e.key==='Enter' || e.key===' ') { e.preventDefault(); router.push(`/beneficio/${id}`) }}}
                       >
-                        {nombre && <h3>{nombre}</h3>}
-                        {descripcion && <p style={{ fontSize: '0.85rem', marginBottom: '8px' }}>{descripcion}</p>}
-                        {fechaInicio && fechaFin && (
+                        <h3>Beneficio #{id}</h3>
+                        <p style={{ fontSize: '0.9rem', marginBottom: '8px', fontWeight: '600' }}>{tipoTexto}</p>
+                        {fechaVencimiento && (
                           <p style={{ fontSize: '0.8rem' }}>
-                            <strong>Vigencia:</strong> {new Date(fechaInicio).toLocaleDateString('es-ES')} - {new Date(fechaFin).toLocaleDateString('es-ES')}
+                            <strong>Vence:</strong> {new Date(fechaVencimiento).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}
                           </p>
                         )}
-                        <p style={{ fontSize: '0.8rem' }}><strong>Estado:</strong> {activo ? 'Activo' : 'Inactivo'}</p>
+                        <p style={{ fontSize: '0.8rem' }}><strong>Cupos disponibles:</strong> {cupos}</p>
+                        <p style={{ fontSize: '0.8rem' }}><strong>Estado:</strong> {vigencia ? 'Vigente' : 'No vigente'}</p>
                       </div>
                     );
                   })}

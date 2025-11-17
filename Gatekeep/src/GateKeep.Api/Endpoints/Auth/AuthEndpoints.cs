@@ -140,43 +140,6 @@ public static class AuthEndpoints
             // 2) Si no viene por query, intentar extraer del header Authorization: Bearer <token>
             if (string.IsNullOrWhiteSpace(token))
             {
-        ;
-
-        // Validar el JWT actual y devolver información básica del usuario (para lectores de QR)
-        group.MapGet("/validate", (HttpContext httpContext) =>
-        {
-            var user = httpContext.User;
-            if (user?.Identity is not { IsAuthenticated: true })
-            {
-                return Results.Unauthorized();
-            }
-
-            string? id = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirst("sub")?.Value;
-            string? email = user.FindFirstValue(ClaimTypes.Email) ?? user.FindFirst("email")?.Value;
-            string? nombre = user.FindFirst("Nombre")?.Value ?? user.FindFirst("given_name")?.Value;
-            string? apellido = user.FindFirst("Apellido")?.Value ?? user.FindFirst("family_name")?.Value;
-            string? rol = user.FindFirstValue(ClaimTypes.Role) ?? user.FindFirst("role")?.Value;
-
-            var response = new
-            {
-                isValid = true,
-                user = new
-                {
-                    id,
-                    email,
-                    nombre,
-                    apellido,
-                    rol
-                }
-            };
-
-            return Results.Ok(response);
-        })
-        .WithName("ValidateCurrentToken")
-        .WithSummary("Valida el JWT del header Authorization y retorna datos básicos del usuario.")
-        .WithDescription("El lector debe enviar Authorization: Bearer <token escaneado del QR>.")
-        .RequireAuthorization();
-
                 if (httpContext.Request.Headers.TryGetValue("Authorization", out var authHeader))
                 {
                     var value = authHeader.ToString();
@@ -191,12 +154,6 @@ public static class AuthEndpoints
             if (string.IsNullOrWhiteSpace(token))
             {
                 return Results.BadRequest(new { message = "Falta el token JWT (use query 'token' o Authorization: Bearer ...)" });
-            }
-
-            // Generar PNG con el token (solo Windows por dependencia de System.Drawing)
-            if (!OperatingSystem.IsWindows())
-            {
-                return Results.Problem("Generación de QR no soportada en esta plataforma (requiere Windows)", statusCode: 501);
             }
 
             // Tamaño opcional del QR: ?w=250&h=250
@@ -219,6 +176,56 @@ public static class AuthEndpoints
         .WithDescription("Devuelve una imagen PNG con el QR que contiene el token JWT. Acepta query 'token' o usa el header Authorization.")
         .Produces(200)
         .Produces(400)
+        .RequireAuthorization();
+
+        // Validar el JWT actual y devolver información básica del usuario (para lectores de QR)
+        group.MapGet("/validate", (HttpContext httpContext) =>
+        {
+            var user = httpContext.User;
+            if (user?.Identity is not { IsAuthenticated: true })
+            {
+                return Results.Unauthorized();
+            }
+
+            string? id = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirst("sub")?.Value;
+            string? email = user.FindFirstValue(ClaimTypes.Email) ?? user.FindFirst("email")?.Value;
+            
+            // Intentar obtener nombre y apellido de claims individuales
+            string? nombre = user.FindFirst("Nombre")?.Value ?? user.FindFirst("given_name")?.Value;
+            string? apellido = user.FindFirst("Apellido")?.Value ?? user.FindFirst("family_name")?.Value;
+            
+            // Si no hay nombre/apellido separados, intentar obtener el nombre completo
+            if (string.IsNullOrWhiteSpace(nombre) && string.IsNullOrWhiteSpace(apellido))
+            {
+                var fullName = user.FindFirstValue(ClaimTypes.Name) ?? user.FindFirst("name")?.Value;
+                if (!string.IsNullOrWhiteSpace(fullName))
+                {
+                    var parts = fullName.Split(' ', 2);
+                    nombre = parts.Length > 0 ? parts[0] : null;
+                    apellido = parts.Length > 1 ? parts[1] : null;
+                }
+            }
+            
+            string? rol = user.FindFirstValue(ClaimTypes.Role) ?? user.FindFirst("role")?.Value;
+
+            var response = new
+            {
+                isValid = true,
+                user = new
+                {
+                    id,
+                    email,
+                    nombre,
+                    apellido,
+                    rol
+                }
+            };
+
+            return Results.Ok(response);
+        })
+        .WithName("ValidateCurrentToken")
+        .WithSummary("Valida el JWT del header Authorization y retorna datos básicos del usuario.")
+        .WithDescription("El lector debe enviar Authorization: Bearer <token escaneado del QR>.")
         .RequireAuthorization();
 
         // Crear usuarios de prueba - PÚBLICO (para testing)
