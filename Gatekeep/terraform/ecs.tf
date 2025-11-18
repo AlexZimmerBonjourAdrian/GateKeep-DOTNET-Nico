@@ -74,8 +74,7 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
         ]
         Resource = [
           aws_secretsmanager_secret.db_password.arn,
-          aws_secretsmanager_secret.jwt_key.arn,
-          aws_secretsmanager_secret.rabbitmq_password.arn
+          aws_secretsmanager_secret.jwt_key.arn
         ]
       },
       {
@@ -146,11 +145,11 @@ resource "aws_iam_role_policy" "ecs_task_cloudwatch" {
 resource "aws_ecs_task_definition" "main" {
   family                   = "${var.project_name}-api"
   requires_compatibilities = ["FARGATE"]
-  network_mode            = "awsvpc"
-  cpu                     = "512"   # 0.5 vCPU
-  memory                  = "1024"  # 1 GB
-  execution_role_arn      = aws_iam_role.ecs_execution.arn
-  task_role_arn          = aws_iam_role.ecs_task.arn
+  network_mode             = "awsvpc"
+  cpu                      = "512"  # 0.5 vCPU
+  memory                   = "1024" # 1 GB
+  execution_role_arn       = aws_iam_role.ecs_execution.arn
+  task_role_arn            = aws_iam_role.ecs_task.arn
 
   container_definitions = jsonencode([
     {
@@ -198,7 +197,7 @@ resource "aws_ecs_task_definition" "main" {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.ecs.name
-          "awslogs-region"       = var.aws_region
+          "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "ecs"
         }
       }
@@ -352,13 +351,13 @@ resource "aws_lb_target_group" "frontend" {
 
   health_check {
     enabled             = true
-    healthy_threshold     = 2
-    unhealthy_threshold   = 3
-    timeout              = 5
-    interval             = 30
-    path                 = "/"
-    protocol             = "HTTP"
-    matcher              = "200,404"
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 30
+    path                = "/"
+    protocol            = "HTTP"
+    matcher             = "200,404"
   }
 
   tags = {
@@ -374,16 +373,32 @@ resource "aws_lb_listener" "main" {
   port              = "80"
   protocol          = "HTTP"
 
-  # Default: Frontend
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.frontend.arn
   }
 }
 
+resource "aws_lb_listener" "https" {
+  count = var.enable_https ? 1 : 0
+
+  load_balancer_arn = aws_lb.main.arn
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2016-08"
+  certificate_arn   = aws_acm_certificate_validation.alb[0].certificate_arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.frontend.arn
+  }
+
+  depends_on = [aws_acm_certificate_validation.alb]
+}
+
 # Listener Rule para Backend API - /api/*
 resource "aws_lb_listener_rule" "backend_api" {
-  listener_arn = aws_lb_listener.main.arn
+  listener_arn = var.enable_https ? aws_lb_listener.https[0].arn : aws_lb_listener.main.arn
   priority     = 100
 
   action {
@@ -400,7 +415,7 @@ resource "aws_lb_listener_rule" "backend_api" {
 
 # Listener Rule para Backend Auth - /auth/*
 resource "aws_lb_listener_rule" "backend_auth" {
-  listener_arn = aws_lb_listener.main.arn
+  listener_arn = var.enable_https ? aws_lb_listener.https[0].arn : aws_lb_listener.main.arn
   priority     = 110
 
   action {
@@ -417,7 +432,7 @@ resource "aws_lb_listener_rule" "backend_auth" {
 
 # Listener Rule para Backend Usuarios - /usuarios/*
 resource "aws_lb_listener_rule" "backend_usuarios" {
-  listener_arn = aws_lb_listener.main.arn
+  listener_arn = var.enable_https ? aws_lb_listener.https[0].arn : aws_lb_listener.main.arn
   priority     = 120
 
   action {
@@ -434,7 +449,7 @@ resource "aws_lb_listener_rule" "backend_usuarios" {
 
 # Listener Rule para Swagger
 resource "aws_lb_listener_rule" "backend_swagger" {
-  listener_arn = aws_lb_listener.main.arn
+  listener_arn = var.enable_https ? aws_lb_listener.https[0].arn : aws_lb_listener.main.arn
   priority     = 130
 
   action {
@@ -451,7 +466,7 @@ resource "aws_lb_listener_rule" "backend_swagger" {
 
 # Listener Rule para Health Check
 resource "aws_lb_listener_rule" "backend_health" {
-  listener_arn = aws_lb_listener.main.arn
+  listener_arn = var.enable_https ? aws_lb_listener.https[0].arn : aws_lb_listener.main.arn
   priority     = 140
 
   action {
@@ -510,11 +525,11 @@ resource "aws_ecs_service" "main" {
 resource "aws_ecs_task_definition" "frontend" {
   family                   = "${var.project_name}-frontend"
   requires_compatibilities = ["FARGATE"]
-  network_mode            = "awsvpc"
-  cpu                     = "256"   # 0.25 vCPU
-  memory                  = "512"   # 0.5 GB
-  execution_role_arn      = aws_iam_role.ecs_execution.arn
-  task_role_arn          = aws_iam_role.ecs_task.arn
+  network_mode             = "awsvpc"
+  cpu                      = "256" # 0.25 vCPU
+  memory                   = "512" # 0.5 GB
+  execution_role_arn       = aws_iam_role.ecs_execution.arn
+  task_role_arn            = aws_iam_role.ecs_task.arn
 
   container_definitions = jsonencode([
     {
@@ -539,7 +554,7 @@ resource "aws_ecs_task_definition" "frontend" {
         },
         {
           name  = "NEXT_PUBLIC_API_URL"
-          value = "http://${aws_lb.main.dns_name}"
+          value = "https://${var.domain_name}"
         }
       ]
 
@@ -547,7 +562,7 @@ resource "aws_ecs_task_definition" "frontend" {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.ecs.name
-          "awslogs-region"       = var.aws_region
+          "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "ecs-frontend"
         }
       }

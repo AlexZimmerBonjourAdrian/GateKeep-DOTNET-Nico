@@ -104,17 +104,22 @@ output "alb_dns_name" {
 
 output "application_url" {
   description = "URL pública de la aplicación"
-  value       = "http://${aws_lb.main.dns_name}"
+  value       = "https://${var.domain_name}"
 }
 
 output "frontend_url" {
   description = "URL pública del frontend"
-  value       = "http://${aws_lb.main.dns_name}"
+  value       = "https://${var.domain_name}"
 }
 
 output "backend_api_url" {
   description = "URL pública del backend API"
-  value       = "http://${aws_lb.main.dns_name}/api"
+  value       = "https://${var.domain_name}/api"
+}
+
+output "custom_domain_aliases" {
+  description = "Dominios públicos apuntando al ALB"
+  value       = local.all_public_domains
 }
 
 # ECR Frontend

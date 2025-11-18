@@ -20,7 +20,7 @@ resource "aws_db_parameter_group" "postgres16" {
   parameter {
     name         = "shared_preload_libraries"
     value        = "pg_stat_statements"
-    apply_method = "pending-reboot"  # Requiere reinicio
+    apply_method = "pending-reboot" # Requiere reinicio
   }
 
   parameter {
@@ -46,7 +46,7 @@ resource "aws_db_instance" "main" {
 
   # Engine
   engine         = "postgres"
-  engine_version = "16.11"  # Versión disponible en sa-east-1
+  engine_version = "16.11"       # Versión disponible en sa-east-1
   instance_class = "db.t3.micro" # Cambiar a db.t3.small o mayor en producción
 
   # Storage
@@ -58,7 +58,7 @@ resource "aws_db_instance" "main" {
   # Database
   db_name  = "Gatekeep"
   username = "postgres"
-  password = aws_secretsmanager_secret_version.db_password.secret_string
+  password = local.db_password_secret_string
 
   # Network
   db_subnet_group_name   = aws_db_subnet_group.main.name

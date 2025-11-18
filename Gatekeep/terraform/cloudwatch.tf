@@ -134,9 +134,9 @@ resource "aws_cloudwatch_dashboard" "cache_metrics" {
       {
         type = "log"
         properties = {
-          query   = "fields @timestamp, @message | filter @message like /\\[CACHE\\]/ | stats count() by @message"
-          region  = var.aws_region
-          title   = "Cache Operations Log Summary"
+          query  = "fields @timestamp, @message | filter @message like /\\[CACHE\\]/ | stats count() by @message"
+          region = var.aws_region
+          title  = "Cache Operations Log Summary"
         }
       },
 
@@ -144,9 +144,9 @@ resource "aws_cloudwatch_dashboard" "cache_metrics" {
       {
         type = "log"
         properties = {
-          query   = "fields @duration | stats avg(@duration) as avg_duration, max(@duration) as max_duration, pct(@duration, 95) as p95_duration"
-          region  = var.aws_region
-          title   = "API Response Time Metrics"
+          query  = "fields @duration | stats avg(@duration) as avg_duration, max(@duration) as max_duration, pct(@duration, 95) as p95_duration"
+          region = var.aws_region
+          title  = "API Response Time Metrics"
         }
       }
     ]
@@ -264,10 +264,10 @@ resource "aws_cloudwatch_metric_alarm" "high_cache_misses" {
 # ============================================
 
 # Metric filter para contar Cache Hits
-resource "aws_cloudwatch_log_group_metric_filter" "cache_hits_log_filter" {
+resource "aws_cloudwatch_log_metric_filter" "cache_hits_log_filter" {
   name           = "${var.project_name}-cache-hits"
   log_group_name = aws_cloudwatch_log_group.ecs.name
-  filter_pattern = "[CACHE] cache hit:"
+  pattern        = "\"[CACHE]\" \"cache\" \"hit\""
 
   metric_transformation {
     name      = "CacheHitLogCount"
@@ -277,10 +277,10 @@ resource "aws_cloudwatch_log_group_metric_filter" "cache_hits_log_filter" {
 }
 
 # Metric filter para contar Cache Misses
-resource "aws_cloudwatch_log_group_metric_filter" "cache_misses_log_filter" {
+resource "aws_cloudwatch_log_metric_filter" "cache_misses_log_filter" {
   name           = "${var.project_name}-cache-misses"
   log_group_name = aws_cloudwatch_log_group.ecs.name
-  filter_pattern = "[CACHE] cache miss:"
+  pattern        = "\"[CACHE]\" \"cache\" \"miss\""
 
   metric_transformation {
     name      = "CacheMissLogCount"
@@ -290,10 +290,10 @@ resource "aws_cloudwatch_log_group_metric_filter" "cache_misses_log_filter" {
 }
 
 # Metric filter para contar Cache Removals
-resource "aws_cloudwatch_log_group_metric_filter" "cache_removals_log_filter" {
+resource "aws_cloudwatch_log_metric_filter" "cache_removals_log_filter" {
   name           = "${var.project_name}-cache-removed"
   log_group_name = aws_cloudwatch_log_group.ecs.name
-  filter_pattern = "[CACHE] cache removed:"
+  pattern        = "\"[CACHE]\" \"cache\" \"removed\""
 
   metric_transformation {
     name      = "CacheRemovalLogCount"
@@ -307,15 +307,12 @@ resource "aws_cloudwatch_log_group_metric_filter" "cache_removals_log_filter" {
 # ============================================
 
 resource "aws_cloudwatch_composite_alarm" "cache_health_overall" {
-  alarm_name          = "${var.project_name}-cache-health-overall"
-  alarm_description   = "Estado general de salud del cache (combina múltiples alarmas)"
-  actions_enabled     = true
-  alarm_actions       = var.alarm_actions != null ? var.alarm_actions : []
+  alarm_name        = "${var.project_name}-cache-health-overall"
+  alarm_description = "Estado general de salud del cache (combina múltiples alarmas)"
+  actions_enabled   = true
+  alarm_actions     = var.alarm_actions != null ? var.alarm_actions : []
 
-  alarm_rule = join(" OR ", [
-    "arn:aws:cloudwatch:${var.aws_region}:${data.aws_caller_identity.current.account_id}:alarm:${aws_cloudwatch_metric_alarm.critical_cache_hit_rate.alarm_name}",
-    "arn:aws:cloudwatch:${var.aws_region}:${data.aws_caller_identity.current.account_id}:alarm:${aws_cloudwatch_metric_alarm.high_cache_invalidations.alarm_name}"
-  ])
+  alarm_rule = "ALARM(\"${aws_cloudwatch_metric_alarm.critical_cache_hit_rate.alarm_name}\") OR ALARM(\"${aws_cloudwatch_metric_alarm.high_cache_invalidations.alarm_name}\")"
 
   tags = {
     Name        = "${var.project_name}-cache-health-overall"

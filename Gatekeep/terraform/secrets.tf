@@ -16,6 +16,8 @@ resource "aws_secretsmanager_secret" "db_password" {
 
 # Generar password aleatorio para RDS
 resource "random_password" "db_password" {
+  count = var.manage_secret_versions ? 1 : 0
+
   length           = 32
   special          = true
   override_special = "!#$%&*()-_=+[]{}<>:?"
@@ -23,8 +25,16 @@ resource "random_password" "db_password" {
 
 # Versión del secret con el password
 resource "aws_secretsmanager_secret_version" "db_password" {
+  count = var.manage_secret_versions ? 1 : 0
+
   secret_id     = aws_secretsmanager_secret.db_password.id
-  secret_string = random_password.db_password.result
+  secret_string = random_password.db_password[0].result
+}
+
+data "aws_secretsmanager_secret_version" "db_password" {
+  count = var.manage_secret_versions ? 0 : 1
+
+  secret_id = aws_secretsmanager_secret.db_password.id
 }
 
 # Secret para JWT Key
@@ -43,38 +53,29 @@ resource "aws_secretsmanager_secret" "jwt_key" {
 
 # Generar JWT key aleatorio
 resource "random_password" "jwt_key" {
+  count = var.manage_secret_versions ? 1 : 0
+
   length  = 64
   special = false
 }
 
 # Versión del secret con el JWT key
 resource "aws_secretsmanager_secret_version" "jwt_key" {
+  count = var.manage_secret_versions ? 1 : 0
+
   secret_id     = aws_secretsmanager_secret.jwt_key.id
-  secret_string = random_password.jwt_key.result
+  secret_string = random_password.jwt_key[0].result
 }
 
-# Secret para RabbitMQ password (si se usa)
-resource "aws_secretsmanager_secret" "rabbitmq_password" {
-  name        = "${var.project_name}/rabbitmq/password"
-  description = "Password para RabbitMQ"
+data "aws_secretsmanager_secret_version" "jwt_key" {
+  count = var.manage_secret_versions ? 0 : 1
 
-  recovery_window_in_days = 7
-
-  tags = {
-    Name        = "${var.project_name}-rabbitmq-password"
-    Environment = var.environment
-    ManagedBy   = "Terraform"
-  }
+  secret_id = aws_secretsmanager_secret.jwt_key.id
 }
 
-resource "random_password" "rabbitmq_password" {
-  length           = 24
-  special          = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
-}
+locals {
+  db_password_secret_string = var.manage_secret_versions ? aws_secretsmanager_secret_version.db_password[0].secret_string : data.aws_secretsmanager_secret_version.db_password[0].secret_string
 
-resource "aws_secretsmanager_secret_version" "rabbitmq_password" {
-  secret_id     = aws_secretsmanager_secret.rabbitmq_password.id
-  secret_string = random_password.rabbitmq_password.result
+  jwt_key_secret_string = var.manage_secret_versions ? aws_secretsmanager_secret_version.jwt_key[0].secret_string : data.aws_secretsmanager_secret_version.jwt_key[0].secret_string
 }
 

@@ -18,6 +18,30 @@ variable "project_name" {
   default     = "gatekeep"
 }
 
+variable "domain_name" {
+  description = "Dominio público que apuntará al ALB"
+  type        = string
+  default     = "zimmzimmgames.com"
+}
+
+variable "alternate_domain_names" {
+  description = "Dominios alternos/SAN (ej. www.zimmzimmgames.com)"
+  type        = list(string)
+  default     = ["www.zimmzimmgames.com"]
+}
+
+variable "enable_https" {
+  description = "Habilitar recursos HTTPS (certificado ACM y listener 443)"
+  type        = bool
+  default     = true
+}
+
+variable "manage_secret_versions" {
+  description = "Si es true, Terraform rotará/regenerará el contenido de los secretos administrados"
+  type        = bool
+  default     = false
+}
+
 # Variables opcionales para credenciales (NO recomendado para producción)
 # Es mejor usar AWS CLI configure o variables de entorno
 variable "aws_access_key_id" {

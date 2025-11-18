@@ -70,8 +70,7 @@
 #         ]
 #         Resource = [
 #           aws_secretsmanager_secret.db_password.arn,
-#           aws_secretsmanager_secret.jwt_key.arn,
-#           aws_secretsmanager_secret.rabbitmq_password.arn
+#           aws_secretsmanager_secret.jwt_key.arn
 #         ]
 #       }
 #     ]
