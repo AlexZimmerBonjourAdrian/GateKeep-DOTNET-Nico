@@ -53,6 +53,7 @@ using Serilog;
 using Amazon;
 using Amazon.SecretsManager;
 using Amazon.SimpleSystemsManagement;
+using Amazon.CloudWatch;
 using GateKeep.Api.Infrastructure.AWS;
 using GateKeep.Api.Endpoints.AWS;
 using Serilog.Events;
@@ -514,9 +515,20 @@ builder.Services.AddSingleton<IAmazonSimpleSystemsManagement>(sp =>
     return new AmazonSimpleSystemsManagementClient(config);
 });
 
+// AWS CloudWatch (para exportar métricas de cache)
+builder.Services.AddSingleton<IAmazonCloudWatch>(sp =>
+{
+    var config = new AmazonCloudWatchConfig
+    {
+        RegionEndpoint = regionEndpoint
+    };
+    return new AmazonCloudWatchClient(config);
+});
+
 // Servicios AWS
 builder.Services.AddScoped<IAwsSecretsService, AwsSecretsService>();
 builder.Services.AddScoped<IAwsParameterService, AwsParameterService>();
+builder.Services.AddSingleton<ICloudWatchMetricsExporter, CloudWatchMetricsExporter>();
 
 // Servicios de Observabilidad
 builder.Services.AddSingleton<ICorrelationIdProvider, CorrelationIdProvider>();
@@ -635,6 +647,7 @@ builder.Services.AddHostedService<SincronizacionQueueProcessor>();
 // EventoQueueProcessor deshabilitado - ahora se usa RabbitMQ para procesamiento asíncrono
 // builder.Services.AddHostedService<EventoQueueProcessor>();
 builder.Services.AddHostedService<BacklogMetricsUpdater>();
+builder.Services.AddHostedService<CloudWatchMetricsExporter>(); // Exportador de métricas a CloudWatch
 
 // Configuración de OpenTelemetry
 builder.Services.AddOpenTelemetry()

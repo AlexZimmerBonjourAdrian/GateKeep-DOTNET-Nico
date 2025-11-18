@@ -582,149 +582,40 @@
 
 ---
 
-### **FASE 3: Testing y Validación** ⏱️ 2-3 días
+#### 2.12 Integración con AWS (Hosting, fallback y resiliencia)
 
-#### 3.1 Pruebas de Funcionalidad Offline
+Objetivo: Asegurar que la PWA con sql.js funcione correctamente cuando se despliegue en AWS, con fallback offline servido por CloudFront/S3 y una pipeline de ingestión resiliente para eventos offline.
 
-**Test Manual - Modo Offline:**
-1. Abrir la PWA en Chrome
-2. Abrir DevTools (F12)
-3. Ir a Application → Service Workers
-4. Marcar checkbox "Offline" para simular sin conexión
-5. Intentar usar la aplicación:
-   - Registrar eventos de acceso
-   - Ver datos cacheados
-   - Navegar entre páginas
-6. Verificar en Application → Storage → Local Storage:
-   - Buscar key "gatekeep-sqlite-db"
-   - Ver que contiene datos
-7. Desmarcar "Offline"
-8. Verificar que se sincroniza automáticamente
-9. Revisar en DevTools Console los logs de sincronización
+Puntos clave:
+- Frontend estático desplegado en S3 + CloudFront. CloudFront debe devolver `offline.html` desde el cache cuando el origen (API o S3) no está disponible (custom error response 503/504 -> offline.html) o usar Lambda@Edge para un fallback más fino.
+- `sql-wasm.wasm` y `sw.js` deben servirse con cabeceras correctas (Content-Type y Cross-Origin-Resource-Policy/CORS). Configurar metadata en S3: `Content-Type: application/wasm`, `Cross-Origin-Resource-Policy: cross-origin` o CORS bucket policy.
+- API (.NET) desplegada en ECS Fargate (o EC2/Elastic Beanstalk) detrás de ALB; exponer `/api/sync` y otros endpoints vía HTTPS con dominio gestionado por CloudFront o ALB. Alternativa: API Gateway + Lambda proxy si se prefiere serverless.
+- Autenticación: Preferir AWS Cognito (User Pools) para OIDC/JWT; el backend valida JWTs (o mantener sistema JWT propio pero publicar JWKS en Secrets Manager y validar). Configurar CORS origin del CloudFront/S3.
+- Ingesta resiliente: el endpoint `/api/sync` acepta lotes y encola mensajes en Amazon SQS para procesamiento asíncrono por un worker (Lambda o servicio en background). El worker procesa eventos y persiste en PostgreSQL y en MongoDB (auditoría). Esto da retry automático, visibilidad y desacopla latencia cliente/servidor.
+- Idempotencia y deduplicación: cliente envía `deviceId` + `idTemporal` por evento; el backend marca eventos idempotentes usando un índice único (deviceId + idTemporal) o tabla de idempotencia. Así se evita duplicación en reintentos.
+- Push notifications (Web Push): guardar suscripciones en backend; almacenar claves VAPID en AWS Secrets Manager; usar biblioteca `web-push` en backend para enviar notificaciones; opcionalmente integrar con Amazon SNS/Pinpoint para canales móviles nativos.
+- Observabilidad: CloudWatch para logs/metrics, X-Ray para tracing opcional. Exponer métricas de sincronización y colas (SQS queue length) para alertas.
+- Seguridad: HTTPS obligatorio, WAF con reglas básicas, IAM roles mínimos para servicios (S3, CloudFront, SQS, Secrets Manager), CSP estricto en frontend.
 
-**Test con SQL en Consola:**
-- Abrir consola del navegador
-- Importar dinámicamente la función `getDb`
-- Ejecutar queries SQL para verificar datos:
-  - Ver todas las tablas
-  - Ver eventos pendientes
-  - Ver usuarios en cache
-  - Ver metadata de sincronización
+Operaciones concretas para fallback offline en CloudFront:
+- Configurar comportamiento en CloudFront para servir `offline.html` en respuesta a HTTP 403/404/500/502/503/504 desde el origen (custom error responses) con TTL razonable.
+- Pre-cachear `offline.html`, `sw.js`, `sql-wasm.wasm` y assets críticos en CloudFront. Validar en despliegue que `offline.html` esté disponible cuando el origin esté caído.
+- (Opcional) Lambda@Edge para detectar fallos en el origin y devolver `offline.html` con headers que eviten caching indebido en otros casos.
 
----
+Recomendaciones de diseño de la API `/api/sync` para AWS:
+- Endpoint POST `/api/sync/batch` acepta `SyncRequest` con `deviceId`, `ultimaActualizacion`, `eventos` (lista). Validar JWT/Cognito.
+- Respuesta inmediata 202 Accepted si los eventos se encolaron; devolver `syncToken` y status de ingestión. También permitir `?syncMode=sync` para comportamiento síncrono si el cliente lo requiere y el backend puede procesar en línea.
+- Al procesar la cola, el worker persiste eventos y responde con mapping de `idTemporal -> idServidor`. El backend mantiene `FechaProcesado` y `Estado`.
+- Conflictos: política por defecto: server-wins basado en `UltimaActualizacion` (timestamp). Para casos complejos, devolver conflicto en `SyncResponse` con `conflictItems` y permitir resolución en cliente (UX) o aplicar reglas de negocio en backend.
 
-#### 3.2 Pruebas de Performance
-
-**Con Lighthouse:**
-1. Abrir DevTools → Lighthouse
-2. Seleccionar categoría "Progressive Web App"
-3. Ejecutar análisis
-4. Objetivo: Score mínimo de 90/100
-5. Revisar métricas:
-   - Instalable
-   - Funciona offline
-   - Service Worker registrado
-   - Manifest válido
-   - HTTPS (en producción)
-
-**Con Chrome DevTools:**
-1. Ir a Performance tab
-2. Grabar interacción típica del usuario
-3. Analizar:
-   - Tiempo de carga inicial
-   - Tiempo de queries SQLite
-   - Tiempo de sincronización
-   - Uso de memoria
-
-**Network Tab:**
-1. Ver estrategia de caché
-2. Verificar que recursos estáticos se sirven desde caché
-3. Verificar que API calls usan caché como fallback
-
----
-
-#### 3.3 Pruebas de Sincronización
-
-**Escenarios de prueba:**
-
-**Escenario 1: Sincronización exitosa con eventos pendientes**
-- Crear varios eventos offline
-- Verificar que se guardan en SQLite
-- Reconectar
-- Verificar que se envían al servidor
-- Verificar que se marcan como sincronizados
-- Verificar que desaparece el contador de pendientes
-
-**Escenario 2: Sincronización sin eventos pendientes**
-- Estar online
-- No crear eventos offline
-- Llamar a sincronización manual
-- Verificar que solo se descargan datos actualizados
-- Sin errores en consola
-
-**Escenario 3: Sincronización con error del servidor**
-- Crear eventos offline
-- Detener el backend o simular error 500
-- Intentar sincronizar
-- Verificar que:
-  - Los eventos permanecen como no sincronizados
-  - Se muestra error en consola
-  - El contador de pendientes no cambia
-  - Se puede reintentar después
-
-**Escenario 4: Sincronización después de reconexión**
-- Crear eventos offline
-- Perder conexión (marcar offline en DevTools)
-- Recuperar conexión (desmarcar offline)
-- Verificar que automáticamente se sincroniza
-- Event listener de `online` funciona correctamente
-
-**Escenario 5: Múltiples dispositivos**
-- Abrir PWA en dos navegadores diferentes
-- Crear eventos en ambos offline
-- Conectar ambos
-- Verificar que ambos sincronizan correctamente
-- Verificar que no hay conflictos
-- Cada uno tiene su `device-id` único
-
----
-
-#### 3.4 Pruebas de Persistencia
-
-**Test de Persistencia:**
-1. Crear eventos offline
-2. Cerrar completamente el navegador
-3. Abrir nuevamente
-4. Verificar que los datos siguen en SQLite
-5. Verificar que el contador de pendientes es correcto
-
-**Test de Limpieza:**
-1. Limpiar datos del navegador (Ctrl+Shift+Del)
-2. Marcar "Local Storage"
-3. Limpiar
-4. Recargar aplicación
-5. Verificar que se crea nueva base de datos vacía
-6. Verificar que se puede usar normalmente
-
----
-
-#### 3.5 Pruebas de Instalación PWA
-
-**En móvil (Android/iOS):**
-1. Abrir PWA en Chrome/Safari móvil
-2. Buscar banner de instalación o menú "Agregar a pantalla de inicio"
-3. Instalar
-4. Verificar que aparece ícono en home screen
-5. Abrir desde el ícono
-6. Verificar que se abre en modo standalone (sin barra de navegador)
-7. Probar funcionalidad offline en móvil
-
-**En escritorio (Chrome/Edge):**
-1. Abrir PWA
-2. Buscar ícono de instalación en barra de direcciones
-3. Instalar
-4. Verificar que se abre como ventana independiente
-5. Verificar que aparece en menú de aplicaciones del sistema operativo
+Requisitos y configuración AWS (rápida):
+- S3 bucket `gatekeep-frontend-{env}` con versión de objetos habilitada y políticas públicas limitadas.
+- CloudFront distribution apuntando al bucket; error response personalizado a `offline.html`.
+- ECS Fargate cluster / ALB o API Gateway + Lambda con target group hacia la aplicación .NET.
+- Amazon RDS (Postgres), ElastiCache Redis y MongoDB (DocumentDB o Atlas) según arquitectura actual.
+- Amazon SQS `gatekeep-sync-queue` y Lambda/Worker para procesar mensajes.
+- AWS Secrets Manager: `gatekeep/vapid` (VAPID keys), DB credentials (si no usas IAM auth), Cognito config.
+- CloudWatch Log Groups y métricas para endpoints `/api/sync` y SQS.
 
 ---
 
@@ -745,6 +636,10 @@
 - [ ] Implementar manejo de errores completo
 - [ ] Testing unitario de SyncService
 - [ ] Testing de integración de endpoints con Postman/Swagger
+- [ ] Implementar idempotencia (deviceId + idTemporal) y esquema de deduplicación
+- [ ] Encolar eventos entrantes en Amazon SQS y implementar worker de procesamiento (Lambda o servicio background)
+- [ ] Guardar VAPID keys y secretos en AWS Secrets Manager
+- [ ] Configurar validación de tokens Cognito (o JWKS en Secrets Manager)
 
 ### Frontend PWA
 - [ ] Instalar paquetes: sql.js, workbox-window, next-pwa
@@ -766,14 +661,21 @@
 - [ ] Validar instalación como PWA
 - [ ] Ejecutar Lighthouse PWA audit
 - [ ] Verificar performance de queries SQLite
+- [ ] Asegurar que las peticiones a la API usan el dominio CloudFront/ALB y que CORS está configurado
+- [ ] Implementar reintentos exponenciales y backoff en `SyncClient` y reintento limitado (N) antes de alertar al usuario
+- [ ] Integrar almacenamiento seguro de `deviceId` y control de versiones del schema local para migraciones
 
-### Documentación
-- [ ] Documentar arquitectura de sincronización
-- [ ] Crear guía de usuario para modo offline
-- [ ] Documentar schema de SQLite local
-- [ ] Crear guía de troubleshooting
-- [ ] Documentar proceso de instalación PWA
-- [ ] Documentar estrategias de caché del Service Worker
+### Infraestructura (AWS)
+- [ ] Crear S3 bucket y CloudFront distribution para frontend
+- [ ] Configurar Custom Error Responses en CloudFront para fallback offline
+- [ ] Asegurar `sql-wasm.wasm` y `sw.js` con cabeceras correctas en S3
+- [ ] Desplegar API .NET en ECS Fargate / ALB o API Gateway
+- [ ] Crear Amazon SQS queue `gatekeep-sync-queue`
+- [ ] Implementar worker (Lambda o servicio .NET background) que consuma SQS y persista eventos
+- [ ] Configurar Secrets Manager con VAPID keys y credenciales necesarias
+- [ ] Configurar AWS Cognito User Pool para autenticación de usuarios (opcional si ya se usa JWT propio)
+- [ ] Configurar CloudWatch dashboards y alarmas (SQS depth, 5xx rate for /api/sync)
+- [ ] Implementar CI/CD (GitHub Actions / CodePipeline) para despliegues automáticos del frontend y backend
 
 ---
 
@@ -963,4 +865,3 @@ db.exec('SELECT * FROM sync_metadata');
 - Verificar en DevTools → Application → Manifest
 - Revisar que Service Worker esté activo
 - Verificar <link rel="manifest"> en layout
-
