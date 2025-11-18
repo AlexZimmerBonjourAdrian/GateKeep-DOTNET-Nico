@@ -9,6 +9,7 @@ using GateKeep.Api.Application.Notificaciones;
 using GateKeep.Api.Application.Security;
 using GateKeep.Api.Application.Events;
 using GateKeep.Api.Application.Usuarios;
+using GateKeep.Api.Application.Sync;
 using MassTransit;
 using GateKeep.Api.Contracts.Usuarios;
 using GateKeep.Api.Domain.Enums;
@@ -32,6 +33,7 @@ using GateKeep.Api.Infrastructure.Eventos;
 using GateKeep.Api.Infrastructure.Events;
 using GateKeep.Api.Infrastructure.Notificaciones;
 using GateKeep.Api.Infrastructure.Queues;
+using GateKeep.Api.Infrastructure.Sync;
 using GateKeep.Api.Application.Queues;
 using GateKeep.Api.Infrastructure.Persistence;
 using GateKeep.Api.Infrastructure.Security;
@@ -398,6 +400,9 @@ builder.Services.AddSingleton<QrCodeGenerator>();
 builder.Services.AddScoped<INotificacionRepository, NotificacionRepository>();
 builder.Services.AddScoped<INotificacionService, NotificacionService>();
 builder.Services.AddScoped<INotificacionUsuarioRepository, NotificacionUsuarioRepository>();
+
+// Servicios de Sincronización Offline
+builder.Services.AddScoped<ISyncService, SyncService>();
 builder.Services.AddScoped<INotificacionUsuarioService, NotificacionUsuarioService>();
 builder.Services.AddScoped<INotificacionUsuarioValidationService, NotificacionUsuarioValidationService>();
 builder.Services.AddScoped<INotificacionSincronizacionService, NotificacionSincronizacionService>();
