@@ -40,3 +40,9 @@ variable "aws_profile" {
   default     = "" # Si está vacío, usa el perfil 'default' o variables de entorno
 }
 
+variable "alarm_actions" {
+  description = "SNS Topic ARNs para acciones de alarmas de CloudWatch (alertas)"
+  type        = list(string)
+  default     = [] # Vacío por defecto, se puede configurar para enviar notificaciones
+}
+

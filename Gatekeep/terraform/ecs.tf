@@ -117,6 +117,31 @@ resource "aws_iam_role" "ecs_task" {
   }
 }
 
+# Policy para ECS Task - CloudWatch Metrics
+# Permite que la aplicación envíe métricas customizadas a CloudWatch
+resource "aws_iam_role_policy" "ecs_task_cloudwatch" {
+  name = "${var.project_name}-ecs-task-cloudwatch"
+  role = aws_iam_role.ecs_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "cloudwatch:PutMetricData"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "cloudwatch:namespace" = ["GateKeep/Redis", "GateKeep/Redis/Logs"]
+          }
+        }
+      }
+    ]
+  })
+}
+
 # ECS Task Definition
 resource "aws_ecs_task_definition" "main" {
   family                   = "${var.project_name}-api"

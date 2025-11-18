@@ -251,6 +251,184 @@ Resumen (acciones concretas desde Swagger)
 - Logs de la API: `docker logs -f <nombre-contenedor-api>` (ver mensajes `[CACHE]`).
 - Logs de Redis: `docker logs -f gatekeep-redis` (ver estado del servidor).
 - Métricas Prometheus: `http://localhost:5011/metrics` (buscar `gatekeep_cache_operations_total`).
+- **CloudWatch Dashboard**: Ver sección de AWS CloudWatch abajo.
 
+---
+
+## 📊 Monitoreo en AWS CloudWatch (Métricas de Cache)
+
+Una vez que la aplicación está desplegada en AWS ECS, el servicio `CloudWatchMetricsExporter` exporta automáticamente las métricas de cache a CloudWatch cada 30 segundos.
+
+### Acceder al Dashboard de Cache en CloudWatch
+
+1. **Abrir AWS Management Console**:
+   - Ir a: https://console.aws.amazon.com/cloudwatch
+   - Seleccionar región: `sa-east-1` (São Paulo)
+
+2. **Navegar al Dashboard**:
+   - En el menú izquierdo: `Dashboards`
+   - Buscar: `gatekeep-cache-metrics`
+   - Hacer clic para abrir
+
+### Widgets del Dashboard
+
+El dashboard incluye los siguientes widgets para visualizar:
+
+1. **Cache Hit Rate (%)** - Métrica más importante
+   - Muestra el porcentaje de hits vs total de requests
+   - Verde: > 80% (óptimo)
+   - Naranja: 50-80% (aceptable)
+   - Rojo: < 50% (degradado)
+   - **Meta**: Mantener > 80%
+
+2. **Cache Hits vs Misses (5min)**
+   - Comparación de operaciones exitosas vs fallidas
+   - Ayuda a identificar patrones de uso
+
+3. **Cache Operations Breakdown**
+   - Total de Hits, Misses, e Invalidaciones
+   - Útil para validar que el cache se está usando
+
+4. **Cache Hit Rate Trend (24h)**
+   - Series temporal del último día
+   - Identifica patrones y degradación
+
+5. **Top Cache Keys (Hits)**
+   - Desglose por clave de cache
+   - Top 5 claves más consultadas
+
+6. **Cache Invalidations**
+   - Número de invalidaciones en últimos 5 minutos
+   - Alto valor indica mucho churn
+
+7. **Cache Operations Log Summary**
+   - Análisis de logs de la API
+   - Búsquedas de líneas `[CACHE]`
+
+8. **API Response Time Metrics**
+   - Duración promedio, máxima, y p95 de requests
+   - Correlaciona con efectividad del cache
+
+### Alarmas Configuradas
+
+Las siguientes alarmas se disparan automáticamente:
+
+#### 🟡 Alarma: `gatekeep-low-cache-hit-rate` (Advertencia)
+- **Condición**: Hit rate < 50% (promedio 2 periodos de 5 min)
+- **Significado**: Cache no está siendo efectivo
+- **Acción**: Revisar si:
+  - Redis está lento o desconectado
+  - TTL es demasiado corto
+  - Hay cambios frecuentes invalidando cache
+
+#### 🔴 Alarma: `gatekeep-critical-cache-hit-rate` (Crítica)
+- **Condición**: Hit rate < 30% (inmediata)
+- **Significado**: Cache está fallando, posible impacto en performance
+- **Acción**: Investigar inmediatamente el estado de Redis
+
+#### 🟠 Alarma: `gatekeep-high-cache-invalidations`
+- **Condición**: > 100 invalidaciones en 5 minutos
+- **Significado**: "Cache trashing" - demasiados cambios invalidando cache
+- **Acción**: Revisar si hay cambios masivos en la BD
+
+#### 🟠 Alarma: `gatekeep-high-cache-misses`
+- **Condición**: > 500 misses en 5 minutos
+- **Significado**: Muchas peticiones no encontradas en cache
+- **Acción**: Puede ser normal o indicar problema de Redis
+
+### Interpretar las Métricas
+
+**Scenario 1: Todo funciona bien**
+```
+Hit Rate: 85%
+Hits: 850 (5min)
+Misses: 150 (5min)
+Invalidations: 5 (5min)
+→ Normal, cache efectivo, cambios esporádicos
+```
+
+**Scenario 2: Cache lento o desconectado**
+```
+Hit Rate: 15%
+Hits: 50 (5min)
+Misses: 900 (5min)
+Invalidations: 2 (5min)
+→ CRÍTICO: Redis no responde, todos fallando
+```
+
+**Scenario 3: Demasiados cambios**
+```
+Hit Rate: 40%
+Hits: 400 (5min)
+Misses: 600 (5min)
+Invalidations: 200 (5min)
+→ Cache invalidándose constantemente
+```
+
+### Verificar que Métricas se Están Enviando
+
+1. **En AWS CloudWatch Console**:
+   - Ir a: `All metrics` → `GateKeep/Redis`
+   - Deberías ver métricas como:
+     - `CacheHitRate`
+     - `CacheHitsTotal`
+     - `CacheMissesTotal`
+     - `CacheInvalidationsTotal`
+
+2. **Ver historial de envíos** (si tienes AWS CLI):
+```bash
+aws cloudwatch get-metric-statistics \
+  --namespace "GateKeep/Redis" \
+  --metric-name "CacheHitRate" \
+  --start-time 2025-01-15T00:00:00Z \
+  --end-time 2025-01-15T23:59:59Z \
+  --period 300 \
+  --statistics Average \
+  --region sa-east-1
+```
+
+### Endpoints de Métricas (API)
+
+Además del dashboard, puedes consultar métricas desde la API:
+
+```bash
+# Ver todas las métricas (requiere rol Admin)
+curl -H "Authorization: Bearer <token>" http://localhost:5011/api/cache-metrics
+
+# Respuesta ejemplo:
+{
+  "totalHits": 1250,
+  "totalMisses": 450,
+  "totalInvalidations": 20,
+  "totalRequests": 1700,
+  "hitRate": 0.735,
+  "lastResetTime": "2025-01-15T10:30:00Z",
+  "hitsByKey": {
+    "beneficios:all": 450,
+    "reglas-acceso:all": 380
+  },
+  "missesByKey": {
+    "beneficios:all": 120,
+    "reglas-acceso:all": 180
+  }
+}
+```
+
+```bash
+# Ver estado de cache (público)
+curl http://localhost:5011/api/cache-metrics/health
+
+# Respuesta:
+{
+  "status": "healthy",
+  "hitRate": 0.735,
+  "totalRequests": 1700
+}
+```
+
+```bash
+# Resetear métricas (requiere rol Admin)
+curl -X POST -H "Authorization: Bearer <token>" http://localhost:5011/api/cache-metrics/reset
+```
 
 Fin del documento condensado.
