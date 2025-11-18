@@ -12,6 +12,7 @@
     "dependencies": {
         "axios": "^1.13.2",
         "dexie": "^4.2.1",
+        "html5-qrcode": "^2.3.8",
         "idb": "^8.0.3",
         "next": "^15.5.6",
         "next-pwa": "^5.6.0",
@@ -20,6 +21,7 @@
         "primereact": "^10.9.4",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
+        "react-qr-scanner": "^1.0.0-alpha.11",
         "react-router-dom": "^7.9.4"
     },
     "devDependencies": {

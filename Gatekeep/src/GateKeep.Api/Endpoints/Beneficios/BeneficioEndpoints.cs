@@ -9,7 +9,7 @@ public static class BeneficioEndpoints
 {
     public static IEndpointRouteBuilder MapBeneficioEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/beneficios").WithTags("Beneficios");
+        var group = app.MapGroup("/api/beneficios").WithTags("Beneficios");
 
         // GET /beneficios - Todos los usuarios autenticados pueden ver beneficios
         group.MapGet("/", async (ICachedBeneficioService service) =>

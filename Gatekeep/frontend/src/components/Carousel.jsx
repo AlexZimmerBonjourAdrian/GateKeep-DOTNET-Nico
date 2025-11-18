@@ -14,6 +14,9 @@ const Carousel = ({ items, route }) => {
     if (!id || !route) return null;
     if (route.includes('/evento')) return `/evento/${id}`;
     if (route.includes('/anuncio')) return `/anuncio/${id}`;
+    if (route.includes('/beneficio')) return `/beneficio/${id}`;
+    if (route.includes('/edificios')) return `/edificios/${id}`;
+    if (route.includes('/reglas-acceso')) return `/reglas-acceso/${id}`;
     return null;
   };
   
@@ -89,6 +92,14 @@ const Carousel = ({ items, route }) => {
           const detailPath = getDetailPath(item);
           const title = item.nombre || item.Nombre || item.title;
           const dateValue = item.fecha || item.Fecha || item.date;
+          
+          // Para beneficios
+          const tipo = item.Tipo ?? item.tipo;
+          const cupos = item.Cupos ?? item.cupos;
+          const fechaVencimiento = item.FechaDeVencimiento ?? item.fechaDeVencimiento;
+          const vigencia = item.Vigencia ?? item.vigencia;
+          const isBeneficio = tipo !== undefined;
+          
           const handleItemKeyDown = (e) => {
             if (!detailPath) return;
             if (e.key === 'Enter' || e.key === ' ') {
@@ -106,25 +117,46 @@ const Carousel = ({ items, route }) => {
               onKeyDown={handleItemKeyDown}
               aria-label={detailPath ? `Ver detalle de ${title ?? 'item'}` : undefined}
             >
-              {/* Soportar tanto el modelo con mayúsculas como minúsculas */}
-              {title && (
-                <h3>{title}</h3>
-              )}
-              {dateValue && (
-                <p>
-                  {new Date(dateValue).toLocaleDateString('es-ES', { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                  })}
-                </p>
+              {isBeneficio ? (
+                <>
+                  <h3>Beneficio #{item.id || item.Id}</h3>
+                  <p style={{ fontSize: '1rem', fontWeight: '600', margin: '8px 0' }}>
+                    {(() => {
+                      if (tipo == 0 || tipo === 'Canje' || (typeof tipo === 'string' && tipo.toLowerCase() === 'canje')) return 'Canje';
+                      if (tipo == 1 || tipo === 'Consumo' || (typeof tipo === 'string' && tipo.toLowerCase() === 'consumo')) return 'Consumo';
+                      return 'Desconocido';
+                    })()}
+                  </p>
+                  {fechaVencimiento && (
+                    <p style={{ fontSize: '0.85rem' }}>
+                      Vence: {new Date(fechaVencimiento).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </p>
+                  )}
+                  <p style={{ fontSize: '0.85rem' }}>Cupos: {cupos}</p>
+                  <p style={{ fontSize: '0.8rem', marginTop: '4px', opacity: 0.9 }}>
+                    {vigencia ? '✓ Vigente' : '✗ No vigente'}
+                  </p>
+                </>
+              ) : (
+                <>
+                  {title && <h3>{title}</h3>}
+                  {dateValue && (
+                    <p>
+                      {new Date(dateValue).toLocaleDateString('es-ES', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}
+                    </p>
+                  )}
+                </>
               )}
             </div>
           );
         })}
         
-        {/* Siempre mostrar tarjeta "Ver más" si hay ruta y hay items */}
-        {route && items.length > 0 && (
+        {/* Siempre mostrar tarjeta "Ver más" si hay ruta */}
+        {route && (
           <div
             key="see-more"
             className="carousel-item see-more"

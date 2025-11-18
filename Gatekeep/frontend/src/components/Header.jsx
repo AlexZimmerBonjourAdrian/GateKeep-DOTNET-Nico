@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
@@ -8,12 +8,16 @@ import logo from '/public/assets/LogoGateKeep.webp'
 import harvard from '/public/assets/Harvard.webp'
 import BasketballIcon from '/public/assets/basketball-icon.svg'
 import { UsuarioService } from '../services/UsuarioService'
+import { NotificacionService } from '../services/NotificacionService'
 import { SecurityService } from '../services/securityService'
 
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const [notificaciones, setNotificaciones] = useState(0);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
+  const adminMenuRef = useRef(null);
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -21,14 +25,45 @@ export default function Header() {
 
       // Si está autenticado, obtener datos del usuario y notificaciones
         const storedUserId = SecurityService.getUserId();
+        const tipo = SecurityService.getTipoUsuario?.() || null;
+        try {
+          let admin = false;
+          if (tipo) {
+            admin = /admin|administrador/i.test(String(tipo));
+          } else {
+            // fallback: intentar con el objeto user del localStorage
+            const rawUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+            if (rawUser) {
+              const user = JSON.parse(rawUser);
+              const role = user?.TipoUsuario || user?.tipoUsuario || user?.Rol || user?.rol;
+              if (role) admin = /admin|administrador/i.test(String(role));
+            }
+          }
+          setIsAdmin(admin);
+        } catch {
+          setIsAdmin(false);
+        }
         
         if (storedUserId) {
-          try {
-            const response = await UsuarioService.getNotificacionesSinLeer(storedUserId);
-            setNotificaciones(response.data || 0);
-          } catch (error) {
-            console.error('Error al cargar notificaciones:', error);
-            setNotificaciones(0);
+          const userId = parseInt(storedUserId, 10);
+          if (!isNaN(userId)) {
+            // Función para obtener notificaciones con reintentos
+            const fetchNotifications = async (retryCount = 0) => {
+              try {
+                const count = await NotificacionService.getNoLeidasCount(userId);
+                setNotificaciones(count || 0);
+              } catch (error) {
+                console.error('Error al cargar notificaciones:', error);
+                if (retryCount < 2) {
+                  // Reintentar después de 500ms
+                  setTimeout(() => fetchNotifications(retryCount + 1), 500);
+                } else {
+                  setNotificaciones(0);
+                }
+              }
+            };
+            
+            fetchNotifications();
           }
         }
       
@@ -36,6 +71,19 @@ export default function Header() {
 
     fetchNotifications();
   }, [pathname, router]);
+
+  // Cierre por click fuera del menú admin
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (adminMenuRef.current && !adminMenuRef.current.contains(e.target)) {
+        setAdminMenuOpen(false);
+      }
+    };
+    if (adminMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [adminMenuOpen]);
 
   const handleLogout = (e) => {
     e.preventDefault();
@@ -84,6 +132,43 @@ export default function Header() {
                 <i className="pi pi-megaphone item-icon" aria-hidden={true}></i>
               </div>
             </Link>
+
+            {isAdmin && (
+              <div className="admin-menu-wrapper" ref={adminMenuRef}>
+                <button
+                  type="button"
+                  className="item-card admin-trigger"
+                  aria-haspopup="true"
+                  aria-expanded={adminMenuOpen}
+                  aria-label="Recursos administrativos"
+                  onClick={() => setAdminMenuOpen(o => !o)}
+                  onBlur={(e) => {
+                    // Cerrar si el foco sale completamente del contenedor
+                    if (adminMenuRef.current && !adminMenuRef.current.contains(e.relatedTarget)) {
+                      setAdminMenuOpen(false);
+                    }
+                  }}
+                >
+                  <i className="pi pi-sliders-h item-icon" aria-hidden={true}></i>
+                </button>
+                {adminMenuOpen && (
+                  <div className="admin-dropdown" role="menu">
+                    <Link href="/reglas-acceso/listadoReglasAcceso" role="menuitem" tabIndex={0} className="admin-dropdown-item">
+                      <i className="pi pi-sliders-h" aria-hidden={true}></i>
+                      <span>Reglas</span>
+                    </Link>
+                    <Link href="/edificios/listadoEdificios" role="menuitem" tabIndex={0} className="admin-dropdown-item">
+                      <i className="pi pi-building" aria-hidden={true}></i>
+                      <span>Edificios</span>
+                    </Link>
+                    <Link href="/salones/listadoSalones" role="menuitem" tabIndex={0} className="admin-dropdown-item">
+                      <i className="pi pi-th-large" aria-hidden={true}></i>
+                      <span>Salones</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
 
             <Link href="/perfil" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Perfil" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
               <div className="item-card">
@@ -136,6 +221,15 @@ export default function Header() {
             <p className="item-text">Anuncios</p>
           </div>
         </Link>
+
+        {isAdmin && (
+          <Link href="/edificios/listadoEdificios" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Edificios" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
+            <div className="item-card">
+              <i className="pi pi-building item-icon" aria-hidden={true}></i>
+              <p className="item-text">Edificios</p>
+            </div>
+          </Link>
+        )}
 
         <Link href="/perfil" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Perfil" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
           <div className="item-card">
@@ -270,6 +364,69 @@ export default function Header() {
           font-size: 0.875rem; /* 14px */
           font-weight: bold;
           box-sizing: border-box;
+        }
+
+        .admin-menu-wrapper { position: relative; }
+        .admin-trigger { position: relative; }
+        .admin-dropdown {
+          position: absolute;
+          top: 64px;
+          left: 0;
+          background: rgba(35,31,32,0.92);
+          padding: 10px;
+          border-radius: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          min-width: 200px;
+          box-shadow: 0 12px 32px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.05);
+          z-index: 10;
+          border: 1px solid #423a3a;
+          animation: adminMenuFade 140ms ease;
+          backdrop-filter: blur(6px);
+        }
+        .admin-dropdown-item {
+          background: linear-gradient(135deg, #F37426 0%, #ff9e5a 100%);
+          color: #231F20;
+          text-decoration: none;
+          padding: 14px 20px;
+          font-size: 0.82rem;
+          outline: none;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+          position: relative;
+          border-radius: 50px;
+          box-shadow: 0 3px 6px rgba(0,0,0,0.20), 0 1px 0 rgba(255,255,255,0.35) inset;
+          transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+          border: 1px solid rgba(255,255,255,0.18);
+          overflow: hidden;
+        }
+        .admin-dropdown-item::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.28), transparent 60%);
+          opacity: 0.55;
+          pointer-events: none;
+        }
+        .admin-dropdown-item i { font-size: 1.1rem; color: #231F20; }
+        .admin-dropdown-item:hover, .admin-dropdown-item:focus-visible {
+          transform: translateY(-4px);
+          box-shadow: 0 10px 22px rgba(0,0,0,0.30), 0 0 0 2px rgba(255,255,255,0.15);
+          filter: brightness(1.06);
+        }
+        .admin-dropdown-item:active {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(0,0,0,0.26);
+        }
+        .admin-dropdown-item span { flex: 1; text-align: left; text-transform: uppercase; letter-spacing: 0.8px; }
+        @keyframes adminMenuFade {
+          from { opacity: 0; transform: translateY(-8px) scale(.96); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
     .text-card {

@@ -54,7 +54,7 @@ export default function Perfil() {
         }
 
         // Obtener QR del token actual como blob url
-        const url = await UsuarioService.getAuthQrUrl({ width: 220, height: 220 })
+        const url = await UsuarioService.getAuthQrUrl({ width: 400, height: 400 })
         setQrUrl(url)
         revokedUrl = url
       } catch (e) {
@@ -112,7 +112,10 @@ export default function Perfil() {
           <Link href="/">
             <Image src={logo} alt="Logo GateKeep" width={160} priority className="logo-image" />
           </Link>
-        </div>      
+        </div>
+        <Link href="/" className="btn-volver">
+          ← Volver al Inicio
+        </Link>
       </div>
             
       <div className="header-middle-bar">
@@ -177,6 +180,9 @@ export default function Perfil() {
                 <span className="qr-caption">{loading ? 'Generando QR…' : 'No se pudo generar el QR'}</span>
               )}
             </div>
+            <Link href="/perfil/escaner" className="scanner-btn">
+              📷 Escanear QR
+            </Link>
           </div>
         </form>
       </div>
@@ -262,6 +268,31 @@ export default function Perfil() {
           display: inline-flex;
           align-items: center;
           gap: 10px;
+        }
+
+        .btn-volver {
+          background: rgba(255, 255, 255, 0.1);
+          color: white;
+          padding: 10px 20px;
+          border-radius: 8px;
+          text-decoration: none;
+          font-weight: 600;
+          transition: all 0.3s;
+          border: 2px solid rgba(255, 255, 255, 0.2);
+          backdrop-filter: blur(10px);
+        }
+
+        .btn-volver:hover {
+          background: rgba(255, 255, 255, 0.2);
+          border-color: rgba(255, 255, 255, 0.4);
+          transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+          .btn-volver {
+            padding: 8px 16px;
+            font-size: 0.9rem;
+          }
         }
 
         span {
@@ -524,6 +555,25 @@ export default function Perfil() {
           opacity: 0.9;
           text-align: center;
           word-break: break-word;
+        }
+
+        .scanner-btn {
+          background: #2196f3;
+          color: white;
+          border: none;
+          padding: 12px 24px;
+          border-radius: 8px;
+          font-size: 1rem;
+          font-weight: 600;
+          cursor: pointer;
+          text-decoration: none;
+          display: inline-block;
+          transition: background 0.3s;
+          margin-top: 10px;
+        }
+
+        .scanner-btn:hover {
+          background: #1976d2;
         }
       `}</style>
     </div>

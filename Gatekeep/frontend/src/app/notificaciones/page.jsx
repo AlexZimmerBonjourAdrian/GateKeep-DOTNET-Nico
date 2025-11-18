@@ -1,38 +1,88 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Header from '../../components/Header';
 import { SecurityService } from '../../services/securityService';
+import { NotificacionService } from '../../services/NotificacionService';
 
-export default function listadoEventos() {
-
+export default function ListadoNotificaciones() {
   const pathname = usePathname();
-  SecurityService.checkAuthAndRedirect(pathname);
+  
+  useEffect(() => {
+    SecurityService.checkAuthAndRedirect(pathname);
+  }, [pathname]);
 
- 
+  const [notificaciones, setNotificaciones] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [openId, setOpenId] = useState(null);
+  const [usuarioId, setUsuarioId] = useState(null);
 
-  const initial = [
-    { id: 1, subject: 'Hola amigo', date: '2024-07-01', visto: false, mensaje: 'You have a new notification for the Hockey Game.' },
-    { id: 2, subject: 'Hey', date: '2024-07-05', visto: false, mensaje: 'You have a new notification for the Soccer Match.You have a new notification for the Soccer MatchYou have a new notification for the Soccer MatchYou have a new notification for the Soccer MatchYou have a new notification for the Soccer MatchYou have a new notification for the Soccer MatchYou have a new notification for the Soccer MatchYou have a new notification for the Soccer MatchYou have a new notification for the Soccer Match' },
-    { id: 3, subject: 'Hi', date: '2024-07-10', visto: false, mensaje: 'You have a new notification for the Basketball Tournament.' },
-    { id: 4, subject: 'Todo bien?', date: '2024-07-15', visto: false, mensaje: 'You have a new notification for the Tennis Finals.' },
-    { id: 5, subject: 'Que tal?', date: '2024-07-20', visto: true, mensaje: 'You have a new notification for the Baseball Series.' },      { id: 6, subject: 'Saludos', date: '2024-07-25', visto: true, mensaje: 'You have a new notification for the Swimming Championship.' },
-    { id: 7, subject: 'Buenas', date: '2024-07-30', visto: false, mensaje: 'You have a new notification for the Marathon Event.' },
-  ];
-
-    const [notificaciones, setNotificaciones] = useState(initial);
-    const [openId, setOpenId] = useState(null);
-
-  function toggleOpen(id) {
-    // Use functional update so we can derive whether we're opening
-    setOpenId(prev => {
-      const willOpen = prev !== id;
-      if (willOpen) {
-        // mark as visto only when opening
-        setNotificaciones(prevList => prevList.map(n => (n.id === id && !n.visto) ? { ...n, visto: true } : n));
+  // Obtener ID del usuario actual
+  useEffect(() => {
+    try {
+      const id = SecurityService.getUserId();
+      if (id) {
+        setUsuarioId(parseInt(id, 10));
       }
-      return willOpen ? id : null;
+    } catch (error) {
+      console.error('Error obteniendo usuario:', error);
+    }
+  }, []);
+
+  // Cargar notificaciones del usuario
+  useEffect(() => {
+    if (!usuarioId) return;
+    
+    const fetchNotificaciones = async (retryCount = 0) => {
+      try {
+        const data = await NotificacionService.getNotificacionesPorUsuario(usuarioId);
+        // Ordenar por fecha más reciente primero
+        const sorted = (data || []).sort((a, b) => {
+          const fechaA = new Date(a.FechaCreacion || a.fechaCreacion || 0);
+          const fechaB = new Date(b.FechaCreacion || b.fechaCreacion || 0);
+          return fechaB - fechaA;
+        });
+        setNotificaciones(sorted);
+      } catch (error) {
+        console.error('Error al cargar notificaciones:', error);
+        if (retryCount < 2) {
+          // Reintentar después de 1 segundo
+          console.log(`Reintentando... (intento ${retryCount + 1}/2)`);
+          setTimeout(() => fetchNotificaciones(retryCount + 1), 1000);
+        } else {
+          setNotificaciones([]);
+        }
+      } finally {
+        if (retryCount === 0) setLoading(false);
+      }
+    };
+
+    fetchNotificaciones();
+  }, [usuarioId]);
+
+  async function toggleOpen(notificacion) {
+    const notifId = notificacion.NotificacionId || notificacion.notificacionId;
+    
+    setOpenId(prev => {
+      const willOpen = prev !== notifId;
+      
+      // Si se está abriendo y no está leída, marcar como leída
+      if (willOpen && !(notificacion.Leida ?? notificacion.leida) && usuarioId) {
+        NotificacionService.marcarComoLeida(usuarioId, notifId)
+          .then(() => {
+            // Actualizar estado local
+            setNotificaciones(prevList => 
+              prevList.map(n => {
+                const nId = n.NotificacionId || n.notificacionId;
+                return nId === notifId ? { ...n, Leida: true, leida: true } : n;
+              })
+            );
+          })
+          .catch(err => console.error('Error marcando como leída:', err));
+      }
+      
+      return willOpen ? notifId : null;
     });
   }
 
@@ -41,20 +91,56 @@ export default function listadoEventos() {
             <Header />
 
             <div className="list-wrap">
-                  {notificaciones.map(n => {
-                    const isOpen = openId === n.id;
+                  {loading ? (
+                    <div className="notification">
+                      <div className="content-btn" style={{cursor:'default'}}>
+                        <div className="left">
+                          <div className="text">
+                            <div className="subject">Cargando notificaciones...</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : notificaciones.length === 0 ? (
+                    <div className="notification">
+                      <div className="content-btn" style={{cursor:'default'}}>
+                        <div className="left">
+                          <div className="text">
+                            <div className="subject">No tienes notificaciones</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : notificaciones.map(n => {
+                    const notifId = n.NotificacionId || n.notificacionId;
+                    const mensaje = n.Mensaje || n.mensaje || '';
+                    const tipo = n.Tipo || n.tipo || 'General';
+                    const fechaCreacion = n.FechaCreacion || n.fechaCreacion;
+                    const leida = n.Leida ?? n.leida ?? false;
+                    const isOpen = openId === notifId;
+                    
+                    const fechaFormateada = fechaCreacion 
+                      ? new Date(fechaCreacion).toLocaleDateString('es-ES', { 
+                          year: 'numeric', 
+                          month: 'short', 
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })
+                      : 'Fecha desconocida';
+                    
                     return (
-                      <div className={`notification ${isOpen ? 'open' : ''}`} key={n.id}>
-                        <button className="content-btn" onClick={() => toggleOpen(n.id)} aria-expanded={isOpen}>
+                      <div className={`notification ${isOpen ? 'open' : ''}`} key={notifId}>
+                        <button className="content-btn" onClick={() => toggleOpen(n)} aria-expanded={isOpen}>
                           <div className="left">
-                              <span className={`new-badge ${n.visto ? 'seen' : 'unseen'}`} aria-hidden="true">Nuevo</span>
+                              <span className={`new-badge ${leida ? 'seen' : 'unseen'}`} aria-hidden="true">Nuevo</span>
                             <div className="text">
-                              <div className="subject">{n.subject}</div>
-                              <div className={`mensaje ${isOpen ? 'visible' : ''}`}>{n.mensaje}</div>
+                              <div className="subject">{tipo}</div>
+                              <div className={`mensaje ${isOpen ? 'visible' : ''}`}>{mensaje}</div>
                             </div>
                           </div>
                           <div className="right">
-                            <div className="date">{n.date}</div>
+                            <div className="date">{fechaFormateada}</div>
                           </div>
                         </button>
                       </div>
