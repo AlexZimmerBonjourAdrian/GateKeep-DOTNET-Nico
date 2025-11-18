@@ -22,6 +22,8 @@ public sealed class GateKeepDbContext : DbContext
     public DbSet<Evento> Eventos => Set<Evento>();
     public DbSet<Anuncio> Anuncios => Set<Anuncio>();
     public DbSet<UsuarioEspacio> UsuariosEspacios => Set<UsuarioEspacio>();
+    public DbSet<DispositivoSync> DispositivosSync => Set<DispositivoSync>();
+    public DbSet<EventoOffline> EventosOffline => Set<EventoOffline>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
