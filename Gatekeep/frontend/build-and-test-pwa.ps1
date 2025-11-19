@@ -1,10 +1,13 @@
 # Script para construir y probar la PWA de GateKeep
-# Uso: .\build-and-test-pwa.ps1 [--api-url <url>] [--skip-build] [--skip-test]
+# Uso: .\build-and-test-pwa.ps1 [--api-url <url>] [--skip-build] [--skip-test] [--check-android]
 
 param(
     [Parameter(Mandatory=$false)]
     [string]$ApiUrl = "https://api.zimmzimmgames.com",
     
+    [Parameter(Mandatory=$false)]
+    [string]$PwaUrl = "https://zimmzimmgames.com",
+
     [Parameter(Mandatory=$false)]
     [switch]$SkipBuild,
     
@@ -12,7 +15,16 @@ param(
     [switch]$SkipTest,
     
     [Parameter(Mandatory=$false)]
-    [switch]$EnableSW
+    [switch]$EnableSW,
+    
+    [Parameter(Mandatory=$false)]
+    [switch]$CheckAndroid,
+
+    [Parameter(Mandatory=$false)]
+    [switch]$BuildApk,
+
+    [Parameter(Mandatory=$false)]
+    [string]$PackageName = "com.gatekeep.app"
 )
 
 $ErrorActionPreference = "Stop"
@@ -137,9 +149,182 @@ if (Test-Path $swPath) {
 }
 Write-Host ""
 
-# 7. Probar la PWA (opcional)
+# Funciones para Android Check
+function Test-JavaVersion {
+    param([string]$versionOutput)
+    if ([string]::IsNullOrWhiteSpace($versionOutput)) { return 0 }
+    
+    # Limpiar la salida para asegurar que sea un string simple
+    $versionOutput = $versionOutput -replace "`r`n", " " -replace "`n", " "
+
+    $versionStr = ""
+    if ($versionOutput -match 'version\s+"(?<v>\d+(\.\d+)*)') { $versionStr = $matches['v'] }
+    elseif ($versionOutput -match 'build\s+(?<v>\d+(\.\d+)*)') { $versionStr = $matches['v'] }
+    elseif ($versionOutput -match '^(?<v>\d+(\.\d+)*)') { $versionStr = $matches['v'] }
+    
+    if (-not $versionStr) { return 0 }
+
+    try {
+        $parts = $versionStr.Split('.')
+        $major = [int]$parts[0]
+        if ($major -eq 1 -and $parts.Count -gt 1) { return [int]$parts[1] }
+        return $major
+    } catch { return 0 }
+}
+
+function Find-Java {
+    Write-Host "   Buscando Java en el sistema..." -ForegroundColor Gray
+    
+    # 1. Intentar usar el comando java del PATH primero
+    try {
+        $javaCmd = Get-Command java -ErrorAction SilentlyContinue
+        if ($javaCmd) {
+            # Importante: Redirigir stderr a stdout para capturar la versión
+            $versionOutput = & java -version 2>&1 | Out-String
+            $version = Test-JavaVersion $versionOutput
+            if ($version -ge 11) {
+                Write-Host "   ✅ Java encontrado en PATH: $($versionOutput.Trim().Split("`n")[0])" -ForegroundColor Green
+                return $true
+            } else {
+                Write-Host "   ⚠️  Java en PATH es versión antigua (v$version)." -ForegroundColor Yellow
+            }
+        }
+    } catch {}
+    
+    # 2. Buscar en ubicaciones comunes
+    $javaPaths = @(
+        "C:\Program Files\Eclipse Adoptium",
+        "C:\Program Files\Java",
+        "C:\Program Files\Microsoft",
+        "C:\Program Files\Amazon Corretto",
+        "C:\Program Files\Azul",
+        "${env:ProgramFiles}\Eclipse Adoptium",
+        "${env:ProgramFiles}\Java",
+        "${env:ProgramFiles(x86)}\Java",
+        "${env:LOCALAPPDATA}\Programs\Eclipse Adoptium",
+        "${env:USERPROFILE}\.jdks"
+    )
+    
+    $foundJavaVersions = @()
+    foreach ($path in $javaPaths) {
+        if (Test-Path $path) {
+            $javaExes = Get-ChildItem -Path $path -Filter "java.exe" -Recurse -ErrorAction SilentlyContinue
+            foreach ($javaExe in $javaExes) {
+                try {
+                    # Usar operador & para ejecutar y capturar output
+                    $versionOutput = & $javaExe.FullName -version 2>&1 | Out-String
+                    $version = Test-JavaVersion $versionOutput
+                    if ($version -ge 11) {
+                         $foundJavaVersions += @{
+                            Path = $javaExe.DirectoryName
+                            Version = $version
+                            VersionOutput = $versionOutput.Trim().Split("`n")[0]
+                            FullPath = $javaExe.FullName
+                        }
+                    }
+                } catch {}
+            }
+        }
+    }
+    
+    if ($foundJavaVersions.Count -gt 0) {
+        $bestJava = $foundJavaVersions | Sort-Object Version -Descending | Select-Object -First 1
+        Write-Host "   ✅ Java encontrado en: $($bestJava.Path)" -ForegroundColor Green
+        Write-Host "   Versión: $($bestJava.VersionOutput)" -ForegroundColor White
+        $env:PATH = "$($bestJava.Path);$env:PATH"
+        return $true
+    }
+
+    # 3. Verificar JAVA_HOME
+    if ($env:JAVA_HOME) {
+        $javaExe = Join-Path $env:JAVA_HOME "bin\java.exe"
+        if (Test-Path $javaExe) {
+            $versionOutput = & $javaExe -version 2>&1 | Out-String
+            $version = Test-JavaVersion $versionOutput
+            if ($version -ge 11) {
+                Write-Host "   ✅ Java encontrado en JAVA_HOME" -ForegroundColor Green
+                return $true
+            }
+        }
+    }
+    
+    return $false
+}
+
+function Test-Bubblewrap {
+    Write-Host "   Verificando Bubblewrap..." -ForegroundColor Gray
+    try {
+        $bubblewrapVersion = npx @bubblewrap/cli --version 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "   ✅ Bubblewrap disponible" -ForegroundColor Green
+            return $true
+        }
+    } catch {}
+    Write-Host "   ⚠️  Bubblewrap no detectado." -ForegroundColor Yellow
+    return $false
+}
+
+# 7. Verificaciones Android opcionales
+if ($CheckAndroid) {
+    Write-Host "7. Verificando requisitos de Android..." -ForegroundColor Yellow
+    
+    $javaOk = Find-Java
+    if (-not $javaOk) {
+        Write-Host "   ❌ Java JDK 11+ no encontrado. Requerido para Android." -ForegroundColor Red
+    }
+    
+    $bubblewrapOk = Test-Bubblewrap
+    if (-not $bubblewrapOk) {
+        Write-Host "   ❌ Bubblewrap CLI no encontrado. Requerido para Android." -ForegroundColor Red
+    }
+
+    if ($javaOk -and $bubblewrapOk) {
+        Write-Host "   ✅ Todo listo para construir Android APK" -ForegroundColor Green
+    } else {
+        Write-Host "   ⚠️  Faltan requisitos para Android. Ejecuta build-android-apk.ps1 para intentar instalar dependencias." -ForegroundColor Yellow
+    }
+    Write-Host ""
+}
+
+# 8. Construir APK (Opcional)
+if ($BuildApk) {
+    Write-Host "8. Iniciando construcción de APK Android..." -ForegroundColor Yellow
+    $apkScript = Join-Path $ScriptDir "build-android-apk.ps1"
+    
+    if (Test-Path $apkScript) {
+        Write-Host "   Ejecutando build-android-apk.ps1..." -ForegroundColor Cyan
+        
+        # Guardar ubicación actual
+        $currentLoc = Get-Location
+        
+        try {
+            # Llamar al script pasando parámetros
+            # Usamos & para ejecutar en el scope actual pero el script maneja sus propios scopes
+            & $apkScript -PwaUrl $PwaUrl -PackageName $PackageName -SkipBuild
+            
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "   ✅ APK construido exitosamente desde el script principal" -ForegroundColor Green
+            } else {
+                throw "El script de Android falló con código $LASTEXITCODE"
+            }
+        } catch {
+            Write-Host "   ❌ Error al generar el APK: $_" -ForegroundColor Red
+            Set-Location $currentLoc
+            exit 1
+        }
+        
+        # Asegurar que volvemos al directorio original
+        Set-Location $currentLoc
+    } else {
+        Write-Host "   ❌ Error: No se encuentra build-android-apk.ps1 en $ScriptDir" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host ""
+}
+
+# 9. Probar la PWA (opcional)
 if (-not $SkipTest) {
-    Write-Host "7. Iniciando servidor de desarrollo para pruebas..." -ForegroundColor Yellow
+    Write-Host "9. Iniciando servidor de desarrollo para pruebas..." -ForegroundColor Yellow
     Write-Host "   El servidor se iniciará en: http://localhost:3000" -ForegroundColor Cyan
     Write-Host "   Presiona Ctrl+C para detener el servidor" -ForegroundColor Yellow
     Write-Host ""
@@ -156,7 +341,7 @@ if (-not $SkipTest) {
     $env:NODE_ENV = "development"
     npm run dev
 } else {
-    Write-Host "7. Saltando pruebas (--skip-test)" -ForegroundColor Yellow
+    Write-Host "9. Saltando pruebas (--skip-test)" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "   Para probar manualmente:" -ForegroundColor White
     Write-Host "   npm run dev" -ForegroundColor Cyan
@@ -169,7 +354,13 @@ Write-Host "Archivos PWA verificados" -ForegroundColor Green
 Write-Host "Configuración:" -ForegroundColor White
 Write-Host "  - API URL: $ApiUrl" -ForegroundColor White
 Write-Host "  - Service Worker: Habilitado" -ForegroundColor White
+if ($CheckAndroid) {
+    if ($javaOk -and $bubblewrapOk) {
+        Write-Host "  - Android Build: LISTO" -ForegroundColor Green
+    } else {
+        Write-Host "  - Android Build: NO LISTO" -ForegroundColor Red
+    }
+}
 Write-Host ""
 Write-Host "Para desplegar a producción, usa:" -ForegroundColor Yellow
 Write-Host "  terraform/scripts/upload-frontend-to-s3.ps1" -ForegroundColor Cyan
-

@@ -7,10 +7,13 @@ const __filename = fileURLToPath(
 const __dirname = dirname(__filename)
 
 const isDev = process.env.NODE_ENV !== 'production'
+// Permitir habilitar PWA en desarrollo si se especifica explícitamente
+const enablePwaInDev = process.env.NEXT_PUBLIC_ENABLE_SW === 'true' || true // Forzar a true por solicitud
+const disablePwa = isDev && !enablePwaInDev
 
 const withPWA = withPWAInit({
     dest: 'public',
-    disable: isDev,
+    disable: disablePwa,
     register: false, // Registro manual en providers.jsx
     skipWaiting: true,
     sw: 'sw.js', // Usar nuestro Service Worker personalizado
@@ -31,7 +34,7 @@ const nextConfig = {
     // Configuración para evitar conflictos con múltiples lockfiles
     outputFileTracingRoot: __dirname,
     // Deshabilitar generación estática de páginas de error
-    generateStaticParams: false,
+    // generateStaticParams: false, // Eliminado: opción inválida en next.config.js
     webpack(config, { dir, isServer }) {
         // Configurar alias @/ para apuntar a src/
         config.resolve.alias = {
