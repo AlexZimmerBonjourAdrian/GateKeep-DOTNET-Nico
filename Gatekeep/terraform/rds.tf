@@ -10,6 +10,10 @@ resource "aws_db_subnet_group" "main" {
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
+
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 # DB Parameter Group para PostgreSQL 16
@@ -37,6 +41,10 @@ resource "aws_db_parameter_group" "postgres16" {
     Name        = "${var.project_name}-postgres16-params"
     Environment = var.environment
     ManagedBy   = "Terraform"
+  }
+
+  lifecycle {
+    ignore_changes = all
   }
 }
 
@@ -90,6 +98,10 @@ resource "aws_db_instance" "main" {
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
+
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 # IAM Role para RDS Enhanced Monitoring
@@ -113,6 +125,10 @@ resource "aws_iam_role" "rds_monitoring" {
     Name        = "${var.project_name}-rds-monitoring-role"
     Environment = var.environment
     ManagedBy   = "Terraform"
+  }
+
+  lifecycle {
+    ignore_changes = all
   }
 }
 

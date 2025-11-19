@@ -12,6 +12,10 @@ resource "aws_secretsmanager_secret" "db_password" {
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
+
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 # Generar password aleatorio para RDS
@@ -48,6 +52,10 @@ resource "aws_secretsmanager_secret" "jwt_key" {
     Name        = "${var.project_name}-jwt-key"
     Environment = var.environment
     ManagedBy   = "Terraform"
+  }
+
+  lifecycle {
+    ignore_changes = all
   }
 }
 

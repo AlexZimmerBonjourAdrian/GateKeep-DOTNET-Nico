@@ -17,6 +17,10 @@ resource "aws_ecr_repository" "gatekeep_api" {
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
+
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 resource "aws_ecr_lifecycle_policy" "gatekeep_api" {
@@ -57,6 +61,10 @@ resource "aws_ecr_repository" "gatekeep_frontend" {
     Name        = "${var.project_name}-frontend"
     Environment = var.environment
     ManagedBy   = "Terraform"
+  }
+
+  lifecycle {
+    ignore_changes = all
   }
 }
 

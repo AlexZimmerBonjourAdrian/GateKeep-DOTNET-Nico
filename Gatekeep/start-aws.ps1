@@ -114,12 +114,27 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host ""
 
+# Importar recursos existentes (para evitar "ya existe" errors)
+Write-Host "Importando recursos existentes en AWS..." -ForegroundColor Yellow
+Write-Host "(Esto es seguro - solo sincroniza Terraform con lo que ya existe)" -ForegroundColor Gray
+Write-Host ""
+
+# Ejecutar script de importación
+$importScript = Join-Path $terraformPath "import-resources.ps1"
+if (Test-Path $importScript) {
+    & $importScript
+} else {
+    Write-Host "Advertencia: Script de importación no encontrado" -ForegroundColor Yellow
+}
+
+Write-Host ""
+
 # Aplicar infraestructura
 Write-Host "Aplicando infraestructura..." -ForegroundColor Yellow
 Write-Host "Esto puede tardar varios minutos..." -ForegroundColor Gray
 Write-Host ""
 
-terraform apply
+terraform apply -auto-approve
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
@@ -141,6 +156,6 @@ terraform output
 
 Write-Host ""
 Write-Host "Para ver los outputs completos:" -ForegroundColor Cyan
-Write-Host "  cd terraform && terraform output" -ForegroundColor White
+Write-Host "  cd terraform; terraform output" -ForegroundColor White
 Write-Host ""
 

@@ -12,6 +12,10 @@ resource "aws_ssm_parameter" "db_host" {
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
+
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 # Parámetro para DB Port
@@ -25,6 +29,10 @@ resource "aws_ssm_parameter" "db_port" {
     Name        = "${var.project_name}-db-port"
     Environment = var.environment
     ManagedBy   = "Terraform"
+  }
+
+  lifecycle {
+    ignore_changes = all
   }
 }
 
@@ -40,6 +48,10 @@ resource "aws_ssm_parameter" "db_name" {
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
+
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 # Parámetro para DB Username
@@ -54,6 +66,10 @@ resource "aws_ssm_parameter" "db_username" {
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
+
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 # Parámetro para ECR Repository URI
@@ -67,6 +83,10 @@ resource "aws_ssm_parameter" "ecr_repository_uri" {
     Name        = "${var.project_name}-ecr-repository-uri"
     Environment = var.environment
     ManagedBy   = "Terraform"
+  }
+
+  lifecycle {
+    ignore_changes = all
   }
 }
 

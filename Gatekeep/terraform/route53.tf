@@ -86,6 +86,10 @@ resource "aws_route53_record" "alb_frontend_alias" {
     zone_id                = aws_lb.main.zone_id
     evaluate_target_health = false
   }
+
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 # Route 53 para ALB (Backend API) - subdominio api.*
@@ -99,7 +103,11 @@ resource "aws_route53_record" "alb_api_alias" {
   alias {
     name                   = aws_lb.main.dns_name
     zone_id                = aws_lb.main.zone_id
-    evaluate_target_health = true
+    evaluate_target_health = false
+  }
+
+  lifecycle {
+    ignore_changes = all
   }
 }
 
