@@ -397,10 +397,11 @@ resource "aws_lb_listener" "https" {
   ssl_policy        = "ELBSecurityPolicy-2016-08"
   certificate_arn   = aws_acm_certificate_validation.alb[0].certificate_arn
 
-  # Por defecto, servir backend API (frontend está en CloudFront)
+  # Por defecto, servir frontend (PWA funciona aquí)
+  # Backend tiene reglas específicas /api/*, /auth/*, etc.
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.main.arn
+    target_group_arn = aws_lb_target_group.frontend.arn
   }
 
   depends_on = [aws_acm_certificate_validation.alb]
@@ -564,7 +565,7 @@ resource "aws_ecs_task_definition" "frontend" {
         },
         {
           name  = "NEXT_PUBLIC_API_URL"
-          value = "https://${var.domain_name}"
+          value = "https://api.${var.domain_name}"
         }
       ]
 
@@ -597,15 +598,13 @@ resource "aws_ecs_task_definition" "frontend" {
 # Security Group para Frontend ECS (mismo que backend, puede compartir)
 # Usaremos el mismo security group para simplificar
 
-# ECS Service para Frontend - DESHABILITADO
-# El frontend ahora se despliega en S3 + CloudFront para mejor rendimiento y fallback offline
-# Este recurso se mantiene comentado por si se necesita revertir
-/*
+# ECS Service para Frontend - HABILITADO (PWA funciona en ECS)
+# Temporalmente usando ECS mientras esperamos propagación DNS de CloudFront
 resource "aws_ecs_service" "frontend" {
   name            = "${var.project_name}-frontend-service"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.frontend.arn
-  desired_count   = 0  # Deshabilitado - frontend en S3+CloudFront
+  desired_count   = 1  # Habilitado - PWA funciona en ECS
   launch_type     = "FARGATE"
 
   network_configuration {
@@ -639,5 +638,4 @@ resource "aws_ecs_service" "frontend" {
     ManagedBy   = "Terraform"
   }
 }
-*/
 

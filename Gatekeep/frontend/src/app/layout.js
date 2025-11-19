@@ -11,18 +11,19 @@ export const metadata = {
   title: 'GateKeep',
   description: 'Sistema de gestión de acceso y control para espacios universitarios',
   manifest: '/manifest.json',
-  themeColor: '#0066cc',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'GateKeep',
   },
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-  },
+}
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#0066cc',
 }
 
 export default function RootLayout({ children }) {

@@ -30,12 +30,17 @@ const nextConfig = {
     transpilePackages: ['primereact', 'primeicons', 'primeflex'],
     // Configuración para evitar conflictos con múltiples lockfiles
     outputFileTracingRoot: __dirname,
+    // Deshabilitar generación estática de páginas de error
+    generateStaticParams: false,
     webpack(config, { dir, isServer }) {
         // Configurar alias @/ para apuntar a src/
         config.resolve.alias = {
             ...config.resolve.alias,
             '@': dir + '/src',
         };
+        
+        // Ignorar el directorio pages/ durante el build (solo usar App Router)
+        config.resolve.alias['@/pages'] = false;
         
         // Configurar sql.js para el cliente
         if (!isServer) {

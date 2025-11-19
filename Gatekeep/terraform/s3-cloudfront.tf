@@ -79,8 +79,8 @@ resource "aws_s3_bucket_policy" "frontend" {
         Action   = "s3:GetObject"
         Resource = "arn:aws:s3:::${aws_s3_bucket.frontend.bucket}/*"
         Condition = {
-          StringEquals = {
-            "AWS:SourceArn" = "${aws_cloudfront_distribution.frontend.arn}*"
+          StringLike = {
+            "AWS:SourceArn" = "${aws_cloudfront_distribution.frontend.arn}/*"
           }
         }
       }

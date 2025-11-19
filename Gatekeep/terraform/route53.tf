@@ -55,7 +55,9 @@ resource "aws_acm_certificate_validation" "alb" {
   validation_record_fqdns = [for record in aws_route53_record.acm_validation : record.fqdn]
 }
 
-# Route 53 para CloudFront (Frontend)
+# Route 53 para CloudFront (Frontend) - DESHABILITADO temporalmente
+# Usando ECS mientras esperamos propagación DNS
+/*
 resource "aws_route53_record" "cloudfront_alias" {
   count = length(local.all_public_domains)
 
@@ -66,6 +68,22 @@ resource "aws_route53_record" "cloudfront_alias" {
   alias {
     name                   = aws_cloudfront_distribution.frontend.domain_name
     zone_id                = aws_cloudfront_distribution.frontend.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+*/
+
+# Route 53 para ALB (Frontend) - HABILITADO para ECS con PWA
+resource "aws_route53_record" "alb_frontend_alias" {
+  count = length(local.all_public_domains)
+
+  zone_id = data.aws_route53_zone.primary.zone_id
+  name    = local.all_public_domains[count.index]
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.main.dns_name
+    zone_id                = aws_lb.main.zone_id
     evaluate_target_health = false
   }
 }
