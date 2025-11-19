@@ -28,21 +28,64 @@ $AndroidDir = Join-Path $FrontendDir "android"
 
 Set-Location $FrontendDir
 
-# 1. Verificar que el build de Next.js existe
+# 1. Verificar y construir PWA
 if (-not $SkipBuild) {
-    Write-Host "1. Verificando build de Next.js..." -ForegroundColor Yellow
+    Write-Host "1. Verificando PWA y build de Next.js..." -ForegroundColor Yellow
+    
+    # Verificar archivos PWA esenciales
+    $pwaFiles = @(
+        "public/manifest.json",
+        "public/sw.js",
+        "public/offline.html"
+    )
+    
+    $missingFiles = @()
+    foreach ($file in $pwaFiles) {
+        if (-not (Test-Path $file)) {
+            $missingFiles += $file
+        }
+    }
+    
+    if ($missingFiles.Count -gt 0) {
+        Write-Host "   ⚠️  Archivos PWA faltantes:" -ForegroundColor Yellow
+        foreach ($file in $missingFiles) {
+            Write-Host "      - $file" -ForegroundColor Red
+        }
+        Write-Host "   Construyendo PWA..." -ForegroundColor Yellow
+    } else {
+        Write-Host "   ✅ Archivos PWA encontrados" -ForegroundColor Green
+    }
+    
+    # Construir Next.js si no existe el build
     if (-not (Test-Path ".next")) {
-        Write-Host "   Build no encontrado. Construyendo..." -ForegroundColor Yellow
+        Write-Host "   Build de Next.js no encontrado. Construyendo..." -ForegroundColor Yellow
         $env:NODE_ENV = "production"
         npm run build
         if ($LASTEXITCODE -ne 0) {
             Write-Host "   Error: Falló la construcción de Next.js" -ForegroundColor Red
             exit 1
         }
-        Write-Host "   ✅ Build completado" -ForegroundColor Green
+        Write-Host "   ✅ Build de Next.js completado" -ForegroundColor Green
     } else {
         Write-Host "   ✅ Build de Next.js encontrado" -ForegroundColor Green
     }
+    
+    # Verificar que el manifest.json sea válido
+    $manifestPath = Join-Path $FrontendDir "public/manifest.json"
+    if (Test-Path $manifestPath) {
+        try {
+            $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+            if (-not $manifest.name -or -not $manifest.start_url) {
+                Write-Host "   ⚠️  manifest.json incompleto" -ForegroundColor Yellow
+            } else {
+                Write-Host "   ✅ manifest.json válido" -ForegroundColor Green
+            }
+        } catch {
+            Write-Host "   ❌ Error leyendo manifest.json: $_" -ForegroundColor Red
+            exit 1
+        }
+    }
+    
     Write-Host ""
 } else {
     Write-Host "1. Saltando verificación de build (--skip-build)" -ForegroundColor Yellow
@@ -97,18 +140,29 @@ if (-not (Test-Path $twaManifestPath)) {
     $manifestPath = Join-Path $FrontendDir "public/manifest.json"
     $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
     
+    # Buscar icono de 512x512 o el más grande disponible
+    $icon512 = $manifest.icons | Where-Object { $_.sizes -eq "512x512" } | Select-Object -First 1
+    if (-not $icon512) {
+        $icon512 = $manifest.icons | Sort-Object { [int]($_.sizes -replace 'x.*', '') } -Descending | Select-Object -First 1
+    }
+    $iconUrl = if ($icon512) { $icon512.src } else { $manifest.icons[0].src }
+    
+    # Buscar icono maskable
+    $maskableIcon = $manifest.icons | Where-Object { $_.purpose -like "*maskable*" } | Select-Object -First 1
+    $maskableIconUrl = if ($maskableIcon) { $maskableIcon.src } else { $iconUrl }
+    
     $twaManifest = @{
         packageId = $PackageName
         name = $manifest.name
-        launcherName = $manifest.short_name
-        display = "standalone"
-        themeColor = $manifest.theme_color
-        navigationColor = $manifest.theme_color
-        backgroundColor = $manifest.background_color
+        launcherName = if ($manifest.short_name) { $manifest.short_name } else { $manifest.name }
+        display = if ($manifest.display) { $manifest.display } else { "standalone" }
+        themeColor = if ($manifest.theme_color) { $manifest.theme_color } else { "#0066cc" }
+        navigationColor = if ($manifest.theme_color) { $manifest.theme_color } else { "#0066cc" }
+        backgroundColor = if ($manifest.background_color) { $manifest.background_color } else { "#ffffff" }
         enableNotifications = $true
-        startUrl = "/"
-        iconUrl = $manifest.icons[0].src
-        maskableIconUrl = $manifest.icons[0].src
+        startUrl = if ($manifest.start_url) { $manifest.start_url } else { "/" }
+        iconUrl = $iconUrl
+        maskableIconUrl = $maskableIconUrl
         splashScreenFadeOutDuration = 300
         signingKey = @{
             path = "./android.keystore"
@@ -212,8 +266,8 @@ function Find-Java {
                 Write-Host "   ✅ Java encontrado en PATH: $versionOutput" -ForegroundColor Green
                 return $true
             } else {
-                Write-Host "   ⚠️  Java encontrado pero versión antigua (v$version). Se requiere Java 11 o superior" -ForegroundColor Yellow
-                return $false
+                Write-Host "   ⚠️  Java en PATH es versión antigua (v$version). Buscando versión más reciente..." -ForegroundColor Yellow
+                # No retornar false todavía, buscar en otras ubicaciones
             }
         }
     } catch {
@@ -231,30 +285,39 @@ function Find-Java {
         "C:\Program Files (x86)\Java"
     )
     
+    # Buscar todas las instalaciones de Java y seleccionar la más reciente (>= 11)
+    $foundJavaVersions = @()
     foreach ($path in $javaPaths) {
         if (Test-Path $path) {
-            $javaExe = Get-ChildItem -Path $path -Filter "java.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($javaExe) {
-                # Verificar versión
-                $tempPath = $env:PATH
-                $env:PATH = "$($javaExe.DirectoryName);$env:PATH"
+            $javaExes = Get-ChildItem -Path $path -Filter "java.exe" -Recurse -ErrorAction SilentlyContinue
+            foreach ($javaExe in $javaExes) {
                 try {
                     $versionOutput = & $javaExe.FullName -version 2>&1 | Select-Object -First 1
                     $version = Test-JavaVersion $versionOutput
                     
                     if ($version -ge 11) {
-                        Write-Host "   ✅ Java encontrado en: $($javaExe.DirectoryName)" -ForegroundColor Green
-                        Write-Host "   Versión: $versionOutput" -ForegroundColor White
-                        return $true
-                    } else {
-                        Write-Host "   ⚠️  Java encontrado pero versión antigua (v$version) en: $($javaExe.DirectoryName)" -ForegroundColor Yellow
+                        $foundJavaVersions += @{
+                            Path = $javaExe.DirectoryName
+                            Version = $version
+                            VersionOutput = $versionOutput
+                            FullPath = $javaExe.FullName
+                        }
                     }
                 } catch {
                     # No se pudo verificar versión
                 }
-                $env:PATH = $tempPath
             }
         }
+    }
+    
+    # Si encontramos versiones válidas, usar la más reciente
+    if ($foundJavaVersions.Count -gt 0) {
+        $bestJava = $foundJavaVersions | Sort-Object Version -Descending | Select-Object -First 1
+        Write-Host "   ✅ Java encontrado en: $($bestJava.Path)" -ForegroundColor Green
+        Write-Host "   Versión: $($bestJava.VersionOutput)" -ForegroundColor White
+        # Agregar al PATH para esta sesión
+        $env:PATH = "$($bestJava.Path);$env:PATH"
+        return $true
     }
     
     # 3. Verificar JAVA_HOME
