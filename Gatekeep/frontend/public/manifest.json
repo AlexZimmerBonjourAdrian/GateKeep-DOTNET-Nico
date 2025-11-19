@@ -14,9 +14,45 @@
   "icons": [
     {
       "src": "/assets/LogoGateKeep.webp",
+      "sizes": "72x72",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/LogoGateKeep.webp",
+      "sizes": "96x96",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/LogoGateKeep.webp",
+      "sizes": "128x128",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/LogoGateKeep.webp",
+      "sizes": "144x144",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/LogoGateKeep.webp",
+      "sizes": "152x152",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/LogoGateKeep.webp",
       "sizes": "192x192",
       "type": "image/webp",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/LogoGateKeep.webp",
+      "sizes": "384x384",
+      "type": "image/webp",
+      "purpose": "any"
     },
     {
       "src": "/assets/LogoGateKeep.webp",
