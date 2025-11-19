@@ -108,13 +108,28 @@ output "application_url" {
 }
 
 output "frontend_url" {
-  description = "URL pública del frontend"
+  description = "URL pública del frontend (CloudFront)"
   value       = "https://${var.domain_name}"
 }
 
+output "cloudfront_distribution_id" {
+  description = "ID de la distribución CloudFront"
+  value       = aws_cloudfront_distribution.frontend.id
+}
+
+output "cloudfront_domain_name" {
+  description = "Nombre de dominio de CloudFront"
+  value       = aws_cloudfront_distribution.frontend.domain_name
+}
+
+output "s3_bucket_frontend" {
+  description = "Nombre del bucket S3 para el frontend"
+  value       = aws_s3_bucket.frontend.bucket
+}
+
 output "backend_api_url" {
-  description = "URL pública del backend API"
-  value       = "https://${var.domain_name}/api"
+  description = "URL pública del backend API (ALB)"
+  value       = "https://api.${var.domain_name}"
 }
 
 output "custom_domain_aliases" {
@@ -128,9 +143,9 @@ output "ecr_frontend_repository_url" {
   value       = aws_ecr_repository.gatekeep_frontend.repository_url
 }
 
-# ECS Frontend
-output "ecs_frontend_service_name" {
-  description = "Nombre del servicio ECS del frontend"
-  value       = aws_ecs_service.frontend.name
-}
+# ECS Frontend - DESHABILITADO (frontend ahora en S3+CloudFront)
+# output "ecs_frontend_service_name" {
+#   description = "Nombre del servicio ECS del frontend"
+#   value       = aws_ecs_service.frontend.name
+# }
 

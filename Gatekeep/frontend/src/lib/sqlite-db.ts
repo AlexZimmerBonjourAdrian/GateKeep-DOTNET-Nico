@@ -16,7 +16,20 @@ const DB_KEY = 'sqlite_db';
  */
 export async function initializeDatabase() {
   if (!SQL) {
-    SQL = await initSqlJs();
+    // Inicializar sql.js con configuración para el navegador
+    SQL = await initSqlJs({
+      locateFile: (file: string) => {
+        // Intentar usar archivo local desde /public primero
+        // Si no está disponible, usar CDN como fallback
+        if (typeof window !== 'undefined') {
+          // En el navegador, intentar ruta local
+          const localPath = `/${file}`;
+          return localPath;
+        }
+        // Fallback a CDN (útil en desarrollo o si el archivo no está en public)
+        return `https://sql.js.org/dist/${file}`;
+      }
+    });
   }
 
   // Intentar cargar BD existente de IndexedDB
@@ -29,9 +42,11 @@ export async function initializeDatabase() {
   } else {
     // Crear nueva BD
     db = new SQL.Database();
-    await createTables();
     console.log('✅ SQLite DB nueva creada');
   }
+
+  // Siempre asegurar que las tablas existan (CREATE TABLE IF NOT EXISTS es seguro)
+  await createTables();
 
   return db;
 }
@@ -44,6 +59,7 @@ async function createTables() {
     // Cache de usuarios
     `CREATE TABLE IF NOT EXISTS usuarios (
       id INTEGER PRIMARY KEY,
+      rut TEXT,
       email TEXT UNIQUE,
       nombre TEXT,
       apellido TEXT,
@@ -58,6 +74,8 @@ async function createTables() {
       nombre TEXT,
       tipo TEXT,
       ubicacion TEXT,
+      edificioId INTEGER,
+      edificioNombre TEXT,
       ultimaActualizacion TEXT
     )`,
 
@@ -101,7 +119,8 @@ async function createTables() {
       datosEvento TEXT,
       fechaCreacion TEXT,
       intentos INTEGER DEFAULT 0,
-      estado TEXT DEFAULT 'Pendiente'
+      estado TEXT DEFAULT 'Pendiente',
+      idServidor TEXT
     )`,
 
     // Metadatos de sincronización
@@ -118,7 +137,61 @@ async function createTables() {
     }
   }
 
+  // Migrar tablas existentes agregando columnas si no existen
+  await migrateTables();
+
   console.log('✅ Tablas creadas en SQLite');
+}
+
+/**
+ * Migra tablas existentes agregando columnas nuevas si no existen
+ */
+async function migrateTables() {
+  if (!db) return;
+
+  try {
+    // Agregar campo 'rut' a usuarios si no existe
+    try {
+      db.run('ALTER TABLE usuarios ADD COLUMN rut TEXT');
+      console.log('✅ Columna rut agregada a usuarios');
+    } catch (e: any) {
+      // La columna ya existe, ignorar error
+      if (!e.message?.includes('duplicate column')) {
+        console.warn('⚠️ Error agregando columna rut:', e.message);
+      }
+    }
+
+    // Agregar campos 'edificioId' y 'edificioNombre' a espacios si no existen
+    try {
+      db.run('ALTER TABLE espacios ADD COLUMN edificioId INTEGER');
+      console.log('✅ Columna edificioId agregada a espacios');
+    } catch (e: any) {
+      if (!e.message?.includes('duplicate column')) {
+        console.warn('⚠️ Error agregando columna edificioId:', e.message);
+      }
+    }
+
+    try {
+      db.run('ALTER TABLE espacios ADD COLUMN edificioNombre TEXT');
+      console.log('✅ Columna edificioNombre agregada a espacios');
+    } catch (e: any) {
+      if (!e.message?.includes('duplicate column')) {
+        console.warn('⚠️ Error agregando columna edificioNombre:', e.message);
+      }
+    }
+
+    // Agregar campo 'idServidor' a eventos_offline si no existe
+    try {
+      db.run('ALTER TABLE eventos_offline ADD COLUMN idServidor TEXT');
+      console.log('✅ Columna idServidor agregada a eventos_offline');
+    } catch (e: any) {
+      if (!e.message?.includes('duplicate column')) {
+        console.warn('⚠️ Error agregando columna idServidor:', e.message);
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error en migración de tablas:', error);
+  }
 }
 
 /**
@@ -197,12 +270,13 @@ export function cacheUsuario(usuario: any): void {
 
   const stmt = db.prepare(`
     INSERT OR REPLACE INTO usuarios 
-    (id, email, nombre, apellido, rol, credentialActiva, ultimaActualizacion)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    (id, rut, email, nombre, apellido, rol, credentialActiva, ultimaActualizacion)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   stmt.bind([
     usuario.id,
+    usuario.rut || null,
     usuario.email,
     usuario.nombre,
     usuario.apellido,
@@ -285,15 +359,24 @@ export function getPendingOfflineEvents() {
 /**
  * Marca un evento como sincronizado
  */
-export function markEventoAsSynced(idTemporal: string): void {
+export function markEventoAsSynced(idTemporal: string, idServidor?: string): void {
   if (!db) return;
 
-  const stmt = db.prepare(
-    'UPDATE eventos_offline SET estado = ? WHERE idTemporal = ?'
-  );
-  stmt.bind(['Procesado', idTemporal]);
-  stmt.step();
-  stmt.free();
+  if (idServidor) {
+    const stmt = db.prepare(
+      'UPDATE eventos_offline SET estado = ?, idServidor = ? WHERE idTemporal = ?'
+    );
+    stmt.bind(['Procesado', idServidor, idTemporal]);
+    stmt.step();
+    stmt.free();
+  } else {
+    const stmt = db.prepare(
+      'UPDATE eventos_offline SET estado = ? WHERE idTemporal = ?'
+    );
+    stmt.bind(['Procesado', idTemporal]);
+    stmt.step();
+    stmt.free();
+  }
 
   saveDatabaseToStorage();
 }
@@ -353,8 +436,8 @@ export function syncDataFromServer(syncPayload: any): void {
   if (syncPayload.espacios) {
     const stmtEspacios = db.prepare(`
       INSERT OR REPLACE INTO espacios 
-      (id, nombre, tipo, ubicacion, ultimaActualizacion)
-      VALUES (?, ?, ?, ?, ?)
+      (id, nombre, tipo, ubicacion, edificioId, edificioNombre, ultimaActualizacion)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
     for (const espacio of syncPayload.espacios) {
@@ -363,6 +446,8 @@ export function syncDataFromServer(syncPayload: any): void {
         espacio.nombre,
         espacio.tipo,
         espacio.ubicacion,
+        espacio.edificioId || null,
+        espacio.edificioNombre || null,
         espacio.ultimaActualizacion,
       ]);
       stmtEspacios.step();
@@ -459,10 +544,69 @@ export function clearProcessedEvents() {
 }
 
 /**
+ * Cuenta los eventos offline pendientes de sincronización
+ */
+export function contarEventosPendientes(): number {
+  if (!db) return 0;
+
+  const stmt = db.prepare(
+    'SELECT COUNT(*) as count FROM eventos_offline WHERE estado = ?'
+  );
+  stmt.bind(['Pendiente']);
+  stmt.step();
+  const count = stmt.getAsObject().count;
+  stmt.free();
+
+  return count;
+}
+
+/**
+ * Obtiene todos los espacios del cache local
+ */
+export function obtenerEspaciosLocales(): any[] {
+  if (!db) return [];
+
+  const stmt = db.prepare('SELECT * FROM espacios ORDER BY nombre ASC');
+  const espacios = [];
+
+  while (stmt.step()) {
+    espacios.push(stmt.getAsObject());
+  }
+  stmt.free();
+
+  return espacios;
+}
+
+/**
+ * Obtiene un espacio específico del cache local por ID
+ */
+export function obtenerEspacioPorId(id: number): any {
+  if (!db) return null;
+
+  const stmt = db.prepare('SELECT * FROM espacios WHERE id = ?');
+  stmt.bind([id]);
+
+  let espacio = null;
+  if (stmt.step()) {
+    espacio = stmt.getAsObject();
+  }
+  stmt.free();
+
+  return espacio;
+}
+
+/**
  * Obtiene resumen de estado de la BD local
  */
 export function getOfflineStatus() {
-  if (!db) return null;
+  if (!db) {
+    return {
+      eventosOfflinePendientes: 0,
+      usuariosEnCache: 0,
+      totalEventosOffline: 0,
+      ultimaSincronizacion: null,
+    };
+  }
 
   const pendingStmt = db.prepare(
     'SELECT COUNT(*) as count FROM eventos_offline WHERE estado = ?'

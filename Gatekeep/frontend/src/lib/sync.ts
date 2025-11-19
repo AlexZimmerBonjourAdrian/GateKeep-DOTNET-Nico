@@ -13,9 +13,17 @@ import {
   clearProcessedEvents,
 } from './sqlite-db';
 
-const API_BASE = typeof window !== 'undefined' 
-  ? (window as any).__NEXT_PUBLIC_API_URL__ || 'http://localhost:5011'
-  : 'http://localhost:5011';
+const getDefaultApiBase = () => {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin;
+  }
+
+  return 'http://localhost:5011';
+};
+
+const PUBLIC_API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+
+const API_BASE = PUBLIC_API_BASE || getDefaultApiBase();
 
 /**
  * Estructura de evento offline compatible con backend
@@ -83,9 +91,25 @@ export function isOnline(): boolean {
 }
 
 /**
- * Realiza sincronización con servidor
+ * Calcula el delay para reintentos exponenciales con backoff
+ * @param attemptNumber - Número de intento (empezando en 0)
+ * @param baseDelay - Delay base en ms (default: 1000ms)
+ * @param maxDelay - Delay máximo en ms (default: 30000ms)
+ * @returns Delay en milisegundos
  */
-export async function syncWithServer(authToken: string): Promise<boolean> {
+function calculateBackoffDelay(attemptNumber: number, baseDelay = 1000, maxDelay = 30000): number {
+  const exponentialDelay = baseDelay * Math.pow(2, attemptNumber);
+  const jitter = Math.random() * 0.3 * exponentialDelay; // 30% de jitter
+  return Math.min(exponentialDelay + jitter, maxDelay);
+}
+
+/**
+ * Realiza sincronización con servidor con reintentos exponenciales
+ * @param authToken - Token de autenticación
+ * @param maxRetries - Número máximo de reintentos (default: 3)
+ * @returns true si la sincronización fue exitosa
+ */
+export async function syncWithServer(authToken: string, maxRetries = 3): Promise<boolean> {
   console.log('🔄 Iniciando sincronización...');
 
   // Verificar conexión
@@ -94,87 +118,131 @@ export async function syncWithServer(authToken: string): Promise<boolean> {
     return false;
   }
 
-  try {
-    // Inicializar BD si no existe
-    await initializeDatabase();
+  let lastError: Error | null = null;
 
-    // Obtener eventos pendientes
-    const pendingEvents = getPendingOfflineEvents();
-    const lastSync = getSyncMetadata('ultimaSincronizacion');
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      // Inicializar BD si no existe
+      await initializeDatabase();
 
-    // Construir request
-    const syncRequest: SyncRequest = {
-      deviceId: getDeviceId(),
-      lastSyncTime: lastSync || null,
-      pendingEvents: pendingEvents.map((evt) => ({
-        idTemporal: String(evt.idTemporal || ''),
-        eventType: String(evt.tipoEvento || ''),
-        eventData: String(evt.datosEvento || ''),
-        createdAt: String(evt.fechaCreacion || ''),
-        attemptCount: Number(evt.intentos) || 1,
-      })),
-      clientVersion: '1.0.0',
-    };
+      // Obtener eventos pendientes
+      const pendingEvents = getPendingOfflineEvents();
+      const lastSync = getSyncMetadata('ultimaSincronizacion');
 
-    console.log(`📤 Enviando ${syncRequest.pendingEvents.length} eventos pendientes...`);
+      // Construir request
+      const syncRequest: SyncRequest = {
+        deviceId: getDeviceId(),
+        lastSyncTime: lastSync || null,
+        pendingEvents: pendingEvents.map((evt) => ({
+          idTemporal: String(evt.idTemporal || ''),
+          eventType: String(evt.tipoEvento || ''),
+          eventData: String(evt.datosEvento || ''),
+          createdAt: String(evt.fechaCreacion || ''),
+          attemptCount: Number(evt.intentos) || attempt + 1,
+        })),
+        clientVersion: '1.0.0',
+      };
 
-    // Enviar al servidor
-    const response = await fetch(`${API_BASE}/api/sync`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${authToken}`,
-      },
-      body: JSON.stringify(syncRequest),
-    });
-
-    if (!response.ok) {
-      console.error(`❌ Error de sync: ${response.status} ${response.statusText}`);
-      return false;
-    }
-
-    const syncResponse: SyncResponse = await response.json();
-
-    if (!syncResponse.success) {
-      console.error('❌ Sincronización fallida:', syncResponse.message);
-      return false;
-    }
-
-    // Procesar eventos sincronizados
-    for (const processed of syncResponse.processedEvents) {
-      if (processed.success) {
-        markEventoAsSynced(processed.idTemporal);
-        console.log(`✅ Evento sincronizado: ${processed.idTemporal}`);
+      if (attempt > 0) {
+        console.log(`🔄 Reintento ${attempt}/${maxRetries}...`);
       } else {
-        console.error(
-          `❌ Error en evento ${processed.idTemporal}: ${processed.errorMessage}`
-        );
+        console.log(`📤 Enviando ${syncRequest.pendingEvents.length} eventos pendientes...`);
       }
+
+      // Enviar al servidor con timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 segundos timeout
+
+      const response = await fetch(`${API_BASE}/api/sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(syncRequest),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        // Si es un error 4xx (cliente), no reintentar
+        if (response.status >= 400 && response.status < 500) {
+          console.error(`❌ Error de cliente: ${response.status} ${response.statusText}`);
+          return false;
+        }
+
+        // Si es un error 5xx (servidor), reintentar
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const syncResponse: SyncResponse = await response.json();
+
+      if (!syncResponse.success) {
+        console.error('❌ Sincronización fallida:', syncResponse.message);
+        return false;
+      }
+
+      // Procesar eventos sincronizados
+      for (const processed of syncResponse.processedEvents) {
+        if (processed.success) {
+          markEventoAsSynced(processed.idTemporal, processed.permanentId);
+          console.log(`✅ Evento sincronizado: ${processed.idTemporal} -> ${processed.permanentId || 'N/A'}`);
+        } else {
+          console.error(
+            `❌ Error en evento ${processed.idTemporal}: ${processed.errorMessage}`
+          );
+        }
+      }
+
+      // Sincronizar datos descargados
+      if (syncResponse.dataToSync) {
+        syncDataFromServer(syncResponse.dataToSync);
+      }
+
+      // Actualizar metadata
+      setSyncMetadata('ultimaSincronizacion', new Date().toISOString());
+      setSyncMetadata('lastSuccessfulSync', syncResponse.lastSuccessfulSync);
+
+      // Limpiar eventos procesados
+      clearProcessedEvents();
+
+      // Renovar token si es necesario
+      if (syncResponse.newAuthToken) {
+        localStorage.setItem('authToken', syncResponse.newAuthToken);
+      }
+
+      console.log('✅ Sincronización completada exitosamente');
+      return true;
+    } catch (error: any) {
+      lastError = error;
+
+      // Si es el último intento, no esperar
+      if (attempt >= maxRetries) {
+        console.error('❌ Error durante sincronización después de todos los reintentos:', error);
+        break;
+      }
+
+      // Si es un error de aborto (timeout), verificar conexión
+      if (error.name === 'AbortError') {
+        console.warn('⏱️ Timeout en sincronización');
+        if (!isOnline()) {
+          console.log('📡 Sin conexión. Cancelando reintentos.');
+          return false;
+        }
+      }
+
+      // Calcular delay para el siguiente intento
+      const delay = calculateBackoffDelay(attempt);
+      console.log(`⏳ Esperando ${Math.round(delay / 1000)}s antes del siguiente intento...`);
+
+      // Esperar antes del siguiente intento
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
-
-    // Sincronizar datos descargados
-    if (syncResponse.dataToSync) {
-      syncDataFromServer(syncResponse.dataToSync);
-    }
-
-    // Actualizar metadata
-    setSyncMetadata('ultimaSincronizacion', new Date().toISOString());
-    setSyncMetadata('lastSuccessfulSync', syncResponse.lastSuccessfulSync);
-
-    // Limpiar eventos procesados
-    clearProcessedEvents();
-
-    // Renovar token si es necesario
-    if (syncResponse.newAuthToken) {
-      localStorage.setItem('authToken', syncResponse.newAuthToken);
-    }
-
-    console.log('✅ Sincronización completada exitosamente');
-    return true;
-  } catch (error) {
-    console.error('❌ Error durante sincronización:', error);
-    return false;
   }
+
+  console.error('❌ Sincronización fallida después de todos los reintentos');
+  return false;
 }
 
 /**
@@ -195,13 +263,15 @@ export function setupConnectivityListeners(authToken: string) {
  * Inicia sincronización periódica (cada 30 segundos si online)
  */
 export function startPeriodicSync(authToken: string, intervalMs = 30000) {
-  setInterval(async () => {
+  const intervalId = setInterval(async () => {
     if (isOnline()) {
       await syncWithServer(authToken);
     }
   }, intervalMs);
 
   console.log(`⏰ Sincronización periódica configurada cada ${intervalMs}ms`);
+
+  return () => clearInterval(intervalId);
 }
 
 /**

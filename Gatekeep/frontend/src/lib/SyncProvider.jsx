@@ -1,7 +1,9 @@
 /**
- * Ejemplo de integración de sincronización offline
- * Agregado en _app.jsx o layout.js
- */
+* Ejemplo de integración de sincronización offline
+* Agregado en _app.jsx o layout.js
+*/
+
+'use client';
 
 import { useEffect } from 'react';
 import { setupConnectivityListeners, startPeriodicSync, getDeviceId } from '@/lib/sync';
@@ -10,29 +12,35 @@ import SyncStatus from '@/components/SyncStatus';
 
 export function SyncProvider({ children }) {
   useEffect(() => {
+    let stopPeriodicSync = undefined;
+
     const initializeSync = async () => {
-      // 1. Inicializar BD local SQLite
+      if (typeof window === 'undefined') {
+        return;
+      }
+
       console.log('🚀 Inicializando sistema de sincronización...');
       await initializeDatabase();
 
-      // 2. Obtener token de autenticación (ajustar según tu autenticación)
-      const authToken = localStorage.getItem('authToken');
+      const authToken = window.localStorage.getItem('authToken');
       if (!authToken) {
         console.warn('⚠️ No hay token de autenticación. Sincronización deshabilitada.');
         return;
       }
 
-      // 3. Configurar listeners de conectividad
       setupConnectivityListeners(authToken);
+      stopPeriodicSync = startPeriodicSync(authToken, 30000);
 
-      // 4. Iniciar sincronización periódica (cada 30 segundos)
-      startPeriodicSync(authToken, 30000);
-
-      // 5. Log de dispositivo
       console.log(`📱 Dispositivo ID: ${getDeviceId()}`);
     };
 
     initializeSync();
+
+    return () => {
+      if (typeof stopPeriodicSync === 'function') {
+        stopPeriodicSync();
+      }
+    };
   }, []);
 
   return (

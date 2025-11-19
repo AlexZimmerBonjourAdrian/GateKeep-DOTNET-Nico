@@ -1,7 +1,11 @@
+'use client';
+
 /**
- * Componente de Estado de Sincronización
- * Muestra estado offline/online y eventos pendientes
- */
+* Componente de Estado de Sincronización
+* Muestra estado offline/online y eventos pendientes
+*/
+
+'use client';
 
 import React, { useEffect, useState } from 'react';
 import { isOnline, getDeviceId } from '../lib/sync';
@@ -9,22 +13,28 @@ import { getOfflineStatus } from '../lib/sqlite-db';
 
 export default function SyncStatus() {
   const [online, setOnline] = useState(true);
-  const [offlineStatus, setOfflineStatus] = useState(null);
+  const [offlineStatus, setOfflineStatus] = useState(getOfflineStatus());
   const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
-    // Verificar estado inicial
+    const updateOfflineStatus = () => {
+      setOfflineStatus(getOfflineStatus());
+    };
+
     setOnline(isOnline());
+    updateOfflineStatus();
 
     // Setup listeners
     const handleOnline = () => {
       console.log('🌐 Online');
       setOnline(true);
+      updateOfflineStatus();
     };
 
     const handleOffline = () => {
       console.log('📡 Offline');
       setOnline(false);
+      updateOfflineStatus();
     };
 
     window.addEventListener('online', handleOnline);
@@ -32,8 +42,7 @@ export default function SyncStatus() {
 
     // Actualizar estado periódicamente
     const interval = setInterval(() => {
-      const status = getOfflineStatus();
-      setOfflineStatus(status);
+      updateOfflineStatus();
     }, 5000); // Actualizar cada 5 segundos
 
     return () => {
@@ -43,12 +52,8 @@ export default function SyncStatus() {
     };
   }, []);
 
-  if (!online && !offlineStatus) {
-    return null;
-  }
-
   return (
-    <div className="sync-status-container">
+    <div className="sync-status-container" data-cy="sync-status">
       <style jsx>{`
         .sync-status-container {
           position: fixed;
@@ -164,7 +169,13 @@ export default function SyncStatus() {
         }
       `}</style>
 
-      <div className={`sync-badge ${online ? 'online' : 'offline'}`} onClick={() => setShowDetails(!showDetails)}>
+      <div
+        className={`sync-badge ${online ? 'online' : 'offline'}`}
+        data-cy="sync-badge"
+        role="status"
+        aria-live="polite"
+        onClick={() => setShowDetails(!showDetails)}
+      >
         <span className="status-dot" />
         {online ? '🌐 Online' : '📡 Offline'}
         {offlineStatus?.eventosOfflinePendientes > 0 && (

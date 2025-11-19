@@ -535,6 +535,17 @@ builder.Services.AddScoped<IAwsSecretsService, AwsSecretsService>();
 builder.Services.AddScoped<IAwsParameterService, AwsParameterService>();
 builder.Services.AddSingleton<ICloudWatchMetricsExporter, CloudWatchMetricsExporter>();
 
+// HttpClient para RabbitMQ Management API
+builder.Services.AddHttpClient("RabbitMQ", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+
+// Servicios de métricas de RabbitMQ
+builder.Services.AddSingleton<GateKeep.Api.Infrastructure.Messaging.IRabbitMqMetricsService, 
+    GateKeep.Api.Infrastructure.Messaging.RabbitMqMetricsService>();
+builder.Services.AddSingleton<IRabbitMqCloudWatchExporter, RabbitMqCloudWatchExporter>();
+
 // Servicios de Observabilidad
 builder.Services.AddSingleton<ICorrelationIdProvider, CorrelationIdProvider>();
 builder.Services.AddSingleton<IObservabilityService, ObservabilityService>();
@@ -652,7 +663,8 @@ builder.Services.AddHostedService<SincronizacionQueueProcessor>();
 // EventoQueueProcessor deshabilitado - ahora se usa RabbitMQ para procesamiento asíncrono
 // builder.Services.AddHostedService<EventoQueueProcessor>();
 builder.Services.AddHostedService<BacklogMetricsUpdater>();
-builder.Services.AddHostedService<CloudWatchMetricsExporter>(); // Exportador de métricas a CloudWatch
+builder.Services.AddHostedService<CloudWatchMetricsExporter>(); // Exportador de métricas de Redis a CloudWatch
+builder.Services.AddHostedService<RabbitMqCloudWatchExporter>(); // Exportador de métricas de RabbitMQ a CloudWatch
 
 // Configuración de OpenTelemetry
 builder.Services.AddOpenTelemetry()
@@ -1018,6 +1030,66 @@ using (var scope = app.Services.CreateScope())
         {
             logger.LogWarning("Continuando a pesar del error de migración (modo producción)");
         }
+    }
+
+    // Asegurar que el usuario admin de respaldo siempre exista (desarrollo y producción)
+    try
+    {
+        var usuarioRepo = scope.ServiceProvider.GetRequiredService<IUsuarioRepository>();
+        var factory = scope.ServiceProvider.GetRequiredService<IUsuarioFactory>();
+        var passwordService = scope.ServiceProvider.GetRequiredService<IPasswordService>();
+        
+        const string adminEmail = "admin1@gatekeep.com";
+        const string adminPassword = "admin123";
+        
+        var adminExistente = await usuarioRepo.GetByEmailAsync(adminEmail);
+        
+        if (adminExistente == null)
+        {
+            logger.LogInformation("Creando usuario admin de respaldo: {Email}", adminEmail);
+            
+            var adminDto = new UsuarioDto
+            {
+                Id = 0,
+                Email = adminEmail,
+                Nombre = "Administrador",
+                Apellido = "Respaldo",
+                Contrasenia = passwordService.HashPassword(adminPassword),
+                Telefono = "+1234567890",
+                FechaAlta = DateTime.UtcNow,
+                Credencial = TipoCredencial.Vigente,
+                Rol = Rol.Admin
+            };
+            
+            var admin = factory.CrearUsuario(adminDto);
+            await usuarioRepo.AddAsync(admin);
+            
+            logger.LogInformation("✅ Usuario admin de respaldo creado exitosamente: {Email}", adminEmail);
+        }
+        else
+        {
+            // Verificar que el usuario tenga el rol Admin y actualizar si es necesario
+            if (adminExistente.Rol != Rol.Admin)
+            {
+                logger.LogWarning("Usuario {Email} existe pero no tiene rol Admin. Actualizando rol...", adminEmail);
+                
+                // Actualizar el usuario con el rol Admin
+                var usuarioActualizado = adminExistente with { Rol = Rol.Admin };
+                await usuarioRepo.UpdateAsync(usuarioActualizado);
+                
+                logger.LogInformation("✅ Rol Admin actualizado para usuario: {Email}", adminEmail);
+            }
+            else
+            {
+                logger.LogInformation("✅ Usuario admin de respaldo ya existe: {Email}", adminEmail);
+            }
+        }
+    }
+    catch (Exception seedEx)
+    {
+        logger.LogError(seedEx, "Error al crear/verificar usuario admin de respaldo");
+        // No lanzar excepción - el sistema puede funcionar sin este usuario
+        // Solo registrar el error
     }
 }
 

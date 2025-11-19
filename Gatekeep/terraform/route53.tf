@@ -55,11 +55,27 @@ resource "aws_acm_certificate_validation" "alb" {
   validation_record_fqdns = [for record in aws_route53_record.acm_validation : record.fqdn]
 }
 
-resource "aws_route53_record" "alb_alias" {
+# Route 53 para CloudFront (Frontend)
+resource "aws_route53_record" "cloudfront_alias" {
   count = length(local.all_public_domains)
 
   zone_id = data.aws_route53_zone.primary.zone_id
   name    = local.all_public_domains[count.index]
+  type    = "A"
+
+  alias {
+    name                   = aws_cloudfront_distribution.frontend.domain_name
+    zone_id                = aws_cloudfront_distribution.frontend.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
+# Route 53 para ALB (Backend API) - subdominio api.*
+resource "aws_route53_record" "alb_api_alias" {
+  count = var.enable_https ? length(local.all_public_domains) : 0
+
+  zone_id = data.aws_route53_zone.primary.zone_id
+  name    = "api.${local.all_public_domains[count.index]}"
   type    = "A"
 
   alias {

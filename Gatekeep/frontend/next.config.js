@@ -1,11 +1,21 @@
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
+import withPWAInit from 'next-pwa'
 
 const __filename = fileURLToPath(
     import.meta.url)
 const __dirname = dirname(__filename)
 
 const isDev = process.env.NODE_ENV !== 'production'
+
+const withPWA = withPWAInit({
+    dest: 'public',
+    disable: isDev,
+    register: false, // Registro manual en providers.jsx
+    skipWaiting: true,
+    sw: 'sw.js', // Usar nuestro Service Worker personalizado
+    buildExcludes: [/sw\.js$/, /workbox-.*\.js$/], // Excluir generación automática
+})
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -20,7 +30,23 @@ const nextConfig = {
     transpilePackages: ['primereact', 'primeicons', 'primeflex'],
     // Configuración para evitar conflictos con múltiples lockfiles
     outputFileTracingRoot: __dirname,
-    webpack(config) {
+    webpack(config, { dir, isServer }) {
+        // Configurar alias @/ para apuntar a src/
+        config.resolve.alias = {
+            ...config.resolve.alias,
+            '@': dir + '/src',
+        };
+        
+        // Configurar sql.js para el cliente
+        if (!isServer) {
+            config.resolve.fallback = {
+                ...config.resolve.fallback,
+                fs: false,
+                path: false,
+                crypto: false,
+            };
+        }
+        
         config.module.rules.push({
             test: /\.svg$/,
             use: ['@svgr/webpack'],
@@ -29,5 +55,4 @@ const nextConfig = {
     },
 }
 
-// Exportar configuración sin PWA para evitar dependencia faltante
-export default nextConfig
+export default withPWA(nextConfig)

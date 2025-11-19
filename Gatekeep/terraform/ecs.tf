@@ -368,14 +368,23 @@ resource "aws_lb_target_group" "frontend" {
 }
 
 # ALB Listener con reglas de enrutamiento
+# NOTA: El frontend ahora está en S3+CloudFront, el ALB solo sirve el backend
 resource "aws_lb_listener" "main" {
   load_balancer_arn = aws_lb.main.arn
   port              = "80"
   protocol          = "HTTP"
 
+  # Por defecto, redirigir a HTTPS
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.frontend.arn
+    type = "redirect"
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+      host        = "#{host}"
+      path        = "/#{path}"
+      query       = "#{query}"
+    }
   }
 }
 
@@ -388,9 +397,10 @@ resource "aws_lb_listener" "https" {
   ssl_policy        = "ELBSecurityPolicy-2016-08"
   certificate_arn   = aws_acm_certificate_validation.alb[0].certificate_arn
 
+  # Por defecto, servir backend API (frontend está en CloudFront)
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.frontend.arn
+    target_group_arn = aws_lb_target_group.main.arn
   }
 
   depends_on = [aws_acm_certificate_validation.alb]
@@ -587,12 +597,15 @@ resource "aws_ecs_task_definition" "frontend" {
 # Security Group para Frontend ECS (mismo que backend, puede compartir)
 # Usaremos el mismo security group para simplificar
 
-# ECS Service para Frontend
+# ECS Service para Frontend - DESHABILITADO
+# El frontend ahora se despliega en S3 + CloudFront para mejor rendimiento y fallback offline
+# Este recurso se mantiene comentado por si se necesita revertir
+/*
 resource "aws_ecs_service" "frontend" {
   name            = "${var.project_name}-frontend-service"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.frontend.arn
-  desired_count   = 1
+  desired_count   = 0  # Deshabilitado - frontend en S3+CloudFront
   launch_type     = "FARGATE"
 
   network_configuration {
@@ -626,4 +639,5 @@ resource "aws_ecs_service" "frontend" {
     ManagedBy   = "Terraform"
   }
 }
+*/
 

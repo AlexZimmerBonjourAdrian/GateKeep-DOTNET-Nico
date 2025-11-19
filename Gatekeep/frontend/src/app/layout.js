@@ -1,5 +1,6 @@
 import React from 'react'
 import './globals.css'
+import Providers from './providers'
 // PrimeReact and PrimeIcons global styles
 import 'primeflex/primeflex.css'
 import 'primereact/resources/themes/lara-light-cyan/theme.css'
@@ -39,7 +40,7 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   )

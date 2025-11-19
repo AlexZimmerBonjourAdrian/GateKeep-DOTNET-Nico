@@ -29,3 +29,18 @@ provider "aws" {
   }
 }
 
+# Provider adicional para us-east-1 (requerido para certificados ACM de CloudFront)
+provider "aws" {
+  alias   = "us_east_1"
+  region  = "us-east-1"
+  profile = var.aws_profile
+
+  default_tags {
+    tags = {
+      Project     = "GateKeep"
+      ManagedBy   = "Terraform"
+      Environment = var.environment
+    }
+  }
+}
+
