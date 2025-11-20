@@ -1,58 +1,21 @@
 {
+    "iconUrl":  "https://zimmzimmgames.com/assets/LogoGateKeep.webp",
+    "navigationColor":  "#0066cc",
     "signingKey":  {
                        "path":  "./android.keystore",
                        "alias":  "android"
                    },
-    "navigationColor":  "#0066cc",
-    "themeColor":  "#0066cc",
-    "webManifestUrl":  "https://1a8f2a14103a.ngrok-free.app/manifest.json",
-    "host":  "1a8f2a14103a.ngrok-free.app",
-    "startUrl":  "/",
-    "display":  "standalone",
-    "generatorApp":  "bubblewrap-cli",
-    "backgroundColor":  "#ffffff",
-    "packageId":  "com.gatekeep.app",
-    "shortcuts":  [
-                      {
-                          "url":  "/perfil/escaner",
-                          "name":  "Registrar Acceso",
-                          "shortName":  "Acceso",
-                          "icons":  [
-                                        {
-                                            "src":  "/assets/LogoGateKeep.webp",
-                                            "sizes":  "192x192"
-                                        }
-                                    ]
-                      },
-                      {
-                          "url":  "/notificaciones",
-                          "name":  "Ver Notificaciones",
-                          "shortName":  "Notificaciones",
-                          "icons":  [
-                                        {
-                                            "src":  "/assets/LogoGateKeep.webp",
-                                            "sizes":  "192x192"
-                                        }
-                                    ]
-                      },
-                      {
-                          "url":  "/",
-                          "name":  "Panel principal",
-                          "shortName":  "Panel",
-                          "icons":  [
-                                        {
-                                            "src":  "/assets/LogoGateKeep.webp",
-                                            "sizes":  "192x192"
-                                        }
-                                    ]
-                      }
-                  ],
-    "appVersionName":  "1.0.0",
-    "iconUrl":  "/assets/LogoGateKeep.webp",
     "launcherName":  "GateKeep",
     "name":  "GateKeep",
-    "enableNotifications":  true,
+    "host":  "zimmzimmgames.com",
+    "themeColor":  "#0066cc",
+    "display":  "standalone",
     "appVersionCode":  1,
-    "splashScreenFadeOutDuration":  300,
-    "maskableIconUrl":  "/assets/LogoGateKeep.webp"
+    "webManifestUrl":  "https://zimmzimmgames.com/manifest.json",
+    "maskableIconUrl":  "https://zimmzimmgames.com/assets/LogoGateKeep.webp",
+    "backgroundColor":  "#ffffff",
+    "appVersionName":  "1.0.0",
+    "packageId":  "com.gatekeep.app",
+    "startUrl":  "/",
+    "generatorApp":  "bubblewrap-cli"
 }

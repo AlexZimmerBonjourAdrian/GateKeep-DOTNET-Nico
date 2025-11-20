@@ -531,7 +531,10 @@ try {
     Write-Host "    Ejecutando Bubblewrap init de forma interactiva..." -ForegroundColor Gray
     Write-Host "    Por favor, responde las preguntas que aparezcan a continuación:" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "    Valores sugeridos:" -ForegroundColor Cyan
+    Write-Host "    ========================================" -ForegroundColor Cyan
+    Write-Host "    IMPORTANTE: Usa estos valores EXACTOS" -ForegroundColor Yellow
+    Write-Host "    ========================================" -ForegroundColor Cyan
+    Write-Host ""
     Write-Host "    Domain: $domain" -ForegroundColor White
     Write-Host "    URL path: $startUrl" -ForegroundColor White
     Write-Host "    Application name: $appName" -ForegroundColor White
@@ -542,10 +545,13 @@ try {
     Write-Host "    Orientation: $orientation" -ForegroundColor White
     Write-Host "    Status bar color: $themeColor" -ForegroundColor White
     Write-Host "    Splash screen color: $backgroundColor" -ForegroundColor White
-    Write-Host "    Icon URL: $iconLocalUrl" -ForegroundColor White
-    Write-Host "    Maskable icon URL: $iconLocalUrl" -ForegroundColor White
+    Write-Host ""
+    Write-Host "    ⚠️  CRÍTICO - Icon URL: $iconLocalUrl" -ForegroundColor Yellow -BackgroundColor DarkRed
+    Write-Host "    ⚠️  CRÍTICO - Maskable icon URL: $iconLocalUrl" -ForegroundColor Yellow -BackgroundColor DarkRed
+    Write-Host "    (NO uses la URL de ngrok, usa localhost:8000)" -ForegroundColor Red
+    Write-Host ""
     Write-Host "    Include shortcuts: $(if ($hasShortcuts) { 'Yes' } else { 'No' })" -ForegroundColor White
-    Write-Host "    Monochrome icon URL: (dejar vacío)" -ForegroundColor White
+    Write-Host "    Monochrome icon URL: (dejar vacío o presionar Enter)" -ForegroundColor White
     Write-Host "    Include support for Play Billing?: No" -ForegroundColor White
     Write-Host "    Request geolocation permission?: No" -ForegroundColor White
     Write-Host "    Key store location: $keystorePath" -ForegroundColor White
@@ -591,8 +597,16 @@ try {
         throw "build.gradle no se generó correctamente"
     }
     
+    # Actualizar automáticamente el icono con la URL local (corrige el problema de Content-Type) (corrige el problema de Content-Type)
+    Write-Host "    Actualizando icono con URL local..." -ForegroundColor Gray
+    $twaManifest = Get-Content $twaManifestPath -Raw | ConvertFrom-Json
+    $twaManifest.iconUrl = $iconLocalUrl
+    $twaManifest.maskableIconUrl = $iconLocalUrl
+    $twaManifest | ConvertTo-Json -Depth 10 | Set-Content $twaManifestPath
+    Write-Host "    Icono actualizado a URL local: $iconLocalUrl" -ForegroundColor Green
+    
     Write-Host "    Proyecto Android inicializado exitosamente" -ForegroundColor Green
-    Write-Host "    twa-manifest.json: Verificado" -ForegroundColor Gray
+    Write-Host "    twa-manifest.json: Verificado y actualizado" -ForegroundColor Gray
     Write-Host "    build.gradle: Verificado" -ForegroundColor Gray
 } catch {
     Write-Host "    Error en init: $_" -ForegroundColor Red
