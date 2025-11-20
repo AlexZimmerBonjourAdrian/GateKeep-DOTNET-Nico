@@ -313,42 +313,25 @@ function Login-ECR {
         return $false
     }
     
-    # Asegurar que la URL no tenga protocolo para extraer el host
-    $ecrHost = $EcrUrl -replace "^https?://", ""
+    # Asegurar que la URL no tenga protocolo
+    $EcrUrl = $EcrUrl -replace "^https?://", ""
     
     try {
-        # Obtener el token de ECR
-        Write-Host "  Obteniendo token de ECR..." -ForegroundColor Gray
-        $password = aws ecr get-login-password --region $Region
+        $password = aws ecr get-login-password --region $Region 2>&1
         if ($LASTEXITCODE -ne 0) {
             Write-Host "Error: No se pudo obtener el token de ECR" -ForegroundColor Red
-            Write-Host "  Verifica que AWS CLI esté configurado correctamente" -ForegroundColor Yellow
-            Write-Host "  Ejecuta: aws configure" -ForegroundColor Yellow
+            Write-Host "  Detalle: $password" -ForegroundColor Gray
             return $false
         }
         
-        # Verificar que el password no esté vacío
-        if ([string]::IsNullOrWhiteSpace($password)) {
-            Write-Host "Error: El token de ECR está vacío" -ForegroundColor Red
-            return $false
-        }
-        
-        # Hacer login en Docker usando Write-Output para el pipe
-        Write-Host "  Autenticando con Docker..." -ForegroundColor Gray
-        $loginResult = $password | docker login --username AWS --password-stdin $ecrHost 2>&1
-        $loginSuccess = $LASTEXITCODE -eq 0
-        
-        if (-not $loginSuccess) {
+        $password | docker login --username AWS --password-stdin $EcrUrl 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
             Write-Host "Error: Falló el login en ECR" -ForegroundColor Red
-            Write-Host "  URL intentada: $ecrHost" -ForegroundColor Gray
-            if ($loginResult) {
-                Write-Host "  Detalle: $loginResult" -ForegroundColor Gray
-            }
-            Write-Host "  Verifica que Docker esté ejecutándose" -ForegroundColor Yellow
+            Write-Host "  URL intentada: $EcrUrl" -ForegroundColor Gray
             return $false
         }
         
-        Write-Host "  [OK] Login exitoso en ECR" -ForegroundColor Green
+        Write-Host "Login exitoso en ECR" -ForegroundColor Green
         return $true
     } catch {
         Write-Host "Error durante el login en ECR: $_" -ForegroundColor Red

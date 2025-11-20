@@ -87,7 +87,9 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
         ]
         Resource = [
           aws_secretsmanager_secret.db_password.arn,
-          aws_secretsmanager_secret.jwt_key.arn
+          aws_secretsmanager_secret.jwt_key.arn,
+          aws_secretsmanager_secret.mongodb_connection.arn,
+          aws_secretsmanager_secret.rabbitmq_password.arn
         ]
       },
       {
@@ -217,6 +219,45 @@ resource "aws_ecs_task_definition" "main" {
         {
           name  = "DATABASE__USER"
           value = aws_ssm_parameter.db_username.value
+        },
+        # MongoDB - valores no sensibles
+        {
+          name  = "MONGODB_DATABASE"
+          value = "GateKeepMongo"
+        },
+        {
+          name  = "MONGODB_USE_STABLE_API"
+          value = "true"
+        },
+        # Redis - desde ElastiCache
+        {
+          name  = "REDIS_CONNECTION"
+          value = "${aws_elasticache_replication_group.main.configuration_endpoint_address != "" ? aws_elasticache_replication_group.main.configuration_endpoint_address : aws_elasticache_replication_group.main.primary_endpoint_address}:${aws_elasticache_replication_group.main.port}"
+        },
+        {
+          name  = "REDIS_INSTANCE"
+          value = "GateKeep:"
+        },
+        # RabbitMQ - desde Amazon MQ (SSL en puerto 5671)
+        {
+          name  = "RABBITMQ__HOST"
+          value = split(":", aws_mq_broker.main.instances[0].endpoint)[0]
+        },
+        {
+          name  = "RABBITMQ__PORT"
+          value = "5671"
+        },
+        {
+          name  = "RABBITMQ__USE_SSL"
+          value = "true"
+        },
+        {
+          name  = "RABBITMQ__USERNAME"
+          value = "admin"
+        },
+        {
+          name  = "RABBITMQ__VIRTUALHOST"
+          value = "/"
         }
       ]
 
@@ -230,6 +271,16 @@ resource "aws_ecs_task_definition" "main" {
         {
           name      = "JWT__KEY"
           valueFrom = aws_secretsmanager_secret.jwt_key.arn
+        },
+        # MongoDB - desde Secrets Manager
+        {
+          name      = "MONGODB_CONNECTION"
+          valueFrom = aws_secretsmanager_secret.mongodb_connection.arn
+        },
+        # RabbitMQ - desde Secrets Manager
+        {
+          name      = "RABBITMQ__PASSWORD"
+          valueFrom = aws_secretsmanager_secret.rabbitmq_password.arn
         }
       ]
 

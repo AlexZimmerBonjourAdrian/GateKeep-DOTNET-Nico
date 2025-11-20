@@ -600,13 +600,27 @@ builder.Services.AddMassTransit(x =>
         var initialIntervalSeconds = int.Parse(rabbitMqConfig["InitialIntervalSeconds"] ?? "5");
         var intervalIncrementSeconds = int.Parse(rabbitMqConfig["IntervalIncrementSeconds"] ?? "10");
 
-        Log.Information("Configurando RabbitMQ - Host: {Host}:{Port}, VHost: {VirtualHost}, Usuario: {Username}", 
-            host, port, virtualHost, username);
+        // Verificar si se debe usar SSL (Amazon MQ usa SSL en puerto 5671)
+        var useSsl = builder.Configuration["RABBITMQ:USE_SSL"]?.ToLower() == "true"
+            || Environment.GetEnvironmentVariable("RABBITMQ__USE_SSL")?.ToLower() == "true"
+            || port == 5671; // Puerto 5671 generalmente indica SSL
+
+        Log.Information("Configurando RabbitMQ - Host: {Host}:{Port}, VHost: {VirtualHost}, Usuario: {Username}, SSL: {UseSsl}", 
+            host, port, virtualHost, username, useSsl);
 
         cfg.Host(host, (ushort)port, virtualHost, h =>
         {
             h.Username(username);
             h.Password(password);
+            
+            // Configurar SSL si es necesario (Amazon MQ requiere SSL)
+            if (useSsl)
+            {
+                h.UseSsl(s =>
+                {
+                    s.Protocol = System.Security.Authentication.SslProtocols.Tls12;
+                });
+            }
         });
 
         // Configurar reintentos con backoff exponencial

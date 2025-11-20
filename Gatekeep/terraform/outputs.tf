@@ -149,3 +149,48 @@ output "ecr_frontend_repository_url" {
 #   value       = aws_ecs_service.frontend.name
 # }
 
+# ElastiCache Redis
+output "redis_endpoint" {
+  description = "Endpoint de ElastiCache Redis"
+  value       = aws_elasticache_replication_group.main.configuration_endpoint_address != "" ? aws_elasticache_replication_group.main.configuration_endpoint_address : aws_elasticache_replication_group.main.primary_endpoint_address
+}
+
+output "redis_port" {
+  description = "Puerto de ElastiCache Redis"
+  value       = aws_elasticache_replication_group.main.port
+}
+
+output "redis_connection_string" {
+  description = "Connection string completo de Redis (endpoint:port)"
+  value       = "${aws_elasticache_replication_group.main.configuration_endpoint_address != "" ? aws_elasticache_replication_group.main.configuration_endpoint_address : aws_elasticache_replication_group.main.primary_endpoint_address}:${aws_elasticache_replication_group.main.port}"
+}
+
+# Amazon MQ RabbitMQ
+output "rabbitmq_endpoint" {
+  description = "Endpoint de Amazon MQ RabbitMQ"
+  value       = aws_mq_broker.main.instances[0].endpoint
+}
+
+output "rabbitmq_amqp_endpoint" {
+  description = "Endpoint AMQP de RabbitMQ (hostname sin puerto)"
+  value       = split(":", aws_mq_broker.main.instances[0].endpoint)[0]
+}
+
+output "rabbitmq_console_url" {
+  description = "URL de la consola de administración de RabbitMQ"
+  value       = "https://${aws_mq_broker.main.instances[0].console_url}"
+}
+
+# Secrets Manager - Nuevos secretos
+output "mongodb_connection_secret_arn" {
+  description = "ARN del secret de MongoDB connection string"
+  value       = aws_secretsmanager_secret.mongodb_connection.arn
+  sensitive   = true
+}
+
+output "rabbitmq_password_secret_arn" {
+  description = "ARN del secret de RabbitMQ password"
+  value       = aws_secretsmanager_secret.rabbitmq_password.arn
+  sensitive   = true
+}
+
