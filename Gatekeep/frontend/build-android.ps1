@@ -56,9 +56,98 @@ function Stop-BackgroundProcesses {
     }
 }
 
-# 1. Construir PWA
+# Función para validar requisitos previos
+function Test-Prerequisites {
+    Write-Host "Validando requisitos previos..." -ForegroundColor Yellow
+    
+    # Validar Node.js
+    if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+        Write-Host "   Error: Node.js no está instalado" -ForegroundColor Red
+        Write-Host "   Instala Node.js desde: https://nodejs.org/" -ForegroundColor Yellow
+        return $false
+    }
+    $nodeVersion = node --version
+    Write-Host "   Node.js: $nodeVersion" -ForegroundColor Green
+    
+    # Validar Python (para servidor HTTP)
+    if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
+        Write-Host "   Error: Python no está instalado" -ForegroundColor Red
+        Write-Host "   Instala Python desde: https://www.python.org/downloads/" -ForegroundColor Yellow
+        return $false
+    }
+    $pythonVersion = python --version 2>&1
+    Write-Host "   Python: $pythonVersion" -ForegroundColor Green
+    
+    # Validar ngrok (si no se está saltando)
+    if (-not $SkipNgrok) {
+        if (-not (Get-Command ngrok -ErrorAction SilentlyContinue)) {
+            Write-Host "   Error: ngrok no está instalado" -ForegroundColor Red
+            Write-Host "   Instala ngrok desde: https://ngrok.com/download" -ForegroundColor Yellow
+            return $false
+        }
+        Write-Host "   ngrok: Instalado" -ForegroundColor Green
+    }
+    
+    # Validar puertos disponibles
+    $port3000 = Get-NetTCPConnection -LocalPort $NextJsPort -ErrorAction SilentlyContinue
+    $port8000 = Get-NetTCPConnection -LocalPort $IconServerPort -ErrorAction SilentlyContinue
+    
+    if ($port3000 -and $port3000.State -eq "Listen") {
+        Write-Host "   Puerto ${NextJsPort}: En uso (OK si Next.js ya está corriendo)" -ForegroundColor Yellow
+    } else {
+        Write-Host "   Puerto ${NextJsPort}: Disponible" -ForegroundColor Green
+    }
+    
+    if ($port8000 -and $port8000.State -eq "Listen") {
+        Write-Host "   Puerto ${IconServerPort}: En uso (OK si servidor HTTP ya está corriendo)" -ForegroundColor Yellow
+    } else {
+        Write-Host "   Puerto ${IconServerPort}: Disponible" -ForegroundColor Green
+    }
+    
+    Write-Host "   Requisitos previos validados" -ForegroundColor Green
+    return $true
+}
+
+# Función para verificar que un servicio esté respondiendo
+function Test-ServiceResponse {
+    param(
+        [string]$Url,
+        [int]$MaxRetries = 5,
+        [int]$RetryDelay = 2
+    )
+    
+    $retryCount = 0
+    while ($retryCount -lt $MaxRetries) {
+        try {
+            $response = Invoke-WebRequest -Uri $Url -Method Head -TimeoutSec 5 -UseBasicParsing -ErrorAction Stop
+            if ($response.StatusCode -eq 200) {
+                return $true
+            }
+        } catch {
+            $retryCount++
+            if ($retryCount -lt $MaxRetries) {
+                Start-Sleep -Seconds $RetryDelay
+            }
+        }
+    }
+    return $false
+}
+
+# Validar requisitos previos
+# Verificar que la función esté definida
+if (-not (Get-Command Test-Prerequisites -ErrorAction SilentlyContinue)) {
+    Write-Host "Error: La función Test-Prerequisites no está definida" -ForegroundColor Red
+    exit 1
+}
+
+if (-not (Test-Prerequisites)) {
+    exit 1
+}
+Write-Host ""
+
+# 1. Construir PWA (siempre ejecutar build a menos que se use --SkipBuild)
+Write-Host "1. Construyendo PWA..." -ForegroundColor Yellow
 if (-not $SkipBuild) {
-    Write-Host "1. Construyendo PWA..." -ForegroundColor Yellow
     if (-not (Test-Path "node_modules")) {
         Write-Host "   Instalando dependencias..." -ForegroundColor Gray
         npm install
@@ -77,7 +166,7 @@ if (-not $SkipBuild) {
     Write-Host "   PWA construida exitosamente" -ForegroundColor Green
     Write-Host ""
 } else {
-    Write-Host "1. Saltando construcción (--skip-build)" -ForegroundColor Yellow
+    Write-Host "   Saltando construcción (--skip-build)" -ForegroundColor Yellow
     Write-Host ""
 }
 
@@ -147,10 +236,24 @@ $nodeProcess = Get-Process -Name node -ErrorAction SilentlyContinue | Where-Obje
 if (-not $nodeProcess) {
     Write-Host "   Iniciando servidor Next.js en puerto $NextJsPort..." -ForegroundColor Gray
     Start-Process -FilePath "npm" -ArgumentList "run", "dev" -WindowStyle Hidden
-    Start-Sleep -Seconds 5
-    Write-Host "   Servidor iniciado" -ForegroundColor Green
+    Start-Sleep -Seconds 8
+    
+    # Verificar que el servidor esté respondiendo
+    $serverUrl = "http://localhost:$NextJsPort"
+    Write-Host "   Verificando que el servidor esté respondiendo..." -ForegroundColor Gray
+    if (Test-ServiceResponse -Url $serverUrl -MaxRetries 10 -RetryDelay 2) {
+        Write-Host "   Servidor iniciado y respondiendo" -ForegroundColor Green
+    } else {
+        Write-Host "   Advertencia: Servidor iniciado pero no responde aún" -ForegroundColor Yellow
+        Write-Host "   Continuando..." -ForegroundColor Gray
+    }
 } else {
     Write-Host "   Servidor ya está corriendo en puerto $NextJsPort" -ForegroundColor Green
+    # Verificar que esté respondiendo
+    $serverUrl = "http://localhost:$NextJsPort"
+    if (-not (Test-ServiceResponse -Url $serverUrl -MaxRetries 3)) {
+        Write-Host "   Advertencia: Servidor no responde, puede haber problemas" -ForegroundColor Yellow
+    }
 }
 Write-Host ""
 
@@ -164,10 +267,24 @@ if (-not $pythonProcess) {
     Write-Host "   Iniciando servidor Python en puerto $IconServerPort..." -ForegroundColor Gray
     $publicDir = Join-Path $ScriptDir "public"
     Start-Process -FilePath "python" -ArgumentList "-m", "http.server", $IconServerPort, "--directory", $publicDir -WindowStyle Hidden
-    Start-Sleep -Seconds 3
-    Write-Host "   Servidor de icono iniciado" -ForegroundColor Green
+    Start-Sleep -Seconds 5
+    
+    # Verificar que el servidor esté respondiendo
+    $iconServerUrl = "http://localhost:$IconServerPort"
+    Write-Host "   Verificando que el servidor de icono esté respondiendo..." -ForegroundColor Gray
+    if (Test-ServiceResponse -Url $iconServerUrl -MaxRetries 5) {
+        Write-Host "   Servidor de icono iniciado y respondiendo" -ForegroundColor Green
+    } else {
+        Write-Host "   Advertencia: Servidor de icono iniciado pero no responde aún" -ForegroundColor Yellow
+        Write-Host "   Continuando..." -ForegroundColor Gray
+    }
 } else {
     Write-Host "   Servidor de icono ya está corriendo" -ForegroundColor Green
+    # Verificar que esté respondiendo
+    $iconServerUrl = "http://localhost:$IconServerPort"
+    if (-not (Test-ServiceResponse -Url $iconServerUrl -MaxRetries 3)) {
+        Write-Host "   Advertencia: Servidor de icono no responde" -ForegroundColor Yellow
+    }
 }
 Write-Host ""
 
@@ -302,58 +419,214 @@ if (Test-Path $AndroidDir) {
 New-Item -ItemType Directory -Path $AndroidDir -Force | Out-Null
 Write-Host ""
 
-# 10. Inicializar proyecto Android
-Write-Host "10. Inicializando proyecto Android..." -ForegroundColor Yellow
+# 10. Leer datos del manifest para pre-llenar respuestas
+Write-Host "10. Preparando datos del manifest..." -ForegroundColor Yellow
+$manifestData = $null
+try {
+    $manifestResponse = Invoke-RestMethod -Uri $manifestUrl -TimeoutSec 10
+    $manifestData = $manifestResponse
+    Write-Host "    Manifest cargado exitosamente" -ForegroundColor Green
+} catch {
+    Write-Host "    Advertencia: No se pudo cargar el manifest, usando valores por defecto" -ForegroundColor Yellow
+    $manifestData = @{
+        name = "GateKeep"
+        short_name = "GateKeep"
+        display = "standalone"
+        orientation = "portrait-primary"
+        theme_color = "#0066cc"
+        background_color = "#ffffff"
+        shortcuts = @()
+    }
+}
+
+# Extraer valores del manifest
+$appName = if ($manifestData.name) { $manifestData.name } else { "GateKeep" }
+$shortName = if ($manifestData.short_name) { $manifestData.short_name } else { "GateKeep" }
+$displayMode = if ($manifestData.display) { $manifestData.display } else { "standalone" }
+$orientation = if ($manifestData.orientation) { $manifestData.orientation } else { "portrait-primary" }
+$themeColor = if ($manifestData.theme_color) { $manifestData.theme_color } else { "#0066CC" }
+$backgroundColor = if ($manifestData.background_color) { $manifestData.background_color } else { "#FFFFFF" }
+$hasShortcuts = ($manifestData.shortcuts -and $manifestData.shortcuts.Count -gt 0)
+
+# Extraer dominio de la URL de ngrok
+$uri = [System.Uri]$PwaUrl
+$domain = $uri.Host
+$startUrl = if ($manifestData.start_url) { $manifestData.start_url } else { "/" }
+
+Write-Host "    App Name: $appName" -ForegroundColor Gray
+Write-Host "    Domain: $domain" -ForegroundColor Gray
+Write-Host "    Start URL: $startUrl" -ForegroundColor Gray
+Write-Host ""
+
+# 11. Inicializar proyecto Android con respuestas automáticas
+Write-Host "11. Inicializando proyecto Android..." -ForegroundColor Yellow
 Write-Host "    URL del manifest: $manifestUrl" -ForegroundColor Gray
 Write-Host "    Esto puede tardar varios minutos..." -ForegroundColor Gray
+Write-Host "    Respondiendo preguntas automáticamente..." -ForegroundColor Gray
 
-# Determinar cómo ejecutar Bubblewrap
+# Determinar cómo ejecutar Bubblewrap con rutas absolutas
 $bubblewrapCmd = $null
-$bubblewrapArgs = @("init", "--manifest", $manifestUrl, "--directory", $AndroidDir)
+$bubblewrapFullPath = $null
+$useCmdExe = $false
 
-# Intentar usar la ruta local primero
-if (Test-Path "node_modules\.bin\bubblewrap.cmd") {
-    $bubblewrapCmd = ".\node_modules\.bin\bubblewrap.cmd"
-    Write-Host "    Usando Bubblewrap local (cmd)" -ForegroundColor Gray
-} elseif (Test-Path "node_modules\.bin\bubblewrap") {
-    $bubblewrapCmd = ".\node_modules\.bin\bubblewrap"
-    Write-Host "    Usando Bubblewrap local" -ForegroundColor Gray
+$bubblewrapCmdPath = Join-Path $ScriptDir "node_modules\.bin\bubblewrap.cmd"
+$bubblewrapPath = Join-Path $ScriptDir "node_modules\.bin\bubblewrap"
+
+if (Test-Path $bubblewrapCmdPath) {
+    $bubblewrapFullPath = Resolve-Path $bubblewrapCmdPath
+    $bubblewrapCmd = $bubblewrapFullPath.Path
+    $useCmdExe = $true
+    Write-Host "    Usando Bubblewrap local (cmd): $bubblewrapCmd" -ForegroundColor Gray
+} elseif (Test-Path $bubblewrapPath) {
+    $bubblewrapFullPath = Resolve-Path $bubblewrapPath
+    $bubblewrapCmd = $bubblewrapFullPath.Path
+    Write-Host "    Usando Bubblewrap local: $bubblewrapCmd" -ForegroundColor Gray
 } elseif (Get-Command bubblewrap -ErrorAction SilentlyContinue) {
-    $bubblewrapCmd = "bubblewrap"
-    Write-Host "    Usando Bubblewrap global" -ForegroundColor Gray
+    $bubblewrapCmd = (Get-Command bubblewrap).Source
+    Write-Host "    Usando Bubblewrap global: $bubblewrapCmd" -ForegroundColor Gray
 } else {
-    # Usar npx como último recurso
     $bubblewrapCmd = "npx"
-    $bubblewrapArgs = @("@bubblewrap/cli", "init", "--manifest", $manifestUrl, "--directory", $AndroidDir)
     Write-Host "    Usando Bubblewrap vía npx" -ForegroundColor Gray
 }
 
-$initCmd = "$bubblewrapCmd $($bubblewrapArgs -join ' ')"
-Write-Host "    Comando: $initCmd" -ForegroundColor DarkGray
+# Validar que el ejecutable exista (excepto para npx)
+if ($bubblewrapCmd -ne "npx" -and -not (Test-Path $bubblewrapCmd)) {
+    Write-Host "    Error: Bubblewrap no encontrado en: $bubblewrapCmd" -ForegroundColor Red
+    exit 1
+}
+
+# Crear archivo de respuestas para Bubblewrap
+$responsesFile = Join-Path $ScriptDir "bubblewrap-responses.txt"
+$iconLocalUrl = "http://localhost:$IconServerPort/assets/LogoGateKeep.webp"
+$keystorePath = Join-Path $AndroidDir "android.keystore"
+
+# Respuestas en el orden que Bubblewrap las pregunta
+$includeShortcuts = if ($hasShortcuts) { "Yes" } else { "No" }
+$responses = @(
+    $domain,                    # Domain
+    $startUrl,                  # URL path
+    $appName,                   # Application name
+    $shortName,                 # Short name
+    $PackageName,               # Application ID
+    "1",                        # Starting version code
+    $displayMode,               # Display mode
+    $orientation,               # Orientation
+    $themeColor,                # Status bar color
+    $backgroundColor,           # Splash screen color
+    $iconLocalUrl,              # Icon URL
+    $iconLocalUrl,              # Maskable icon URL
+    $includeShortcuts,          # Include app shortcuts?
+    "",                         # Monochrome icon URL (vacío)
+    "No",                       # Include support for Play Billing?
+    "No",                       # Request geolocation permission?
+    $keystorePath,              # Key store location
+    "android"                   # Key name
+)
+
+# Guardar respuestas en archivo temporal
+$responses | Out-File -FilePath $responsesFile -Encoding ASCII -NoNewline
 
 try {
-    # Ejecutar init
+    # Ejecutar init de forma interactiva para que el usuario responda las preguntas
+    Write-Host "    Ejecutando Bubblewrap init de forma interactiva..." -ForegroundColor Gray
+    Write-Host "    Por favor, responde las preguntas que aparezcan a continuación:" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "    Valores sugeridos:" -ForegroundColor Cyan
+    Write-Host "    Domain: $domain" -ForegroundColor White
+    Write-Host "    URL path: $startUrl" -ForegroundColor White
+    Write-Host "    Application name: $appName" -ForegroundColor White
+    Write-Host "    Short name: $shortName" -ForegroundColor White
+    Write-Host "    Application ID: $PackageName" -ForegroundColor White
+    Write-Host "    Starting version code: 1" -ForegroundColor White
+    Write-Host "    Display mode: $displayMode" -ForegroundColor White
+    Write-Host "    Orientation: $orientation" -ForegroundColor White
+    Write-Host "    Status bar color: $themeColor" -ForegroundColor White
+    Write-Host "    Splash screen color: $backgroundColor" -ForegroundColor White
+    Write-Host "    Icon URL: $iconLocalUrl" -ForegroundColor White
+    Write-Host "    Maskable icon URL: $iconLocalUrl" -ForegroundColor White
+    Write-Host "    Include shortcuts: $(if ($hasShortcuts) { 'Yes' } else { 'No' })" -ForegroundColor White
+    Write-Host "    Monochrome icon URL: (dejar vacío)" -ForegroundColor White
+    Write-Host "    Include support for Play Billing?: No" -ForegroundColor White
+    Write-Host "    Request geolocation permission?: No" -ForegroundColor White
+    Write-Host "    Key store location: $keystorePath" -ForegroundColor White
+    Write-Host "    Key name: android" -ForegroundColor White
+    Write-Host ""
+    
+    # Construir comando completo con rutas absolutas
     if ($bubblewrapCmd -eq "npx") {
-        $initOutput = & npx @bubblewrap/cli init --manifest $manifestUrl --directory $AndroidDir 2>&1
+        $initCommand = "npx @bubblewrap/cli init --manifest `"$manifestUrl`" --directory `"$AndroidDir`""
+    } elseif ($useCmdExe) {
+        # Para archivos .cmd, usar cmd.exe con ruta absoluta (sin comillas adicionales)
+        $initCommand = "cmd.exe /c $bubblewrapCmd init --manifest `"$manifestUrl`" --directory `"$AndroidDir`""
     } else {
-        $initOutput = & $bubblewrapCmd $bubblewrapArgs 2>&1
+        # Usar ruta absoluta directamente
+        $initCommand = "& `"$bubblewrapCmd`" init --manifest `"$manifestUrl`" --directory `"$AndroidDir`""
+    }
+    
+    # Ejecutar de forma interactiva (sin redirección de entrada/salida)
+    Write-Host "    Ejecutando: $initCommand" -ForegroundColor DarkGray
+    Write-Host ""
+    
+    if ($bubblewrapCmd -eq "npx") {
+        & npx @bubblewrap/cli init --manifest $manifestUrl --directory $AndroidDir
+    } elseif ($useCmdExe) {
+        & cmd.exe /c "$bubblewrapCmd init --manifest `"$manifestUrl`" --directory `"$AndroidDir`""
+    } else {
+        & $bubblewrapCmd init --manifest $manifestUrl --directory $AndroidDir
     }
     
     if ($LASTEXITCODE -ne 0) {
         throw "Falló init con código: $LASTEXITCODE"
     }
     
+    # Validar que el proyecto se haya creado correctamente
+    $twaManifestPath = Join-Path $AndroidDir "twa-manifest.json"
+    $buildGradlePath = Join-Path $AndroidDir "build.gradle"
+    
+    if (-not (Test-Path $twaManifestPath)) {
+        throw "twa-manifest.json no se generó correctamente"
+    }
+    
+    if (-not (Test-Path $buildGradlePath)) {
+        throw "build.gradle no se generó correctamente"
+    }
+    
     Write-Host "    Proyecto Android inicializado exitosamente" -ForegroundColor Green
+    Write-Host "    twa-manifest.json: Verificado" -ForegroundColor Gray
+    Write-Host "    build.gradle: Verificado" -ForegroundColor Gray
 } catch {
     Write-Host "    Error en init: $_" -ForegroundColor Red
-    Write-Host "    Output: $initOutput" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "    Si el proceso falló, puedes ejecutar manualmente:" -ForegroundColor Yellow
+    Write-Host "    $bubblewrapCmd init --manifest `"$manifestUrl`" --directory `"$AndroidDir`"" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "    Valores sugeridos para las preguntas:" -ForegroundColor Yellow
+    Write-Host "    Domain: $domain" -ForegroundColor White
+    Write-Host "    URL path: $startUrl" -ForegroundColor White
+    Write-Host "    Application name: $appName" -ForegroundColor White
+    Write-Host "    Short name: $shortName" -ForegroundColor White
+    Write-Host "    Application ID: $PackageName" -ForegroundColor White
+    Write-Host "    Display mode: $displayMode" -ForegroundColor White
+    Write-Host "    Orientation: $orientation" -ForegroundColor White
+    Write-Host "    Status bar color: $themeColor" -ForegroundColor White
+    Write-Host "    Splash screen color: $backgroundColor" -ForegroundColor White
+    Write-Host "    Icon URL: $iconLocalUrl" -ForegroundColor White
+    Write-Host "    Maskable icon URL: $iconLocalUrl" -ForegroundColor White
+    Write-Host "    Include shortcuts: $(if ($hasShortcuts) { 'Yes' } else { 'No' })" -ForegroundColor White
+    Write-Host "    Key store location: $keystorePath" -ForegroundColor White
+    Write-Host "    Key name: android" -ForegroundColor White
     exit 1
+} finally {
+    # Limpiar archivo temporal
+    if (Test-Path $responsesFile) {
+        Remove-Item $responsesFile -Force -ErrorAction SilentlyContinue
+    }
 }
 Write-Host ""
 
-# 11. Actualizar icono con archivo local
-Write-Host "11. Actualizando icono con archivo local..." -ForegroundColor Yellow
-$iconLocalUrl = "http://localhost:$IconServerPort/assets/LogoGateKeep.webp"
+# 12. Actualizar icono con archivo local
+Write-Host "12. Actualizando icono con archivo local..." -ForegroundColor Yellow
+# $iconLocalUrl ya está definido en la sección 11
 
 # Actualizar twa-manifest.json
 $twaManifestPath = Join-Path $AndroidDir "twa-manifest.json"
@@ -367,20 +640,28 @@ if (Test-Path $twaManifestPath) {
 
 # Actualizar con bubblewrap
 try {
-    # Determinar cómo ejecutar Bubblewrap (reutilizar la lógica de la sección 10)
+    # Determinar cómo ejecutar Bubblewrap (reutilizar la lógica de la sección 11)
     $bubblewrapUpdateCmd = $null
-    if (Test-Path "node_modules\.bin\bubblewrap.cmd") {
-        $bubblewrapUpdateCmd = ".\node_modules\.bin\bubblewrap.cmd"
-    } elseif (Test-Path "node_modules\.bin\bubblewrap") {
-        $bubblewrapUpdateCmd = ".\node_modules\.bin\bubblewrap"
+    $bubblewrapUpdateUseCmd = $false
+    
+    $bubblewrapUpdateCmdPath = Join-Path $ScriptDir "node_modules\.bin\bubblewrap.cmd"
+    $bubblewrapUpdatePath = Join-Path $ScriptDir "node_modules\.bin\bubblewrap"
+    
+    if (Test-Path $bubblewrapUpdateCmdPath) {
+        $bubblewrapUpdateCmd = (Resolve-Path $bubblewrapUpdateCmdPath).Path
+        $bubblewrapUpdateUseCmd = $true
+    } elseif (Test-Path $bubblewrapUpdatePath) {
+        $bubblewrapUpdateCmd = (Resolve-Path $bubblewrapUpdatePath).Path
     } elseif (Get-Command bubblewrap -ErrorAction SilentlyContinue) {
-        $bubblewrapUpdateCmd = "bubblewrap"
+        $bubblewrapUpdateCmd = (Get-Command bubblewrap).Source
     } else {
         $bubblewrapUpdateCmd = "npx"
     }
     
     if ($bubblewrapUpdateCmd -eq "npx") {
         $updateOutput = & npx @bubblewrap/cli update --icon $IconPath --directory $AndroidDir 2>&1
+    } elseif ($bubblewrapUpdateUseCmd) {
+        $updateOutput = & cmd.exe /c "$bubblewrapUpdateCmd update --icon `"$IconPath`" --directory `"$AndroidDir`"" 2>&1
     } else {
         $updateOutput = & $bubblewrapUpdateCmd update --icon $IconPath --directory $AndroidDir 2>&1
     }
@@ -396,8 +677,8 @@ try {
 }
 Write-Host ""
 
-# 12. Configurar variables de entorno para Gradle
-Write-Host "12. Configurando variables de entorno..." -ForegroundColor Yellow
+# 13. Configurar variables de entorno para Gradle
+Write-Host "13. Configurando variables de entorno..." -ForegroundColor Yellow
 
 # Configurar ANDROID_HOME
 $bubblewrapAndroidSdk = "$env:USERPROFILE\.bubblewrap\android_sdk"
@@ -433,10 +714,36 @@ if (Test-Path $buildGradlePath) {
         Write-Host "    build.gradle actualizado (jcenter -> mavenCentral)" -ForegroundColor Green
     }
 }
+
+# Configurar app/build.gradle para APK sin firma
+$appBuildGradlePath = Join-Path $AndroidDir "app\build.gradle"
+if (Test-Path $appBuildGradlePath) {
+    $appBuildGradleContent = Get-Content $appBuildGradlePath -Raw
+    
+    # Modificar buildTypes para que release no requiera firma
+    if ($appBuildGradleContent -match "buildTypes\s*\{") {
+        # Buscar el bloque release y agregar signingConfig null si no existe
+        if ($appBuildGradleContent -match "release\s*\{") {
+            # Si release no tiene signingConfig, agregarlo
+            if ($appBuildGradleContent -notmatch "release\s*\{[^}]*signingConfig") {
+                # Reemplazar release { ... } agregando signingConfig null
+                $appBuildGradleContent = $appBuildGradleContent -replace "(release\s*\{[^\}]*?)(minifyEnabled\s+true)", "`$1`$2`n            signingConfig null  // APK sin firma para pruebas"
+                
+                # Si no tiene minifyEnabled, agregarlo junto con signingConfig
+                if ($appBuildGradleContent -notmatch "release\s*\{[^}]*minifyEnabled") {
+                    $appBuildGradleContent = $appBuildGradleContent -replace "(release\s*\{)", "`$1`n            minifyEnabled true`n            signingConfig null  // APK sin firma para pruebas"
+                }
+            }
+        }
+    }
+    
+    Set-Content -Path $appBuildGradlePath -Value $appBuildGradleContent -NoNewline
+    Write-Host "    app/build.gradle configurado para APK sin firma" -ForegroundColor Green
+}
 Write-Host ""
 
-# 13. Construir APK
-Write-Host "13. Construyendo APK..." -ForegroundColor Yellow
+# 14. Construir APK
+Write-Host "14. Construyendo APK..." -ForegroundColor Yellow
 Write-Host "    Esto puede tardar varios minutos..." -ForegroundColor Gray
 
 Set-Location $AndroidDir
@@ -445,18 +752,33 @@ try {
     # Detener daemons de Gradle anteriores
     & .\gradlew.bat --stop 2>&1 | Out-Null
     
-    # Construir APK
-    Write-Host "    Ejecutando Gradle..." -ForegroundColor Gray
+    # Construir APK sin firma (usar assembleDebug o assembleRelease sin signingConfig)
+    Write-Host "    Ejecutando Gradle para generar APK sin firma..." -ForegroundColor Gray
     $buildOutput = & .\gradlew.bat assembleRelease --no-daemon 2>&1
     
     if ($LASTEXITCODE -ne 0) {
-        throw "Gradle falló con código: $LASTEXITCODE"
+        Write-Host "    Intentando con assembleDebug..." -ForegroundColor Yellow
+        $buildOutput = & .\gradlew.bat assembleDebug --no-daemon 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            throw "Gradle falló con código: $LASTEXITCODE"
+        }
     }
     
-    # Buscar APK generado
+    # Buscar APK generado (primero en release, luego en debug)
     $apk = Get-ChildItem -Path "app\build\outputs\apk\release" -Filter "*.apk" -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $apk) {
+        $apk = Get-ChildItem -Path "app\build\outputs\apk\debug" -Filter "*.apk" -ErrorAction SilentlyContinue | Select-Object -First 1
+    }
     
     if ($apk) {
+        # Validar que el APK tenga tamaño válido
+        if ($apk.Length -eq 0) {
+            throw "APK generado está vacío (0 bytes)"
+        }
+        
+        if ($apk.Length -lt 100KB) {
+            Write-Host "    Advertencia: APK muy pequeño ($([math]::Round($apk.Length / 1KB, 2)) KB), puede estar corrupto" -ForegroundColor Yellow
+        }
         Write-Host ""
         Write-Host "========================================" -ForegroundColor Green
         Write-Host "  APK construido exitosamente" -ForegroundColor Green
@@ -464,7 +786,27 @@ try {
         Write-Host ""
         Write-Host "Ubicación: $($apk.FullName)" -ForegroundColor Cyan
         Write-Host "Tamaño: $([math]::Round($apk.Length / 1MB, 2)) MB" -ForegroundColor White
+        Write-Host "Tipo: APK sin firma (para pruebas)" -ForegroundColor Yellow
         Write-Host ""
+        
+        # Intentar obtener información del APK si aapt está disponible
+        $aaptPath = Join-Path $env:ANDROID_HOME "build-tools\*\aapt.exe"
+        $aapt = Get-ChildItem -Path $aaptPath -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($aapt) {
+            try {
+                $apkInfo = & $aapt.FullName dump badging $apk.FullName 2>&1 | Select-String -Pattern "package:|versionCode=|versionName="
+                if ($apkInfo) {
+                    Write-Host "Información del APK:" -ForegroundColor Cyan
+                    $apkInfo | ForEach-Object {
+                        Write-Host "  $_" -ForegroundColor Gray
+                    }
+                    Write-Host ""
+                }
+            } catch {
+                # Ignorar errores de aapt
+            }
+        }
+        
         Write-Host "Para instalar en un dispositivo Android:" -ForegroundColor Yellow
         Write-Host "1. Transfiere el APK a tu dispositivo" -ForegroundColor White
         Write-Host "2. Habilita 'Orígenes desconocidos' en Configuración" -ForegroundColor White
@@ -487,6 +829,21 @@ try {
 } catch {
     Write-Host "    Error al construir APK: $_" -ForegroundColor Red
     Write-Host "    Output: $buildOutput" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "    Soluciones posibles:" -ForegroundColor Yellow
+    Write-Host "    - Verifica que Java 17 esté configurado correctamente" -ForegroundColor White
+    Write-Host "    - Verifica que ANDROID_HOME esté configurado" -ForegroundColor White
+    Write-Host "    - Revisa los logs de Gradle para más detalles" -ForegroundColor White
+    
+    # Limpiar procesos en caso de error
+    Write-Host ""
+    Write-Host "    Limpiando procesos..." -ForegroundColor Yellow
+    Stop-BackgroundProcesses "node"
+    Stop-BackgroundProcesses "python"
+    if (-not $SkipNgrok) {
+        Stop-BackgroundProcesses "ngrok"
+    }
+    
     exit 1
 } finally {
     Set-Location $ScriptDir
