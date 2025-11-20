@@ -1,10 +1,95 @@
 # Script para iniciar servicios en AWS
-# Aplica la infraestructura con Terraform
+# Reconstruye Docker y aplica la infraestructura con Terraform
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  GateKeep - Iniciar Servicios AWS" -ForegroundColor Cyan
+Write-Host "  GateKeep - Despliegue Completo AWS" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
+
+# Función para verificar Docker
+function Test-Docker {
+    $docker = Get-Command docker -ErrorAction SilentlyContinue
+    if (-not $docker) {
+        Write-Host "Error: Docker no está instalado" -ForegroundColor Red
+        Write-Host "Instala Docker Desktop desde: https://www.docker.com/products/docker-desktop" -ForegroundColor Yellow
+        return $false
+    }
+    
+    Write-Host "Docker instalado" -ForegroundColor Green
+    
+    try {
+        $dockerVersion = docker --version
+        Write-Host "  $dockerVersion" -ForegroundColor Gray
+    } catch {
+        Write-Host "Error al verificar versión de Docker" -ForegroundColor Red
+        return $false
+    }
+    
+    # Verificar que Docker está ejecutándose
+    try {
+        docker ps 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Error: Docker no está ejecutándose" -ForegroundColor Red
+            Write-Host "Inicia Docker Desktop y vuelve a intentar" -ForegroundColor Yellow
+            return $false
+        }
+        Write-Host "Docker está ejecutándose" -ForegroundColor Green
+        return $true
+    } catch {
+        Write-Host "Error: Docker no está ejecutándose" -ForegroundColor Red
+        Write-Host "Inicia Docker Desktop y vuelve a intentar" -ForegroundColor Yellow
+        return $false
+    }
+}
+
+# Función para reconstruir Docker
+function Rebuild-Docker {
+    Write-Host ""
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host "  Paso 1: Reconstruir Imágenes Docker" -ForegroundColor Cyan
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host ""
+    
+    $srcPath = Join-Path $PSScriptRoot "src"
+    
+    if (-not (Test-Path $srcPath)) {
+        Write-Host "Error: No se encontró el directorio src" -ForegroundColor Red
+        Write-Host "Ruta buscada: $srcPath" -ForegroundColor Gray
+        return $false
+    }
+    
+    # Guardar ubicación actual
+    $originalLocation = Get-Location
+    
+    try {
+        Set-Location $srcPath
+        
+        Write-Host "[1/4] Deteniendo servicios existentes..." -ForegroundColor Yellow
+        docker-compose down 2>&1 | Out-Null
+        
+        Write-Host "[2/4] Reconstruyendo imágenes Docker (sin cache)..." -ForegroundColor Yellow
+        Write-Host "  Esto puede tardar varios minutos..." -ForegroundColor Gray
+        docker-compose build --no-cache
+        
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Error: Falló la reconstrucción de imágenes Docker" -ForegroundColor Red
+            return $false
+        }
+        
+        Write-Host "[3/4] Verificando imágenes construidas..." -ForegroundColor Yellow
+        docker-compose images
+        
+        Write-Host "[4/4] Imágenes Docker reconstruidas exitosamente" -ForegroundColor Green
+        Write-Host ""
+        
+        return $true
+    } catch {
+        Write-Host "Error durante la reconstrucción de Docker: $_" -ForegroundColor Red
+        return $false
+    } finally {
+        Set-Location $originalLocation
+    }
+}
 
 # Función para verificar AWS CLI
 function Test-AwsCli {
@@ -46,17 +131,32 @@ function Test-AwsCli {
 # Función para verificar Terraform
 function Test-Terraform {
     $terraform = Get-Command terraform -ErrorAction SilentlyContinue
+    $terraformLocal = $null
+    
+    # Si no está en PATH, buscar terraform.exe local
     if (-not $terraform) {
-        Write-Host "Error: Terraform no está instalado" -ForegroundColor Red
-        Write-Host "Instala desde: https://www.terraform.io/downloads" -ForegroundColor Yellow
-        return $false
+        $terraformPath = Join-Path $PSScriptRoot "terraform"
+        $terraformExe = Join-Path $terraformPath "terraform.exe"
+        if (Test-Path $terraformExe) {
+            $terraformLocal = $terraformExe
+            Write-Host "Terraform encontrado localmente" -ForegroundColor Green
+        } else {
+            Write-Host "Error: Terraform no está instalado" -ForegroundColor Red
+            Write-Host "Instala desde: https://www.terraform.io/downloads" -ForegroundColor Yellow
+            Write-Host "O coloca terraform.exe en el directorio terraform/" -ForegroundColor Yellow
+            return $false
+        }
+    } else {
+        Write-Host "Terraform instalado" -ForegroundColor Green
     }
     
-    Write-Host "Terraform instalado" -ForegroundColor Green
-    
     try {
-        $tfVersion = terraform version
-        Write-Host "  $($tfVersion.Split("`n")[0])" -ForegroundColor Gray
+        if ($terraformLocal) {
+            $tfVersion = & $terraformLocal version
+        } else {
+            $tfVersion = terraform version
+        }
+        Write-Host "  $($tfVersion.Split([Environment]::NewLine)[0])" -ForegroundColor Gray
     } catch {
         Write-Host "Error al verificar versión de Terraform" -ForegroundColor Red
         return $false
@@ -68,6 +168,15 @@ function Test-Terraform {
 # Verificar requisitos
 Write-Host "Verificando requisitos..." -ForegroundColor Yellow
 Write-Host ""
+
+$dockerOk = Test-Docker
+Write-Host ""
+
+if (-not $dockerOk) {
+    Write-Host "Error: Docker no está disponible. El proceso se detiene para evitar problemas." -ForegroundColor Red
+    exit 1
+}
+$skipDocker = $false
 
 $awsOk = Test-AwsCli
 Write-Host ""
@@ -83,7 +192,27 @@ if (-not $terraformOk) {
     exit 1
 }
 
+# Reconstruir Docker si está disponible
+if (-not $skipDocker) {
+    $dockerRebuilt = Rebuild-Docker
+    if (-not $dockerRebuilt) {
+        Write-Host ""
+        Write-Host "Error: Falló la reconstrucción de Docker. El proceso se detiene para evitar problemas." -ForegroundColor Red
+        exit 1
+    }
+} else {
+    Write-Host ""
+    Write-Host "Omitiendo reconstrucción de Docker..." -ForegroundColor Yellow
+    Write-Host ""
+}
+
 # Navegar al directorio de Terraform
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  Paso 2: Desplegar Infraestructura AWS" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
+
 $terraformPath = Join-Path $PSScriptRoot "terraform"
 
 if (-not (Test-Path $terraformPath)) {
@@ -105,9 +234,16 @@ if (-not (Test-Path $tfvarsPath)) {
     Write-Host ""
 }
 
+# Determinar comando de terraform a usar
+$terraformCmd = "terraform"
+$terraformExePath = Join-Path $terraformPath "terraform.exe"
+if (Test-Path $terraformExePath) {
+    $terraformCmd = $terraformExePath
+}
+
 # Inicializar Terraform (si es necesario)
 Write-Host "Inicializando Terraform..." -ForegroundColor Yellow
-terraform init
+& $terraformCmd init
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Error: Falló la inicialización de Terraform" -ForegroundColor Red
     exit 1
@@ -134,7 +270,7 @@ Write-Host "Aplicando infraestructura..." -ForegroundColor Yellow
 Write-Host "Esto puede tardar varios minutos..." -ForegroundColor Gray
 Write-Host ""
 
-terraform apply -auto-approve
+& $terraformCmd apply -auto-approve
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
@@ -142,20 +278,227 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# Mostrar outputs
+# Obtener outputs de Terraform
+Write-Host ""
+Write-Host "Obteniendo información de despliegue..." -ForegroundColor Cyan
+Write-Host ""
+
+$tfOutput = & $terraformCmd output -json | ConvertFrom-Json
+
+# Extraer valores de los outputs
+$region = $tfOutput.aws_region.value
+$ecrApiUrl = $tfOutput.ecr_repository_url.value
+$ecrFrontendUrl = $tfOutput.ecr_frontend_repository_url.value
+$apiUrl = $tfOutput.backend_api_url.value
+$ecsCluster = $tfOutput.ecs_cluster_name.value
+$ecsApiService = $tfOutput.ecs_service_name.value
+
+Write-Host "Región: $region" -ForegroundColor Gray
+Write-Host "ECR API: $ecrApiUrl" -ForegroundColor Gray
+Write-Host "ECR Frontend: $ecrFrontendUrl" -ForegroundColor Gray
+Write-Host "API URL: $apiUrl" -ForegroundColor Gray
+Write-Host ""
+
+# Función para hacer login en ECR
+function Login-ECR {
+    param([string]$Region, [string]$EcrUrl)
+    
+    Write-Host "Iniciando sesión en ECR..." -ForegroundColor Yellow
+    aws ecr get-login-password --region $Region | docker login --username AWS --password-stdin $EcrUrl
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Error: Falló el login en ECR" -ForegroundColor Red
+        return $false
+    }
+    return $true
+}
+
+# Función para construir y subir imagen del backend
+function Deploy-Backend {
+    param([string]$EcrApiUrl, [string]$Region)
+    
+    Write-Host ""
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host "  Paso 3: Desplegar Backend a ECR" -ForegroundColor Cyan
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host ""
+    
+    $srcPath = Join-Path $PSScriptRoot "src"
+    $currentLoc = Get-Location
+    
+    try {
+        Set-Location $srcPath
+        
+        Write-Host "[1/3] Construyendo imagen del backend..." -ForegroundColor Yellow
+        docker build -t gatekeep-api -f Dockerfile .
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Error: Falló la construcción de la imagen del backend" -ForegroundColor Red
+            return $false
+        }
+        
+        Write-Host "[2/3] Etiquetando imagen..." -ForegroundColor Yellow
+        docker tag gatekeep-api:latest "$EcrApiUrl`:latest"
+        
+        Write-Host "[3/3] Subiendo imagen a ECR..." -ForegroundColor Yellow
+        docker push "$EcrApiUrl`:latest"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Error: Falló la subida de la imagen del backend" -ForegroundColor Red
+            return $false
+        }
+        
+        Write-Host "Backend desplegado exitosamente" -ForegroundColor Green
+        return $true
+    } catch {
+        Write-Host "Error durante el despliegue del backend: $_" -ForegroundColor Red
+        return $false
+    } finally {
+        Set-Location $currentLoc
+    }
+}
+
+# Función para construir y subir imagen del frontend
+function Deploy-Frontend {
+    param([string]$EcrFrontendUrl, [string]$ApiUrl, [string]$Region)
+    
+    Write-Host ""
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host "  Paso 4: Desplegar Frontend a ECR" -ForegroundColor Cyan
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host ""
+    
+    $frontendPath = Join-Path $PSScriptRoot "frontend"
+    $currentLoc = Get-Location
+    
+    try {
+        Set-Location $frontendPath
+        
+        Write-Host "[1/3] Construyendo imagen del frontend..." -ForegroundColor Yellow
+        Write-Host "  API URL: $ApiUrl" -ForegroundColor Gray
+        docker build -t gatekeep-frontend . --build-arg NEXT_PUBLIC_API_URL=$ApiUrl
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Error: Falló la construcción de la imagen del frontend" -ForegroundColor Red
+            return $false
+        }
+        
+        Write-Host "[2/3] Etiquetando imagen..." -ForegroundColor Yellow
+        docker tag gatekeep-frontend:latest "$EcrFrontendUrl`:latest"
+        
+        Write-Host "[3/3] Subiendo imagen a ECR..." -ForegroundColor Yellow
+        docker push "$EcrFrontendUrl`:latest"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Error: Falló la subida de la imagen del frontend" -ForegroundColor Red
+            return $false
+        }
+        
+        Write-Host "Frontend desplegado exitosamente" -ForegroundColor Green
+        return $true
+    } catch {
+        Write-Host "Error durante el despliegue del frontend: $_" -ForegroundColor Red
+        return $false
+    } finally {
+        Set-Location $currentLoc
+    }
+}
+
+# Función para actualizar servicios ECS
+function Update-ECSServices {
+    param([string]$Region, [string]$Cluster, [string]$ApiService)
+    
+    Write-Host ""
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host "  Paso 5: Actualizar Servicios ECS" -ForegroundColor Cyan
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host ""
+    
+    # Actualizar servicio del backend
+    Write-Host "Actualizando servicio del backend ($ApiService)..." -ForegroundColor Yellow
+    aws ecs update-service --cluster $Cluster --service $ApiService --force-new-deployment --region $Region | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Error: Falló la actualización del servicio del backend" -ForegroundColor Red
+        return $false
+    }
+    Write-Host "  [OK] Backend actualizado" -ForegroundColor Green
+    
+    # Actualizar servicio del frontend (nombre basado en el patrón de Terraform)
+    Write-Host "Actualizando servicio del frontend..." -ForegroundColor Yellow
+    $frontendService = $ApiService -replace "-api-service", "-frontend-service"
+    aws ecs update-service --cluster $Cluster --service $frontendService --force-new-deployment --region $Region | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  Advertencia: No se pudo actualizar el servicio del frontend (puede que no exista o ya esté actualizado)" -ForegroundColor Yellow
+    } else {
+        Write-Host "  [OK] Frontend actualizado" -ForegroundColor Green
+    }
+    
+    Write-Host ""
+    Write-Host "Servicios ECS actualizados" -ForegroundColor Green
+    return $true
+}
+
+# Desplegar imágenes a ECR
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  Paso 3: Desplegar Imágenes a ECR" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
+
+# Login en ECR - Extraer URL base del registro (sin el nombre del repositorio)
+# La URL de ECR tiene formato: account.dkr.ecr.region.amazonaws.com/repository
+# Necesitamos solo: account.dkr.ecr.region.amazonaws.com
+$ecrBaseUrl = $ecrApiUrl -replace "/[^/]+$", ""
+if (-not $ecrBaseUrl) {
+    # Fallback: construir desde la región
+    $ecrBaseUrl = "126588786097.dkr.ecr.$region.amazonaws.com"
+}
+Write-Host "URL base de ECR: $ecrBaseUrl" -ForegroundColor Gray
+Write-Host ""
+
+if (-not (Login-ECR -Region $region -EcrUrl $ecrBaseUrl)) {
+    Write-Host "Error: No se pudo iniciar sesión en ECR. El proceso se detiene." -ForegroundColor Red
+    exit 1
+}
+
+# Desplegar backend
+if (-not (Deploy-Backend -EcrApiUrl $ecrApiUrl -Region $region)) {
+    Write-Host "Error: Falló el despliegue del backend. El proceso se detiene." -ForegroundColor Red
+    exit 1
+}
+
+# Desplegar frontend
+if (-not (Deploy-Frontend -EcrFrontendUrl $ecrFrontendUrl -ApiUrl $apiUrl -Region $region)) {
+    Write-Host "Error: Falló el despliegue del frontend. El proceso se detiene." -ForegroundColor Red
+    exit 1
+}
+
+# Actualizar servicios ECS
+if (-not (Update-ECSServices -Region $region -Cluster $ecsCluster -ApiService $ecsApiService)) {
+    Write-Host "Advertencia: Hubo problemas al actualizar los servicios ECS" -ForegroundColor Yellow
+}
+
+# Mostrar outputs y resumen
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
-Write-Host "  Infraestructura desplegada" -ForegroundColor Green
+Write-Host '  [OK] Despliegue Completado Exitosamente' -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
 
 Write-Host "Obteniendo URLs de los servicios..." -ForegroundColor Cyan
 Write-Host ""
 
-terraform output
+& $terraformCmd output
 
 Write-Host ""
-Write-Host "Para ver los outputs completos:" -ForegroundColor Cyan
-Write-Host "  cd terraform; terraform output" -ForegroundColor White
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  Resumen del Despliegue" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host '[OK] Imágenes Docker reconstruidas' -ForegroundColor Green
+Write-Host '[OK] Infraestructura AWS desplegada' -ForegroundColor Green
+Write-Host '[OK] Backend desplegado a ECR' -ForegroundColor Green
+Write-Host '[OK] Frontend desplegado a ECR' -ForegroundColor Green
+Write-Host '[OK] Servicios ECS actualizados' -ForegroundColor Green
+Write-Host ""
+Write-Host "Espera unos minutos para que ECS reemplace las tareas antiguas con las nuevas imágenes." -ForegroundColor Yellow
+Write-Host ""
+Write-Host 'Para ver los outputs completos:' -ForegroundColor Cyan
+Write-Host '  cd terraform; terraform output' -ForegroundColor White
 Write-Host ""
 

@@ -10,6 +10,13 @@ Write-Host ""
 Write-Host "===== Importando Recursos Existentes a Terraform =====" -ForegroundColor Cyan
 Write-Host ""
 
+# Determinar comando de terraform a usar
+$terraformCmd = "terraform"
+$terraformExePath = Join-Path $PSScriptRoot "terraform.exe"
+if (Test-Path $terraformExePath) {
+    $terraformCmd = $terraformExePath
+}
+
 $imported = @()
 $failed = @()
 
@@ -24,7 +31,7 @@ function Try-ImportResource {
     
     Write-Host "Importando: $Description..." -NoNewline
     
-    $output = terraform import "$ResourceType.$TerraformName" "$ResourceId" 2>&1
+    $output = & $terraformCmd import "$ResourceType.$TerraformName" "$ResourceId" 2>&1
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host " [OK]" -ForegroundColor Green
@@ -36,6 +43,7 @@ function Try-ImportResource {
             return $false
         } else {
             Write-Host " [FAIL]" -ForegroundColor Red
+            Write-Host "    Detalle: $output" -ForegroundColor Gray
             $failed += "$ResourceType.$TerraformName"
             return $false
         }
