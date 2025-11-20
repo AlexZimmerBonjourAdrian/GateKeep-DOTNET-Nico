@@ -13,22 +13,35 @@ import {
   clearProcessedEvents,
 } from './sqlite-db';
 
+/**
+ * Obtiene la URL base del backend API
+ * En AWS: https://api.zimmzimmgames.com
+ * En local: http://localhost:5011
+ */
 const getDefaultApiBase = () => {
+  // Prioridad 1: Variable de entorno
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '');
+  }
+  
+  // Prioridad 2: En cliente, detectar producción AWS
   if (typeof window !== 'undefined' && window.location?.origin) {
-    return window.location.origin;
+    const origin = window.location.origin;
+    // Si estamos en HTTPS y no es localhost, construir api.*
+    if (origin.startsWith('https://') && !origin.includes('localhost')) {
+      const domain = origin.replace(/^https?:\/\/(www\.)?/, '');
+      return `https://api.${domain}`;
+    }
+    return origin;
   }
 
-  // En producción, si no hay variable de entorno, usar la URL de producción
-  // En desarrollo, usar localhost
-  return process.env.NEXT_PUBLIC_API_URL || 
-         (process.env.NODE_ENV === 'production' 
-           ? 'https://api.zimmzimmgames.com'
-           : 'http://localhost:5011');
+  // Prioridad 3: Fallback según NODE_ENV
+  return process.env.NODE_ENV === 'production' 
+    ? 'https://api.zimmzimmgames.com'
+    : 'http://localhost:5011';
 };
 
-const PUBLIC_API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
-
-const API_BASE = PUBLIC_API_BASE || getDefaultApiBase();
+const API_BASE = getDefaultApiBase();
 
 /**
  * Estructura de evento offline compatible con backend

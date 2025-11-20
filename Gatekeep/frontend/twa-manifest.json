@@ -1,11 +1,12 @@
-﻿{
+{
     "signingKey":  {
                        "path":  "./android.keystore",
                        "alias":  "android"
                    },
     "navigationColor":  "#0066cc",
     "themeColor":  "#0066cc",
-    "webManifestUrl":  "https://zimmzimmgames.com/manifest.json",
+    "webManifestUrl":  "https://1a8f2a14103a.ngrok-free.app/manifest.json",
+    "host":  "1a8f2a14103a.ngrok-free.app",
     "startUrl":  "/",
     "display":  "standalone",
     "generatorApp":  "bubblewrap-cli",

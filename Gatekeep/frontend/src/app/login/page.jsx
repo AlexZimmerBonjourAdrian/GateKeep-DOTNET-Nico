@@ -62,10 +62,20 @@ export default function Login() {
         } else if (error.request) {
           // La petición se hizo pero no hubo respuesta
           console.error('No response received:', error.request);
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 
-                        (typeof window !== 'undefined' && window.location?.origin 
-                          ? window.location.origin.replace(/^https?:\/\/(www\.)?/, 'https://api.')
-                          : 'https://api.zimmzimmgames.com');
+          // Construir la URL correcta del backend
+          let apiUrl = process.env.NEXT_PUBLIC_API_URL;
+          if (!apiUrl && typeof window !== 'undefined' && window.location?.origin) {
+            const origin = window.location.origin;
+            if (origin.startsWith('https://') && !origin.includes('localhost')) {
+              const domain = origin.replace(/^https?:\/\/(www\.)?/, '');
+              apiUrl = `https://api.${domain}`;
+            } else {
+              apiUrl = origin;
+            }
+          }
+          apiUrl = apiUrl || (process.env.NODE_ENV === 'production' 
+            ? 'https://api.zimmzimmgames.com'
+            : 'http://localhost:5011');
           alert(`Error: No se pudo conectar con el servidor. Verifica que el backend esté corriendo en ${apiUrl}`);
         } else {
           // Algo pasó al configurar la petición

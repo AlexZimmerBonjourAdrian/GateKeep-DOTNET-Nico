@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { SyncProvider } from '@/lib/SyncProvider';
+import InstallPWA from '@/components/InstallPWA';
 
 function PWARegister() {
   useEffect(() => {
@@ -38,6 +39,9 @@ function PWARegister() {
                 // Hay una nueva versión disponible
                 console.log('🔄 Nueva versión del Service Worker disponible');
                 // Opcional: mostrar notificación al usuario para recargar
+                if (window.confirm('Hay una nueva versión disponible. ¿Deseas recargar?')) {
+                  window.location.reload();
+                }
               }
             });
           }
@@ -48,6 +52,7 @@ function PWARegister() {
           if (event.data && event.data.type === 'SYNC_NOW') {
             console.log('🔄 Mensaje de sincronización recibido del SW');
             // El SyncProvider ya maneja la sincronización automática
+            window.dispatchEvent(new Event('sync-now'));
           }
         });
 
@@ -71,6 +76,7 @@ export default function Providers({ children }) {
     <SyncProvider>
       {children}
       <PWARegister />
+      <InstallPWA />
     </SyncProvider>
   );
 }
