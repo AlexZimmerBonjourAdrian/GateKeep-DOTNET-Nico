@@ -5,6 +5,14 @@ locals {
   ]
 
   all_public_domains = distinct(concat([var.domain_name], local.alternate_domains))
+  
+  # Agregar subdominios API a los SAN del certificado
+  api_domains = [
+    for domain in local.all_public_domains : "api.${domain}"
+  ]
+  
+  # Todos los dominios para el certificado (incluyendo api.*)
+  all_certificate_domains = distinct(concat(local.all_public_domains, local.api_domains))
 }
 
 data "aws_route53_zone" "primary" {
@@ -16,7 +24,7 @@ resource "aws_acm_certificate" "alb" {
   count = var.enable_https ? 1 : 0
 
   domain_name               = var.domain_name
-  subject_alternative_names = local.alternate_domains
+  subject_alternative_names = concat(local.alternate_domains, local.api_domains)
   validation_method         = "DNS"
 
   lifecycle {

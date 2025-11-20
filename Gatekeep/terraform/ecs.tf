@@ -1,4 +1,5 @@
 # ECS Fargate - Despliegue simple de la aplicación
+# Nota: data.aws_caller_identity.current está definido en cloudwatch.tf
 
 # ECS Cluster
 resource "aws_ecs_cluster" "main" {
@@ -149,7 +150,11 @@ resource "aws_iam_role_policy" "ecs_task_cloudwatch" {
         Resource = "*"
         Condition = {
           StringEquals = {
-            "cloudwatch:namespace" = ["GateKeep/Redis", "GateKeep/Redis/Logs"]
+            "cloudwatch:namespace" = [
+              "GateKeep/Redis",
+              "GateKeep/Redis/Logs",
+              "GateKeep/RabbitMQ"
+            ]
           }
         }
       }
@@ -195,14 +200,33 @@ resource "aws_ecs_task_definition" "main" {
         {
           name  = "AWS_REGION"
           value = var.aws_region
+        },
+        # Base de datos - valores desde Parameter Store (no sensibles)
+        {
+          name  = "DATABASE__HOST"
+          value = aws_ssm_parameter.db_host.value
+        },
+        {
+          name  = "DATABASE__PORT"
+          value = aws_ssm_parameter.db_port.value
+        },
+        {
+          name  = "DATABASE__NAME"
+          value = aws_ssm_parameter.db_name.value
+        },
+        {
+          name  = "DATABASE__USER"
+          value = aws_ssm_parameter.db_username.value
         }
       ]
 
       secrets = [
+        # Base de datos - desde Secrets Manager (valores sensibles)
         {
           name      = "DATABASE__PASSWORD"
           valueFrom = aws_secretsmanager_secret.db_password.arn
         },
+        # JWT - desde Secrets Manager
         {
           name      = "JWT__KEY"
           valueFrom = aws_secretsmanager_secret.jwt_key.arn
@@ -417,29 +441,13 @@ resource "aws_lb_listener" "main" {
 }
 
 # HTTPS Listener para ALB
-# YA EXISTE EN AWS - Mantener comentado para evitar conflictos
-#resource "aws_lb_listener" "https" {
-#  count = var.enable_https ? 1 : 0
-#
-#  load_balancer_arn = aws_lb.main.arn
-#  port              = "443"
-#  protocol          = "HTTPS"
-#  ssl_policy        = "ELBSecurityPolicy-2016-08"
-#  certificate_arn   = aws_acm_certificate_validation.alb[0].certificate_arn
-#
-#  # Por defecto, servir frontend (PWA funciona aquí)
-#  # Backend tiene reglas específicas /api/*, /auth/*, etc.
-#  default_action {
-#    type             = "forward"
-#    target_group_arn = aws_lb_target_group.frontend.arn
-#  }
-#
-#  depends_on = [aws_acm_certificate_validation.alb]
-#
-#  lifecycle {
-#    ignore_changes = all
-#  }
-#}
+# YA EXISTE EN AWS - Usar data source para obtenerlo
+data "aws_lb_listener" "https_existing" {
+  count = var.enable_https ? 1 : 0
+  
+  load_balancer_arn = aws_lb.main.arn
+  port              = 443
+}
 
 # Listener Rule para Backend API - /api/*
 resource "aws_lb_listener_rule" "backend_api" {
@@ -528,6 +536,126 @@ resource "aws_lb_listener_rule" "backend_swagger" {
 # Listener Rule para Health Check
 resource "aws_lb_listener_rule" "backend_health" {
   listener_arn = aws_lb_listener.main.arn
+  priority     = 140
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.main.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/health"]
+    }
+  }
+
+  lifecycle {
+    ignore_changes = all
+  }
+}
+
+# ============================================
+# HTTPS LISTENER RULES (Puerto 443)
+# ============================================
+# Estas reglas son necesarias porque el frontend se conecta vía HTTPS
+
+# Listener Rule para Backend API - /api/* (HTTPS)
+resource "aws_lb_listener_rule" "backend_api_https" {
+  count = var.enable_https ? 1 : 0
+  
+  listener_arn = data.aws_lb_listener.https_existing[0].arn
+  priority     = 100
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.main.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/*"]
+    }
+  }
+
+  lifecycle {
+    ignore_changes = all
+  }
+}
+
+# Listener Rule para Backend Auth - /auth/* (HTTPS)
+resource "aws_lb_listener_rule" "backend_auth_https" {
+  count = var.enable_https ? 1 : 0
+  
+  listener_arn = data.aws_lb_listener.https_existing[0].arn
+  priority     = 110
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.main.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/auth/*"]
+    }
+  }
+
+  lifecycle {
+    ignore_changes = all
+  }
+}
+
+# Listener Rule para Backend Usuarios - /usuarios/* (HTTPS)
+resource "aws_lb_listener_rule" "backend_usuarios_https" {
+  count = var.enable_https ? 1 : 0
+  
+  listener_arn = data.aws_lb_listener.https_existing[0].arn
+  priority     = 120
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.main.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/usuarios/*"]
+    }
+  }
+
+  lifecycle {
+    ignore_changes = all
+  }
+}
+
+# Listener Rule para Swagger (HTTPS)
+resource "aws_lb_listener_rule" "backend_swagger_https" {
+  count = var.enable_https ? 1 : 0
+  
+  listener_arn = data.aws_lb_listener.https_existing[0].arn
+  priority     = 130
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.main.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/swagger*", "/swagger/*"]
+    }
+  }
+
+  lifecycle {
+    ignore_changes = all
+  }
+}
+
+# Listener Rule para Health Check (HTTPS)
+resource "aws_lb_listener_rule" "backend_health_https" {
+  count = var.enable_https ? 1 : 0
+  
+  listener_arn = data.aws_lb_listener.https_existing[0].arn
   priority     = 140
 
   action {

@@ -304,12 +304,56 @@ function Login-ECR {
     param([string]$Region, [string]$EcrUrl)
     
     Write-Host "Iniciando sesión en ECR..." -ForegroundColor Yellow
-    aws ecr get-login-password --region $Region | docker login --username AWS --password-stdin $EcrUrl
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "Error: Falló el login en ECR" -ForegroundColor Red
+    Write-Host "  Región: $Region" -ForegroundColor Gray
+    Write-Host "  URL: $EcrUrl" -ForegroundColor Gray
+    
+    # Validar que la URL no esté vacía
+    if ([string]::IsNullOrWhiteSpace($EcrUrl)) {
+        Write-Host "Error: URL de ECR vacía" -ForegroundColor Red
         return $false
     }
-    return $true
+    
+    # Asegurar que la URL no tenga protocolo para extraer el host
+    $ecrHost = $EcrUrl -replace "^https?://", ""
+    
+    try {
+        # Obtener el token de ECR
+        Write-Host "  Obteniendo token de ECR..." -ForegroundColor Gray
+        $password = aws ecr get-login-password --region $Region
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Error: No se pudo obtener el token de ECR" -ForegroundColor Red
+            Write-Host "  Verifica que AWS CLI esté configurado correctamente" -ForegroundColor Yellow
+            Write-Host "  Ejecuta: aws configure" -ForegroundColor Yellow
+            return $false
+        }
+        
+        # Verificar que el password no esté vacío
+        if ([string]::IsNullOrWhiteSpace($password)) {
+            Write-Host "Error: El token de ECR está vacío" -ForegroundColor Red
+            return $false
+        }
+        
+        # Hacer login en Docker usando Write-Output para el pipe
+        Write-Host "  Autenticando con Docker..." -ForegroundColor Gray
+        $loginResult = $password | docker login --username AWS --password-stdin $ecrHost 2>&1
+        $loginSuccess = $LASTEXITCODE -eq 0
+        
+        if (-not $loginSuccess) {
+            Write-Host "Error: Falló el login en ECR" -ForegroundColor Red
+            Write-Host "  URL intentada: $ecrHost" -ForegroundColor Gray
+            if ($loginResult) {
+                Write-Host "  Detalle: $loginResult" -ForegroundColor Gray
+            }
+            Write-Host "  Verifica que Docker esté ejecutándose" -ForegroundColor Yellow
+            return $false
+        }
+        
+        Write-Host "  [OK] Login exitoso en ECR" -ForegroundColor Green
+        return $true
+    } catch {
+        Write-Host "Error durante el login en ECR: $_" -ForegroundColor Red
+        return $false
+    }
 }
 
 # Función para construir y subir imagen del backend
@@ -444,10 +488,21 @@ Write-Host ""
 # La URL de ECR tiene formato: account.dkr.ecr.region.amazonaws.com/repository
 # Necesitamos solo: account.dkr.ecr.region.amazonaws.com
 $ecrBaseUrl = $ecrApiUrl -replace "/[^/]+$", ""
-if (-not $ecrBaseUrl) {
-    # Fallback: construir desde la región
-    $ecrBaseUrl = "126588786097.dkr.ecr.$region.amazonaws.com"
+
+# Validar que se extrajo correctamente
+if ([string]::IsNullOrWhiteSpace($ecrBaseUrl) -or $ecrBaseUrl -eq $ecrApiUrl) {
+    # Fallback: construir desde la región y account ID
+    # Extraer account ID de la URL original si es posible
+    if ($ecrApiUrl -match "(\d+)\.dkr\.ecr\.([^.]+)\.amazonaws\.com") {
+        $accountId = $matches[1]
+        $ecrRegion = $matches[2]
+        $ecrBaseUrl = "$accountId.dkr.ecr.$ecrRegion.amazonaws.com"
+    } else {
+        # Último fallback: usar valores conocidos
+        $ecrBaseUrl = "126588786097.dkr.ecr.$region.amazonaws.com"
+    }
 }
+
 Write-Host "URL base de ECR: $ecrBaseUrl" -ForegroundColor Gray
 Write-Host ""
 
