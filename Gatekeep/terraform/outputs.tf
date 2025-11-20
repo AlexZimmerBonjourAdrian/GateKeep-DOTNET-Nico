@@ -165,21 +165,21 @@ output "redis_connection_string" {
   value       = "${aws_elasticache_replication_group.main.configuration_endpoint_address != "" ? aws_elasticache_replication_group.main.configuration_endpoint_address : aws_elasticache_replication_group.main.primary_endpoint_address}:${aws_elasticache_replication_group.main.port}"
 }
 
-# Amazon MQ RabbitMQ
-output "rabbitmq_endpoint" {
-  description = "Endpoint de Amazon MQ RabbitMQ"
-  value       = aws_mq_broker.main.instances[0].endpoint
-}
+# Amazon MQ RabbitMQ - COMENTADO TEMPORALMENTE
+# output "rabbitmq_endpoint" {
+#   description = "Endpoint de Amazon MQ RabbitMQ"
+#   value       = "${aws_mq_broker.main.broker_id}.mq.${var.aws_region}.amazonaws.com"
+# }
 
-output "rabbitmq_amqp_endpoint" {
-  description = "Endpoint AMQP de RabbitMQ (hostname sin puerto)"
-  value       = split(":", aws_mq_broker.main.instances[0].endpoint)[0]
-}
+# output "rabbitmq_amqp_endpoint" {
+#   description = "Endpoint AMQP de RabbitMQ (hostname sin puerto)"
+#   value       = "${aws_mq_broker.main.broker_id}.mq.${var.aws_region}.amazonaws.com"
+# }
 
-output "rabbitmq_console_url" {
-  description = "URL de la consola de administración de RabbitMQ"
-  value       = "https://${aws_mq_broker.main.instances[0].console_url}"
-}
+# output "rabbitmq_console_url" {
+#   description = "URL de la consola de administración de RabbitMQ"
+#   value       = "https://${aws_mq_broker.main.instances[0].console_url}"
+# }
 
 # Secrets Manager - Nuevos secretos
 output "mongodb_connection_secret_arn" {

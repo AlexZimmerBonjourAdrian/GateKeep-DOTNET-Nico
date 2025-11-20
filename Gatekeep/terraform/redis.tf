@@ -77,14 +77,5 @@ resource "aws_elasticache_replication_group" "main" {
   }
 }
 
-# Output para obtener la URL de conexión
-output "redis_endpoint" {
-  description = "Endpoint de ElastiCache Redis"
-  value       = aws_elasticache_replication_group.main.configuration_endpoint_address != "" ? aws_elasticache_replication_group.main.configuration_endpoint_address : aws_elasticache_replication_group.main.primary_endpoint_address
-}
-
-output "redis_port" {
-  description = "Puerto de ElastiCache Redis"
-  value       = aws_elasticache_replication_group.main.port
-}
+# Outputs movidos a outputs.tf para centralización
 
