@@ -72,13 +72,12 @@ services:
     build:
       context: ./Gatekeep/frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.zimmzimmgames.com}
     container_name: gatekeep-frontend
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      # Con nginx, el frontend debe usar http://localhost (nginx enruta /api/ al backend)
-      # Sin nginx, usar http://localhost:5011 directamente
-      NEXT_PUBLIC_API_URL: http://localhost
     ports:
       - "3000:3000"
     depends_on:

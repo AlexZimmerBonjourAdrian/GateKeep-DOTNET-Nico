@@ -3,8 +3,8 @@ FROM node:18-alpine AS build
 
 WORKDIR /app
 
-# Accept build argument for API URL
-ARG NEXT_PUBLIC_API_URL
+# Accept build argument for API URL (CRÍTICO: debe estar disponible en build time)
+ARG NEXT_PUBLIC_API_URL=https://api.zimmzimmgames.com
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 # Copy package files
@@ -18,6 +18,9 @@ RUN npm ci
 
 # Copy source code and configuration
 COPY . .
+
+# Log the API URL being used in the build
+RUN echo "Building with NEXT_PUBLIC_API_URL: $NEXT_PUBLIC_API_URL"
 
 # Build the application
 RUN npm run build

@@ -6,9 +6,11 @@ import axios from "axios";
  * En local: http://localhost:5011 (o http://localhost si usa nginx)
  */
 const getApiBaseUrl = () => {
-  // Prioridad 1: Variable de entorno (configurada en build/deployment)
+  // Prioridad 1: Variable de entorno (configurada en build/deployment - CRÍTICA)
   if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '');
+    const url = process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '');
+    console.debug('[URLService] Using NEXT_PUBLIC_API_URL:', url);
+    return url;
   }
   
   // Prioridad 2: En cliente, detectar si estamos en producción AWS
@@ -18,16 +20,21 @@ const getApiBaseUrl = () => {
     if (origin.startsWith('https://') && !origin.includes('localhost')) {
       // Extraer dominio base (sin www)
       const domain = origin.replace(/^https?:\/\/(www\.)?/, '');
-      return `https://api.${domain}`;
+      const apiUrl = `https://api.${domain}`;
+      console.debug('[URLService] Detected AWS production domain:', apiUrl);
+      return apiUrl;
     }
     // En desarrollo local, usar el mismo origin (nginx enruta /api/)
+    console.debug('[URLService] Using localhost origin:', origin);
     return origin;
   }
   
   // Prioridad 3: Fallback según NODE_ENV (solo en servidor)
-  return process.env.NODE_ENV === 'production' 
+  const fallback = process.env.NODE_ENV === 'production' 
     ? "https://api.zimmzimmgames.com"
     : "http://localhost:5011";
+  console.debug('[URLService] Using fallback:', fallback, 'NODE_ENV:', process.env.NODE_ENV);
+  return fallback;
 };
 
 /**
