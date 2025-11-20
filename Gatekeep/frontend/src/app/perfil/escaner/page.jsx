@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Header from '../../../components/Header'
+import { URLService } from '../../../services/urlService'
 
 export default function EscanerQR() {
   const router = useRouter()
@@ -94,7 +95,9 @@ export default function EscanerQR() {
     try {
       setError(null)
       
-      const response = await fetch('http://localhost:5011/auth/validate', {
+      // Usar URLService para obtener la URL correcta (producción o desarrollo)
+      const apiBase = URLService.getBaseUrl();
+      const response = await fetch(`${apiBase}/auth/validate`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

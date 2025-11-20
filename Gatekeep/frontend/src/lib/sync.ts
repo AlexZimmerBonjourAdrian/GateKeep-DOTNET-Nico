@@ -18,7 +18,12 @@ const getDefaultApiBase = () => {
     return window.location.origin;
   }
 
-  return 'http://localhost:5011';
+  // En producción, si no hay variable de entorno, usar la URL de producción
+  // En desarrollo, usar localhost
+  return process.env.NEXT_PUBLIC_API_URL || 
+         (process.env.NODE_ENV === 'production' 
+           ? 'https://api.zimmzimmgames.com'
+           : 'http://localhost:5011');
 };
 
 const PUBLIC_API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');

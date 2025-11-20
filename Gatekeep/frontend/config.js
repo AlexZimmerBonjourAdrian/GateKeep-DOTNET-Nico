@@ -3,7 +3,10 @@
 
 export const config = {
   // URL del backend API
-  apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5011',
+  apiUrl: process.env.NEXT_PUBLIC_API_URL || 
+          (typeof process !== 'undefined' && process.env.NODE_ENV === 'production' 
+            ? 'https://api.zimmzimmgames.com'
+            : 'http://localhost:5011'),
 
   // Configuración de la aplicación
   appName: 'React Template',

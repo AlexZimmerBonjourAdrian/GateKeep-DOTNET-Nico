@@ -62,7 +62,11 @@ export default function Login() {
         } else if (error.request) {
           // La petición se hizo pero no hubo respuesta
           console.error('No response received:', error.request);
-          alert('Error: No se pudo conectar con el servidor. Verifica que el backend esté corriendo en http://localhost:5011');
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 
+                        (typeof window !== 'undefined' && window.location?.origin 
+                          ? window.location.origin.replace(/^https?:\/\/(www\.)?/, 'https://api.')
+                          : 'https://api.zimmzimmgames.com');
+          alert(`Error: No se pudo conectar con el servidor. Verifica que el backend esté corriendo en ${apiUrl}`);
         } else {
           // Algo pasó al configurar la petición
           console.error('Error setting up request:', error.message);

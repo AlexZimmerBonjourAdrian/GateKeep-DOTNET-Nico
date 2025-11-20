@@ -3,7 +3,7 @@ import type { InternalAxiosRequestConfig } from "axios";
 import { URLService } from "./urlService";
 
 // Base URL del backend y recursos específicos
-const API_URL = URLService.getLink(); // p.ej. http://localhost:5011/api/
+const API_URL = URLService.getLink(); // URL dinámica según entorno (producción o desarrollo)
 // Usuarios en backend están expuestos en "/usuarios" (sin prefijo /api)
 const BASE_URL = URLService.getBaseUrl();
 const USUARIOS_URL = `${BASE_URL}/usuarios/`;
