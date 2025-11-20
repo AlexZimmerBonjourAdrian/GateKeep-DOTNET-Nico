@@ -149,21 +149,21 @@ output "ecr_frontend_repository_url" {
 #   value       = aws_ecs_service.frontend.name
 # }
 
-# ElastiCache Redis
-output "redis_endpoint" {
-  description = "Endpoint de ElastiCache Redis"
-  value       = aws_elasticache_replication_group.main.configuration_endpoint_address != "" ? aws_elasticache_replication_group.main.configuration_endpoint_address : aws_elasticache_replication_group.main.primary_endpoint_address
-}
-
-output "redis_port" {
-  description = "Puerto de ElastiCache Redis"
-  value       = aws_elasticache_replication_group.main.port
-}
-
-output "redis_connection_string" {
-  description = "Connection string completo de Redis (endpoint:port)"
-  value       = "${aws_elasticache_replication_group.main.configuration_endpoint_address != "" ? aws_elasticache_replication_group.main.configuration_endpoint_address : aws_elasticache_replication_group.main.primary_endpoint_address}:${aws_elasticache_replication_group.main.port}"
-}
+# ElastiCache Redis - COMENTADO TEMPORALMENTE
+# output "redis_endpoint" {
+#   description = "Endpoint de ElastiCache Redis"
+#   value       = aws_elasticache_replication_group.main.configuration_endpoint_address != "" ? aws_elasticache_replication_group.main.configuration_endpoint_address : aws_elasticache_replication_group.main.primary_endpoint_address
+# }
+#
+# output "redis_port" {
+#   description = "Puerto de ElastiCache Redis"
+#   value       = aws_elasticache_replication_group.main.port
+# }
+#
+# output "redis_connection_string" {
+#   description = "Connection string completo de Redis (endpoint:port)"
+#   value       = "${aws_elasticache_replication_group.main.configuration_endpoint_address != "" ? aws_elasticache_replication_group.main.configuration_endpoint_address : aws_elasticache_replication_group.main.primary_endpoint_address}:${aws_elasticache_replication_group.main.port}"
+# }
 
 # Amazon MQ RabbitMQ - COMENTADO TEMPORALMENTE
 # output "rabbitmq_endpoint" {
@@ -190,7 +190,7 @@ output "mongodb_connection_secret_arn" {
 
 output "rabbitmq_password_secret_arn" {
   description = "ARN del secret de RabbitMQ password"
-  value       = aws_secretsmanager_secret.rabbitmq_password.arn
+  value       = data.aws_secretsmanager_secret.rabbitmq_password.arn
   sensitive   = true
 }
 

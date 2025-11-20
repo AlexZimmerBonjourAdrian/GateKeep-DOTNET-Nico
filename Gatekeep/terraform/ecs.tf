@@ -229,15 +229,15 @@ resource "aws_ecs_task_definition" "main" {
           name  = "MONGODB_USE_STABLE_API"
           value = "true"
         },
-        # Redis - desde ElastiCache
-        {
-          name  = "REDIS_CONNECTION"
-          value = "${aws_elasticache_replication_group.main.configuration_endpoint_address != "" ? aws_elasticache_replication_group.main.configuration_endpoint_address : aws_elasticache_replication_group.main.primary_endpoint_address}:${aws_elasticache_replication_group.main.port}"
-        },
-        {
-          name  = "REDIS_INSTANCE"
-          value = "GateKeep:"
-        }
+        # Redis - COMENTADO TEMPORALMENTE (ElastiCache no disponible)
+        # {
+        #   name  = "REDIS_CONNECTION"
+        #   value = "${aws_elasticache_replication_group.main.configuration_endpoint_address != "" ? aws_elasticache_replication_group.main.configuration_endpoint_address : aws_elasticache_replication_group.main.primary_endpoint_address}:${aws_elasticache_replication_group.main.port}"
+        # },
+        # {
+        #   name  = "REDIS_INSTANCE"
+        #   value = "GateKeep:"
+        # }
         # RabbitMQ - COMENTADO TEMPORALMENTE
         # {
         #   name  = "RABBITMQ__HOST"
