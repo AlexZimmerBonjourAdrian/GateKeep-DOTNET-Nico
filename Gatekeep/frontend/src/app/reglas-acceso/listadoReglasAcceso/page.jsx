@@ -186,13 +186,7 @@ export default function listadoReglasAcceso() {
                     const rolesPermitidos = regla.RolesPermitidos ?? regla.rolesPermitidos ?? [];
                     
                     return (
-                      <div 
-                        key={id} 
-                        className="event-card" 
-                        tabIndex={0}
-                        onClick={() => router.push(`/reglas-acceso/${id}`)}
-                        style={{ cursor: 'pointer' }}
-                      >
+                      <div key={id} className="event-card" tabIndex={0}>
                         <h3>Regla #{id}</h3>
                         <p><strong>Espacio ID:</strong> {espacioId}</p>
                         {regla.HorarioApertura && regla.HorarioCierre && (
@@ -202,34 +196,6 @@ export default function listadoReglasAcceso() {
                           <p><strong>Vigencia:</strong> {new Date(regla.VigenciaApertura).toLocaleDateString('es-ES')} - {new Date(regla.VigenciaCierre).toLocaleDateString('es-ES')}</p>
                         )}
                         <p><strong>Roles:</strong> {rolesPermitidos.length > 0 ? rolesPermitidos.join(', ') : 'N/A'}</p>
-                        {isAdmin && (
-                          <div className="card-actions" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              className="card-action-btn edit-btn"
-                              onClick={() => router.push(`/reglas-acceso/editarReglaAcceso/${id}`)}
-                              aria-label={`Editar regla ${id}`}
-                            >
-                              ✏️ Editar
-                            </button>
-                            <button
-                              className="card-action-btn delete-btn"
-                              onClick={async () => {
-                                if (window.confirm('¿Seguro que deseas eliminar esta regla?')) {
-                                  try {
-                                    await ReglaAccesoService.eliminarReglaAcceso(id);
-                                    setReglas(reglas.filter(r => (r.Id ?? r.id) !== id));
-                                  } catch (err) {
-                                    console.error('Error eliminando regla:', err);
-                                    alert('Error al eliminar la regla');
-                                  }
-                                }
-                              }}
-                              aria-label={`Eliminar regla ${id}`}
-                            >
-                              🗑️ Eliminar
-                            </button>
-                          </div>
-                        )}
                       </div>
                     );
                   })}
@@ -279,14 +245,6 @@ export default function listadoReglasAcceso() {
 
           .event-card h3{ font-size: clamp(1rem, 1.6vw, 1.2rem); margin:0 0 6px 0; }
           .event-card p{ font-size: clamp(0.85rem, 1.1vw, 1rem); margin:0; }
-
-          /* Card action buttons */
-          .card-actions{ display:flex; gap:8px; margin-top:12px; }
-          .card-action-btn{ padding:6px 10px; border:none; border-radius:12px; cursor:pointer; font-size:0.75rem; font-weight:600; transition:all 0.15s ease; }
-          .edit-btn{ background:#231F20; color:#fff; }
-          .edit-btn:hover{ background:#3d3739; transform:scale(1.05); }
-          .delete-btn{ background:#231F20; color:#fff; }
-          .delete-btn:hover{ background:#7e1e1e; transform:scale(1.05); }
 
       `}</style>
     </div>

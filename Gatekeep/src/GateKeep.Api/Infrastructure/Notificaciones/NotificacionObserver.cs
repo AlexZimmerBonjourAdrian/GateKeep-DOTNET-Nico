@@ -170,29 +170,5 @@ public sealed class NotificacionObserver : IEventObserver
             Console.WriteLine($"Error creando notificación de beneficio desasignado: {ex.Message}");
         }
     }
-
-    public async Task OnBeneficioCanjeadoAsync(long usuarioId, long beneficioId, string beneficioNombre, string puntoControl, DateTime fecha)
-    {
-        try
-        {
-            var fechaFormateada = fecha.ToString("dd/MM/yyyy HH:mm");
-            var mensaje = $"Has canjeado el beneficio: {beneficioNombre} en {puntoControl} el {fechaFormateada}";
-
-            // Crear notificación
-            var notificacion = await _notificacionService.CrearNotificacionAsync(
-                mensaje,
-                "beneficio_canjeado",
-                usuarioId);
-
-            // Asignar notificación al usuario
-            await _transactionService.CrearNotificacionUsuarioConCompensacionAsync(
-                usuarioId,
-                notificacion.Id);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error creando notificación de beneficio canjeado: {ex.Message}");
-        }
-    }
 }
 

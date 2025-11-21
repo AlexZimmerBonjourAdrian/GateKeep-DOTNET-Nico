@@ -86,17 +86,6 @@ export default function ListadoEdificios() {
 		if (inputRef.current) inputRef.current.blur();
 	};
 
-	const handleDelete = async (id) => {
-		if (!confirm('¿Estás seguro de eliminar este edificio?')) return;
-		try {
-			await EdificioService.deleteEdificio(id);
-			setEdificios(edificios.filter(e => (e.Id || e.id) !== id));
-		} catch (e) {
-			console.error('Error al eliminar edificio:', e);
-			alert('Error al eliminar el edificio');
-		}
-	};
-
 	if (!isAdmin) return null;
 
 	return (
@@ -182,35 +171,13 @@ export default function ListadoEdificios() {
 									const activo = e.Activo ?? e.activo ?? false;
 									
 									return (
-										<div 
-											key={e.Id || e.id} 
-											className="event-card" 
-											tabIndex={0}
-											onClick={() => router.push(`/edificios/${e.Id || e.id}`)}
-											style={{ cursor: 'pointer' }}
-										>
+										<div key={e.Id || e.id} className="event-card" tabIndex={0}>
 											<h3>{nombre}</h3>
 											<p><strong>Capacidad:</strong> {capacidad}</p>
 											<p><strong>Pisos:</strong> {pisos}</p>
 											{codigo && (<p><strong>Código:</strong> {codigo}</p>)}
 											<p><strong>Ubicación:</strong> {ubicacion}</p>
 											<p><strong>Estado:</strong> {activo ? 'Activo' : 'Inactivo'}</p>
-											<div className="card-actions" onClick={(e) => e.stopPropagation()}>
-												<button
-													className="card-action-btn edit-btn"
-													onClick={() => router.push(`/edificios/editarEdificio/${e.Id || e.id}`)}
-													aria-label={`Editar ${nombre}`}
-												>
-													✏️ Editar
-												</button>
-												<button
-													className="card-action-btn delete-btn"
-													onClick={() => handleDelete(e.Id || e.id)}
-													aria-label={`Eliminar ${nombre}`}
-												>
-													🗑️ Eliminar
-												</button>
-											</div>
 										</div>
 									);
 								})}
@@ -240,17 +207,11 @@ export default function ListadoEdificios() {
 				.event-group{ display:grid; grid-template-columns: repeat(1, 1fr); gap:12px; }
 				@media (min-width: 426px) and (max-width: 768px) { .event-group{ grid-template-columns: repeat(2, 1fr); gap:12px; } }
 				@media (min-width: 769px) { .event-group{ grid-template-columns: repeat(4, 1fr); gap:16px; } }
-				.event-card{ width:100%; aspect-ratio: 4 / 3; padding:12px; background:#f37426; border-radius:20px; box-shadow:0 2px 6px rgba(0,0,0,0.12); transition:transform 0.18s ease, box-shadow 0.18s ease; color:#231F20; box-sizing:border-box; display:flex; flex-direction:column; justify-content:space-between; }
+				.event-card{ width:100%; aspect-ratio: 4 / 3; padding:12px; background:#f37426; border-radius:20px; box-shadow:0 2px 6px rgba(0,0,0,0.12); transition:transform 0.18s ease, box-shadow 0.18s ease; color:#231F20; box-sizing:border-box; display:flex; flex-direction:column; justify-content:center; }
 				.event-card:hover{ transform: translateY(-4px) scale(1.01); box-shadow:0 8px 18px rgba(0,0,0,0.18); z-index:1; }
 				.event-card:focus, .event-card:focus-visible{ transform: translateY(-4px) scale(1.01); box-shadow:0 10px 20px rgba(0,0,0,0.22); border:2px solid rgba(37,99,235,0.12); z-index:2; }
 				.event-card h3{ font-size: clamp(1rem, 1.6vw, 1.2rem); margin:0 0 6px 0; }
 				.event-card p{ font-size: clamp(0.75rem, 1.05vw, 0.95rem); margin:0; }
-				.card-actions{ display:flex; gap:6px; margin-top:8px; }
-				.card-action-btn{ padding:6px 10px; border:none; border-radius:12px; cursor:pointer; font-size:0.75rem; font-weight:600; transition:all 0.15s ease; }
-				.edit-btn{ background:#231F20; color:#fff; }
-				.edit-btn:hover{ background:#3d3739; transform:scale(1.05); }
-				.delete-btn{ background:#231F20; color:#fff; }
-				.delete-btn:hover{ background:#7e1e1e; transform:scale(1.05); }
 			`}</style>
 		</div>
 	);

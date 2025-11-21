@@ -87,9 +87,6 @@ namespace GateKeep.Api.Migrations
                     b.Property<bool>("EstadoCanje")
                         .HasColumnType("boolean");
 
-                    b.Property<DateTime?>("FechaCanje")
-                        .HasColumnType("timestamp with time zone");
-
                     b.HasKey("UsuarioId", "BeneficioId");
 
                     b.HasIndex("BeneficioId")

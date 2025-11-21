@@ -138,21 +138,6 @@ public static class BeneficioEndpoints
         .Produces(401)
         .Produces(403);
 
-        // GET /api/usuarios/{usuarioId}/beneficios/canjeados - Obtener historial de beneficios canjeados
-        usuarioBeneficioGroup.MapGet("/canjeados", async (
-            long usuarioId,
-            [FromServices] IBeneficioUsuarioService beneficioUsuarioService) =>
-        {
-            var beneficios = await beneficioUsuarioService.ObtenerBeneficiosCanjeadosPorUsuarioAsync(usuarioId);
-            return Results.Ok(beneficios);
-        })
-        .RequireAuthorization("AllUsers")
-        .WithName("GetBeneficiosCanjeados")
-        .WithSummary("Obtener historial de beneficios canjeados por un usuario")
-        .Produces<IEnumerable<BeneficioUsuarioDto>>(200)
-        .Produces(401)
-        .Produces(403);
-
         // POST /api/usuarios/{usuarioId}/beneficios/{beneficioId} - Asignar beneficio a usuario
         usuarioBeneficioGroup.MapPost("/{beneficioId:long}", async (
             long usuarioId,
@@ -197,35 +182,6 @@ public static class BeneficioEndpoints
         .WithName("DesasignarBeneficio")
         .WithSummary("Desasignar un beneficio de un usuario (dispara evento BeneficioDesasignado)")
         .Produces(204)
-        .Produces(400)
-        .Produces(401)
-        .Produces(403);
-
-        // PATCH /api/usuarios/{usuarioId}/beneficios/{beneficioId}/canjear - Canjear beneficio
-        usuarioBeneficioGroup.MapPatch("/{beneficioId:long}/canjear", async (
-            long usuarioId,
-            long beneficioId,
-            [FromBody] CanjearBeneficioRequest request,
-            [FromServices] IBeneficioUsuarioService beneficioUsuarioService) =>
-        {
-            try
-            {
-                var resultado = await beneficioUsuarioService.CanjearBeneficioAsync(usuarioId, beneficioId, request.PuntoControl);
-                return Results.Ok(resultado);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return Results.BadRequest(new { error = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return Results.BadRequest(new { error = ex.Message });
-            }
-        })
-        .RequireAuthorization("AllUsers")
-        .WithName("CanjearBeneficio")
-        .WithSummary("Canjear un beneficio (dispara evento BeneficioCanjeado con notificación)")
-        .Produces<BeneficioUsuarioDto>(200)
         .Produces(400)
         .Produces(401)
         .Produces(403);

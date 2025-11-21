@@ -29,7 +29,7 @@ export default function ReglaAccesoDetalle() {
     }
     const fetchRegla = async () => {
       try {
-        const resp = await ReglaAccesoService.getReglaAccesoById(id)
+        const resp = await ReglaAccesoService.getReglaById(id)
         setRegla(resp.data)
       } catch (e) {
         console.error('Error cargando regla de acceso', e)
@@ -61,14 +61,6 @@ export default function ReglaAccesoDetalle() {
     }
   }
 
-  const estaActiva = (regla) => {
-    if (!regla) return false;
-    const ahora = new Date();
-    const vigenciaApertura = new Date(regla.VigenciaApertura ?? regla.vigenciaApertura);
-    const vigenciaCierre = new Date(regla.VigenciaCierre ?? regla.vigenciaCierre);
-    return ahora >= vigenciaApertura && ahora <= vigenciaCierre;
-  }
-
   return (
     <div className="page-root">
       <Header />
@@ -93,8 +85,8 @@ export default function ReglaAccesoDetalle() {
               <article className="card">
                 <header className="card-header">
                   <h1 className="title">Regla #{regla.Id || regla.id}</h1>
-                  <span className={`badge ${estaActiva(regla) ? 'ok' : 'off'}`}>
-                    {estaActiva(regla) ? 'Activa' : 'Inactiva'}
+                  <span className={`badge ${((regla.Activo ?? regla.activo) ? 'ok' : 'off')}`}>
+                    {(regla.Activo ?? regla.activo) ? 'Activa' : 'Inactiva'}
                   </span>
                 </header>
 
@@ -104,35 +96,31 @@ export default function ReglaAccesoDetalle() {
                     <span className="meta-value">{regla.EspacioId ?? regla.espacioId ?? 'N/A'}</span>
                   </div>
                   <div className="meta-item">
-                    <span className="meta-label">Vigencia desde</span>
+                    <span className="meta-label">Usuario ID</span>
+                    <span className="meta-value">{regla.UsuarioId ?? regla.usuarioId ?? 'N/A'}</span>
+                  </div>
+                  <div className="meta-item">
+                    <span className="meta-label">Fecha de inicio</span>
                     <span className="meta-value">
-                      {formatearFecha(regla.VigenciaApertura ?? regla.vigenciaApertura)}
+                      {formatearFecha(regla.FechaInicio ?? regla.fechaInicio)}
                     </span>
                   </div>
                   <div className="meta-item">
-                    <span className="meta-label">Vigencia hasta</span>
+                    <span className="meta-label">Fecha de fin</span>
                     <span className="meta-value">
-                      {formatearFecha(regla.VigenciaCierre ?? regla.vigenciaCierre)}
+                      {formatearFecha(regla.FechaFin ?? regla.fechaFin)}
                     </span>
                   </div>
                   <div className="meta-item">
-                    <span className="meta-label">Horario apertura</span>
+                    <span className="meta-label">Hora de inicio</span>
                     <span className="meta-value">
-                      {formatearHora(regla.HorarioApertura ?? regla.horarioApertura)}
+                      {formatearHora(regla.HoraInicio ?? regla.horaInicio)}
                     </span>
                   </div>
                   <div className="meta-item">
-                    <span className="meta-label">Horario cierre</span>
+                    <span className="meta-label">Hora de fin</span>
                     <span className="meta-value">
-                      {formatearHora(regla.HorarioCierre ?? regla.horarioCierre)}
-                    </span>
-                  </div>
-                  <div className="meta-item">
-                    <span className="meta-label">Roles permitidos</span>
-                    <span className="meta-value">
-                      {(regla.RolesPermitidos ?? regla.rolesPermitidos ?? []).length > 0 
-                        ? (regla.RolesPermitidos ?? regla.rolesPermitidos).join(', ') 
-                        : 'N/A'}
+                      {formatearHora(regla.HoraFin ?? regla.horaFin)}
                     </span>
                   </div>
                 </div>

@@ -59,23 +59,4 @@ export class BeneficioService {
   static async eliminarBeneficio(id: number) {
     return axios.delete(`${API_URL}/${id}`, this.getAuthHeaders());
   }
-
-  static async getBeneficiosPorUsuario(usuarioId: number) {
-    const USUARIOS_URL = URLService.getLink() + "usuarios";
-    return axios.get(`${USUARIOS_URL}/${usuarioId}/beneficios`, this.getAuthHeaders());
-  }
-
-  static async getBeneficiosCanjeados(usuarioId: number) {
-    const USUARIOS_URL = URLService.getLink() + "usuarios";
-    return axios.get(`${USUARIOS_URL}/${usuarioId}/beneficios/canjeados`, this.getAuthHeaders());
-  }
-
-  static async canjearBeneficio(usuarioId: number, beneficioId: number, puntoControl: string) {
-    const USUARIOS_URL = URLService.getLink() + "usuarios";
-    return axios.patch(
-      `${USUARIOS_URL}/${usuarioId}/beneficios/${beneficioId}/canjear`,
-      { puntoControl },
-      this.getAuthHeaders()
-    );
-  }
 }
