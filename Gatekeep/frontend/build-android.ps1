@@ -34,9 +34,13 @@ function Get-NgrokUrl {
     try {
         $response = Invoke-RestMethod -Uri "http://localhost:4040/api/tunnels" -TimeoutSec 3 -ErrorAction Stop
         if ($response.tunnels -and $response.tunnels.Count -gt 0) {
-            $httpsTunnel = $response.tunnels | Where-Object { $_.proto -eq 'https' } | Select-Object -First 1
-            if ($httpsTunnel) {
-                return $httpsTunnel.public_url
+            # Preferir HTTPS, pero aceptar HTTP si no hay HTTPS disponible
+            $tunnel = $response.tunnels | Where-Object { $_.proto -eq 'https' } | Select-Object -First 1
+            if (-not $tunnel) {
+                $tunnel = $response.tunnels | Where-Object { $_.proto -eq 'http' } | Select-Object -First 1
+            }
+            if ($tunnel -and $tunnel.public_url) {
+                return $tunnel.public_url
             }
         }
     } catch {
@@ -164,11 +168,22 @@ if (-not $SkipBuild) {
         exit 1
     }
     Write-Host "   PWA construida exitosamente" -ForegroundColor Green
-    Write-Host ""
 } else {
     Write-Host "   Saltando construcción (--skip-build)" -ForegroundColor Yellow
-    Write-Host ""
 }
+
+# Verificar que .next existe
+if (-not (Test-Path ".next")) {
+    Write-Host "   Error: Directorio .next no encontrado. Ejecutando build..." -ForegroundColor Yellow
+    npm run build
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "   Error construyendo PWA" -ForegroundColor Red
+        exit 1
+    }
+}
+
+Write-Host "   ✓ PWA lista para servir" -ForegroundColor Green
+Write-Host ""
 
 # 2. Verificar icono
 Write-Host "2. Verificando icono..." -ForegroundColor Yellow
@@ -206,15 +221,28 @@ if (-not $java17Path) {
         if (Test-Path $p) {
             $javaExe = Get-ChildItem $p -Filter "java.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
             if ($javaExe) {
-                $javaVersion = & $javaExe -version 2>&1 | Out-String
-                if ($javaVersion -match 'version "(\d+)') {
-                    $majorVersion = [int]$matches[1]
+                try {
+                    $javaVersion = & $javaExe -version 2>&1 | Out-String
+                    # Detectar versión - puede ser "version "17.0.1"" o "version "1.8.0_461""
+                    if ($javaVersion -match 'version "1\.(\d+)') {
+                        # Formato antiguo: 1.8, 1.11, etc.
+                        $majorVersion = [int]$matches[1]
+                    } elseif ($javaVersion -match 'version "(\d+)') {
+                        # Formato nuevo: 17, 21, etc.
+                        $majorVersion = [int]$matches[1]
+                    } else {
+                        continue
+                    }
+                    
                     if ($majorVersion -ge 17) {
                         $env:JAVA_HOME = $javaExe.DirectoryName -replace "\\bin$", ""
                         Write-Host "   Java $majorVersion encontrado: $($env:JAVA_HOME)" -ForegroundColor Green
                         $java17Path = $env:JAVA_HOME
                         break
                     }
+                } catch {
+                    # Ignorar errores en la detección de versión
+                    continue
                 }
             }
         }
@@ -227,34 +255,66 @@ if (-not $java17Path) {
 Write-Host ""
 
 # 4. Iniciar servidor de desarrollo
-Write-Host "4. Iniciando servidor de desarrollo..." -ForegroundColor Yellow
-$nodeProcess = Get-Process -Name node -ErrorAction SilentlyContinue | Where-Object { 
-    $_.Path -like "*node.exe*" -and 
-    (Get-NetTCPConnection -LocalPort $NextJsPort -ErrorAction SilentlyContinue)
+Write-Host "4. Iniciando servidor de Next.js..." -ForegroundColor Yellow
+
+# Detener procesos node anteriores
+Stop-BackgroundProcesses "node"
+Start-Sleep -Seconds 2
+
+# Verificar que el puerto 3000 esté libre
+$portCheck = Get-NetTCPConnection -LocalPort $NextJsPort -ErrorAction SilentlyContinue | Where-Object { $_.State -eq "Listen" }
+if ($portCheck) {
+    Write-Host "   Advertencia: Puerto $NextJsPort está en uso, liberando..." -ForegroundColor Yellow
+    Stop-BackgroundProcesses "node"
+    Start-Sleep -Seconds 3
 }
 
-if (-not $nodeProcess) {
-    Write-Host "   Iniciando servidor Next.js en puerto $NextJsPort..." -ForegroundColor Gray
-    Start-Process -FilePath "npm" -ArgumentList "run", "dev" -WindowStyle Hidden
-    Start-Sleep -Seconds 8
-    
-    # Verificar que el servidor esté respondiendo
-    $serverUrl = "http://localhost:$NextJsPort"
-    Write-Host "   Verificando que el servidor esté respondiendo..." -ForegroundColor Gray
-    if (Test-ServiceResponse -Url $serverUrl -MaxRetries 10 -RetryDelay 2) {
-        Write-Host "   Servidor iniciado y respondiendo" -ForegroundColor Green
-    } else {
-        Write-Host "   Advertencia: Servidor iniciado pero no responde aún" -ForegroundColor Yellow
-        Write-Host "   Continuando..." -ForegroundColor Gray
-    }
-} else {
-    Write-Host "   Servidor ya está corriendo en puerto $NextJsPort" -ForegroundColor Green
-    # Verificar que esté respondiendo
-    $serverUrl = "http://localhost:$NextJsPort"
-    if (-not (Test-ServiceResponse -Url $serverUrl -MaxRetries 3)) {
-        Write-Host "   Advertencia: Servidor no responde, puede haber problemas" -ForegroundColor Yellow
-    }
+Write-Host "   Iniciando: npm run start (puerto $NextJsPort)..." -ForegroundColor Gray
+$npmProcess = Start-Process -FilePath "npm" -ArgumentList "run", "start" -PassThru -WindowStyle Hidden -WorkingDirectory $ScriptDir
+Write-Host "   Proceso npm iniciado (PID: $($npmProcess.Id))" -ForegroundColor Gray
+Start-Sleep -Seconds 6
+
+# Verificar que el proceso sigue ejecutándose
+$npmCheck = Get-Process -Id $npmProcess.Id -ErrorAction SilentlyContinue
+if (-not $npmCheck) {
+    Write-Host "   Error: El proceso npm se detuvo inmediatamente" -ForegroundColor Red
+    Write-Host "   Intenta manualmente: npm run start" -ForegroundColor Yellow
+    exit 1
 }
+
+# Verificar que localhost:3000 responde
+Write-Host "   Esperando que el servidor esté listo..." -ForegroundColor Gray
+$serverReady = $false
+$maxWait = 20
+$waitCount = 0
+
+while ($waitCount -lt $maxWait) {
+    try {
+        $response = Invoke-WebRequest -Uri "http://localhost:$NextJsPort" -TimeoutSec 3 -UseBasicParsing -ErrorAction Stop
+        if ($response.StatusCode -eq 200) {
+            Write-Host "   ✓ Servidor respondiendo en localhost:$NextJsPort" -ForegroundColor Green
+            $serverReady = $true
+            break
+        }
+    } catch {
+        # Ignorar errores, intentar de nuevo
+    }
+    
+    $waitCount++
+    Write-Host "." -NoNewline -ForegroundColor Gray
+    Start-Sleep -Seconds 1
+}
+
+Write-Host ""
+
+if (-not $serverReady) {
+    Write-Host "   Error: Servidor no responde después de $maxWait segundos" -ForegroundColor Red
+    Write-Host "   El proceso npm puede tener errores. Intenta manualmente:" -ForegroundColor Yellow
+    Write-Host "   npm run start" -ForegroundColor Cyan
+    exit 1
+}
+
+Write-Host "   ✓ Servidor Next.js listo" -ForegroundColor Green
 Write-Host ""
 
 # 5. Iniciar servidor HTTP para el icono
@@ -290,50 +350,60 @@ Write-Host ""
 
 # 6. Configurar ngrok
 if (-not $SkipNgrok) {
-    Write-Host "6. Configurando ngrok..." -ForegroundColor Yellow
+    Write-Host "6. Configurando ngrok para localhost:$NextJsPort..." -ForegroundColor Yellow
     
     if (-not $PwaUrl) {
-        # Verificar si ngrok ya está corriendo
-        $existingNgrokUrl = Get-NgrokUrl
-        if ($existingNgrokUrl) {
-            Write-Host "   ngrok ya está corriendo: $existingNgrokUrl" -ForegroundColor Green
-            $PwaUrl = $existingNgrokUrl
-        } else {
-            # Verificar si ngrok está instalado
-            if (-not (Get-Command ngrok -ErrorAction SilentlyContinue)) {
-                Write-Host "   Error: ngrok no está instalado" -ForegroundColor Red
-                Write-Host "   Instala ngrok desde: https://ngrok.com/download" -ForegroundColor Yellow
-                exit 1
-            }
-            
-            # Detener procesos de ngrok anteriores
-            Stop-BackgroundProcesses "ngrok"
-            
-            # Iniciar ngrok
-            Write-Host "   Iniciando ngrok en puerto $NextJsPort..." -ForegroundColor Gray
-            Start-Process -FilePath "ngrok" -ArgumentList "http", $NextJsPort -WindowStyle Hidden
-            Start-Sleep -Seconds 5
-            
-            # Obtener URL de ngrok
-            $maxRetries = 10
-            $retryCount = 0
-            while ($retryCount -lt $maxRetries -and -not $PwaUrl) {
-                $PwaUrl = Get-NgrokUrl
-                if (-not $PwaUrl) {
-                    Start-Sleep -Seconds 2
-                    $retryCount++
-                    Write-Host "." -NoNewline -ForegroundColor Gray
+        # Detener procesos de ngrok anteriores
+        Stop-BackgroundProcesses "ngrok"
+        
+        # Verificar que ngrok esté instalado
+        if (-not (Get-Command ngrok -ErrorAction SilentlyContinue)) {
+            Write-Host "   Error: ngrok no está instalado" -ForegroundColor Red
+            Write-Host "   Instala ngrok desde: https://ngrok.com/download" -ForegroundColor Yellow
+            exit 1
+        }
+        
+        # Iniciar ngrok simple
+        Write-Host "   Iniciando: ngrok http $NextJsPort" -ForegroundColor Gray
+        $ngrokProcess = Start-Process -FilePath "ngrok" -ArgumentList "http", $NextJsPort -PassThru -WindowStyle Minimized
+        
+        if (-not $ngrokProcess) {
+            Write-Host "   Error: No se pudo iniciar ngrok" -ForegroundColor Red
+            exit 1
+        }
+        
+        Write-Host "   ngrok iniciado (PID: $($ngrokProcess.Id))" -ForegroundColor Green
+        Write-Host "   Esperando que se establezca la conexión..." -ForegroundColor Gray
+        Start-Sleep -Seconds 6
+        
+        # Obtener URL de ngrok
+        $maxRetries = 15
+        $retryCount = 0
+        while ($retryCount -lt $maxRetries -and -not $PwaUrl) {
+            try {
+                $ngrokResponse = Invoke-RestMethod -Uri "http://localhost:4040/api/tunnels" -TimeoutSec 3 -ErrorAction Stop
+                if ($ngrokResponse.tunnels -and $ngrokResponse.tunnels.Count -gt 0) {
+                    $tunnel = $ngrokResponse.tunnels | Where-Object { $_.proto -eq 'https' -or $_.proto -eq 'http' } | Select-Object -First 1
+                    if ($tunnel) {
+                        $PwaUrl = $tunnel.public_url
+                        Write-Host "   ✓ URL ngrok: $PwaUrl" -ForegroundColor Green
+                        break
+                    }
                 }
-            }
-            Write-Host ""
-            
-            if (-not $PwaUrl) {
-                Write-Host "   Error: No se pudo obtener URL de ngrok" -ForegroundColor Red
-                Write-Host "   Verifica que ngrok esté corriendo en: http://localhost:4040" -ForegroundColor Yellow
-                exit 1
+            } catch {
+                # Ignorar errores de conexión
             }
             
-            Write-Host "   ngrok iniciado: $PwaUrl" -ForegroundColor Green
+            $retryCount++
+            if ($retryCount -lt $maxRetries) {
+                Start-Sleep -Seconds 1
+            }
+        }
+        
+        if (-not $PwaUrl) {
+            Write-Host "   Error: No se pudo obtener URL de ngrok" -ForegroundColor Red
+            Write-Host "   Verifica: http://localhost:4040" -ForegroundColor Yellow
+            exit 1
         }
     } else {
         Write-Host "   Usando URL proporcionada: $PwaUrl" -ForegroundColor Green
@@ -343,23 +413,69 @@ if (-not $SkipNgrok) {
         Write-Host "6. Error: Se requiere --PwaUrl cuando se usa --SkipNgrok" -ForegroundColor Red
         exit 1
     }
-    Write-Host "6. Saltando ngrok, usando URL: $PwaUrl" -ForegroundColor Yellow
+    Write-Host "6. Usando URL: $PwaUrl" -ForegroundColor Yellow
 }
 Write-Host ""
 
 # 7. Verificar que el manifest sea accesible
 Write-Host "7. Verificando manifest..." -ForegroundColor Yellow
 $manifestUrl = "$PwaUrl/manifest.json"
+
+# Primero verificar que localhost:3000 está disponible
+Write-Host "   Verificando acceso a localhost:$NextJsPort..." -ForegroundColor Gray
 try {
-    $response = Invoke-WebRequest -Uri $manifestUrl -Method Head -TimeoutSec 10 -UseBasicParsing
-    if ($response.StatusCode -ne 200) {
-        throw "Status code: $($response.StatusCode)"
-    }
-    Write-Host "   Manifest accesible: $manifestUrl" -ForegroundColor Green
+    $localResponse = Invoke-WebRequest -Uri "http://localhost:$NextJsPort" -Method Head -TimeoutSec 5 -UseBasicParsing -ErrorAction Stop
+    Write-Host "   ✓ localhost:$NextJsPort respondiendo" -ForegroundColor Green
 } catch {
-    Write-Host "   Error: No se puede acceder a $manifestUrl" -ForegroundColor Red
-    Write-Host "   Verifica que el servidor esté corriendo y ngrok esté configurado correctamente" -ForegroundColor Yellow
+    Write-Host "   ✗ localhost:$NextJsPort NO está respondiendo" -ForegroundColor Red
+    Write-Host "   Error: $($_.Exception.Message)" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "   Diagnóstico:" -ForegroundColor Yellow
+    Write-Host "   1. Verifica que npm run dev se ejecutó sin errores" -ForegroundColor White
+    Write-Host "   2. Comprueba que no hay otro proceso usando el puerto 3000" -ForegroundColor White
+    Write-Host "   3. Abre en el navegador: http://localhost:3000" -ForegroundColor White
+    Write-Host ""
     exit 1
+}
+
+# Ahora verificar el manifest a través de ngrok
+Write-Host "   Verificando acceso a manifest mediante ngrok: $manifestUrl" -ForegroundColor Gray
+$manifestRetries = 0
+$manifestMaxRetries = 5
+while ($manifestRetries -lt $manifestMaxRetries) {
+    try {
+        $response = Invoke-WebRequest -Uri $manifestUrl -Method Head -TimeoutSec 10 -UseBasicParsing -ErrorAction Stop
+        if ($response.StatusCode -eq 200) {
+            Write-Host "   ✓ Manifest accesible: $manifestUrl" -ForegroundColor Green
+            break
+        } else {
+            throw "Status code: $($response.StatusCode)"
+        }
+    } catch {
+        $manifestRetries++
+        if ($manifestRetries -lt $manifestMaxRetries) {
+            Write-Host "   ○ Intento $manifestRetries/$manifestMaxRetries... Error: $($_.Exception.Message)" -ForegroundColor Yellow
+            Start-Sleep -Seconds 2
+        } else {
+            Write-Host "   ✗ Error: No se puede acceder a $manifestUrl" -ForegroundColor Red
+            Write-Host "   Detalles: $($_.Exception.Message)" -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "   Diagnóstico:" -ForegroundColor Yellow
+            Write-Host "   1. localhost:3000 está respondiendo ✓" -ForegroundColor Green
+            Write-Host "   2. Pero ngrok no puede acceder al manifest" -ForegroundColor White
+            Write-Host "   3. Posibles causas:" -ForegroundColor White
+            Write-Host "      - ngrok está accediendo a un puerto diferente de 3000" -ForegroundColor White
+            Write-Host "      - La PWA no está completamente construida" -ForegroundColor White
+            Write-Host "      - El archivo manifest.json no existe en public/" -ForegroundColor White
+            Write-Host ""
+            Write-Host "   Prueba estos comandos:" -ForegroundColor Yellow
+            Write-Host "   # Ver si el manifest existe localmente:" -ForegroundColor White
+            Write-Host "   curl http://localhost:$NextJsPort/manifest.json" -ForegroundColor Cyan
+            Write-Host "   # Ver si ngrok está exponiendo correctamente:" -ForegroundColor White
+            Write-Host "   curl $manifestUrl -v" -ForegroundColor Cyan
+            exit 1
+        }
+    }
 }
 Write-Host ""
 
