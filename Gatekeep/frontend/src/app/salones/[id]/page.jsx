@@ -3,18 +3,18 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, usePathname, useRouter } from 'next/navigation'
 import Header from '../../../components/Header'
-import { EdificioService } from '../../../services/EdificioService'
+import { SalonService } from '../../../services/SalonService'
 import { ReglaAccesoService } from '../../../services/ReglaAccesoService'
 import { SecurityService } from '../../../services/securityService'
 
-export default function EdificioDetalle() {
+export default function SalonDetalle() {
   const params = useParams()
   const router = useRouter()
   const pathname = usePathname()
   const rawId = params?.id
   const id = Number(rawId)
 
-  const [edificio, setEdificio] = useState(null)
+  const [salon, setSalon] = useState(null)
   const [reglaAcceso, setReglaAcceso] = useState(null)
   const [loading, setLoading] = useState(true)
   const [loadingRegla, setLoadingRegla] = useState(false)
@@ -30,10 +30,10 @@ export default function EdificioDetalle() {
       setLoading(false)
       return
     }
-    const fetchEdificio = async () => {
+    const fetchSalon = async () => {
       try {
-        const resp = await EdificioService.getEdificioById(id)
-        setEdificio(resp.data)
+        const resp = await SalonService.getSalonById(id)
+        setSalon(resp.data)
         
         // Cargar regla de acceso si existe
         setLoadingRegla(true)
@@ -43,19 +43,19 @@ export default function EdificioDetalle() {
             setReglaAcceso(reglaResp.data)
           }
         } catch (reglaError) {
-          console.log('No hay regla de acceso para este edificio')
+          console.log('No hay regla de acceso para este salón')
           setReglaAcceso(null)
         } finally {
           setLoadingRegla(false)
         }
       } catch (e) {
-        console.error('Error cargando edificio', e)
-        setError('No se encontró el edificio')
+        console.error('Error cargando salón', e)
+        setError('No se encontró el salón')
       } finally {
         setLoading(false)
       }
     }
-    fetchEdificio()
+    fetchSalon()
   }, [id])
 
   return (
@@ -78,42 +78,48 @@ export default function EdificioDetalle() {
               </div>
             ) : error ? (
               <div className="card error"><h3>{error}</h3></div>
-            ) : edificio ? (
+            ) : salon ? (
               <article className="card">
                 <header className="card-header">
-                  <h1 className="title">{edificio.Nombre || edificio.nombre || 'Edificio'}</h1>
-                  <span className={`badge ${((edificio.Activo ?? edificio.activo) ? 'ok' : 'off')}`}>
-                    {(edificio.Activo ?? edificio.activo) ? 'Activo' : 'Inactivo'}
+                  <h1 className="title">{salon.Nombre || salon.nombre || 'Salón'}</h1>
+                  <span className={`badge ${((salon.Activo ?? salon.activo) ? 'ok' : 'off')}`}>
+                    {(salon.Activo ?? salon.activo) ? 'Activo' : 'Inactivo'}
                   </span>
                 </header>
 
                 <div className="meta">
                   <div className="meta-item">
+                    <span className="meta-label">Número de Salón</span>
+                    <span className="meta-value">{salon.NumeroSalon ?? salon.numeroSalon ?? 'N/A'}</span>
+                  </div>
+                  <div className="meta-item">
                     <span className="meta-label">Ubicación</span>
-                    <span className="meta-value">{edificio.Ubicacion || edificio.ubicacion || 'No especificada'}</span>
+                    <span className="meta-value">{salon.Ubicacion || salon.ubicacion || 'No especificada'}</span>
                   </div>
                   <div className="meta-item">
                     <span className="meta-label">Capacidad</span>
-                    <span className="meta-value">{edificio.Capacidad ?? edificio.capacidad ?? 'N/A'} personas</span>
+                    <span className="meta-value">{salon.Capacidad ?? salon.capacidad ?? 'N/A'} personas</span>
                   </div>
-                  <div className="meta-item">
-                    <span className="meta-label">Pisos</span>
-                    <span className="meta-value">{edificio.Pisos ?? edificio.pisos ?? 'N/A'}</span>
-                  </div>
+                  {(salon.TipoSalon || salon.tipoSalon) && (
+                    <div className="meta-item">
+                      <span className="meta-label">Tipo</span>
+                      <span className="meta-value">{salon.TipoSalon || salon.tipoSalon}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="body">
-                  {edificio.Descripcion || edificio.descripcion ? (
-                    <p>{edificio.Descripcion || edificio.descripcion}</p>
+                  {salon.Descripcion || salon.descripcion ? (
+                    <p>{salon.Descripcion || salon.descripcion}</p>
                   ) : (
-                    <p className="hint">No hay descripción adicional para este edificio.</p>
+                    <p className="hint">No hay descripción adicional para este salón.</p>
                   )}
                 </div>
               </article>
             ) : null}
 
             {/* Regla de Acceso */}
-            {!loading && edificio && (
+            {!loading && salon && (
               <article className="card regla-card">
                 <header className="card-header">
                   <h2 className="subtitle">
@@ -164,7 +170,7 @@ export default function EdificioDetalle() {
                 ) : (
                   <p className="hint">
                     <i className="pi pi-info-circle" style={{marginRight: '6px'}}></i>
-                    No hay regla de acceso configurada para este edificio.
+                    No hay regla de acceso configurada para este salón.
                   </p>
                 )}
               </article>
