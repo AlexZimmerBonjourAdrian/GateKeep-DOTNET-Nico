@@ -83,12 +83,6 @@ export default function EdificioDetalle() {
                     <span className="meta-label">Pisos</span>
                     <span className="meta-value">{edificio.Pisos ?? edificio.pisos ?? 'N/A'}</span>
                   </div>
-                  {(edificio.Ascensores ?? edificio.ascensores) !== undefined && (
-                    <div className="meta-item">
-                      <span className="meta-label">Ascensores</span>
-                      <span className="meta-value">{edificio.Ascensores ?? edificio.ascensores}</span>
-                    </div>
-                  )}
                 </div>
 
                 <div className="body">
