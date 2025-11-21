@@ -110,13 +110,19 @@ if ($LASTEXITCODE -eq 0) {
     $repos = ($reposJson | ConvertFrom-Json).repositories
     if ($repos -and $repos.Count -gt 0) {
         Write-Log "Se encontraron $($repos.Count) repositorio(s) ECR" -Level "Info"
-        $apiRepo = $repos | Where-Object { $_.repositoryName -like "*api*" -or $_.repositoryName -like "*gatekeep*" } | Select-Object -First 1
+        Write-Log "Repositorios disponibles: $($repos.repositoryName -join ', ')" -Level "Info"
+        
+        # Buscar repositorio API: primero los que contengan "api", luego los que contengan "gatekeep" pero NO "frontend"
+        $apiRepo = $repos | Where-Object { $_.repositoryName -like "*api*" } | Select-Object -First 1
+        if (-not $apiRepo) {
+            $apiRepo = $repos | Where-Object { $_.repositoryName -like "*gatekeep*" -and $_.repositoryName -notlike "*frontend*" } | Select-Object -First 1
+        }
+        
         if ($apiRepo) {
             $ecrApiUrl = $apiRepo.repositoryUri
             Write-Log "Repositorio ECR API encontrado: $ecrApiUrl" -Level "Success"
         } else {
-            Write-Log "No se encontro repositorio que coincida con 'api' o 'gatekeep'" -Level "Warning"
-            Write-Log "Repositorios disponibles: $($repos.repositoryName -join ', ')" -Level "Info"
+            Write-Log "No se encontro repositorio que coincida con 'api' o 'gatekeep' (sin frontend)" -Level "Warning"
         }
         
         $frontendRepo = $repos | Where-Object { $_.repositoryName -like "*frontend*" } | Select-Object -First 1

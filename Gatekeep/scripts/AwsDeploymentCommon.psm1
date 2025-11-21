@@ -454,14 +454,20 @@ function Connect-Ecr {
     Write-Log "Autenticando con ECR: $ecrBaseUrl" -Level "Info"
     
     return Invoke-WithRetry -ScriptBlock {
-        $password = aws ecr get-login-password --region $Region 2>&1
+        # Obtener password de ECR
+        $passwordOutput = aws ecr get-login-password --region $Region 2>&1
         if ($LASTEXITCODE -ne 0) {
-            throw "Error al obtener token de ECR: $password"
+            throw "Error al obtener token de ECR (codigo $LASTEXITCODE): $passwordOutput"
         }
         
-        $password | docker login --username AWS --password-stdin $ecrBaseUrl 2>&1 | Out-Null
+        # Convertir a string si es necesario
+        $password = if ($passwordOutput -is [string]) { $passwordOutput } else { $passwordOutput | Out-String -NoNewline }
+        
+        # Hacer login con docker
+        $loginOutput = $password | docker login --username AWS --password-stdin $ecrBaseUrl 2>&1
         if ($LASTEXITCODE -ne 0) {
-            throw "Error al autenticar con ECR"
+            $errorMsg = if ($loginOutput) { $loginOutput | Out-String -NoNewline } else { "Error desconocido" }
+            throw "Error al autenticar con ECR (codigo $LASTEXITCODE): $errorMsg"
         }
         
         return $true
