@@ -182,14 +182,20 @@ export default function ListadoEdificios() {
 									const activo = e.Activo ?? e.activo ?? false;
 									
 									return (
-										<div key={e.Id || e.id} className="event-card" tabIndex={0}>
+										<div 
+											key={e.Id || e.id} 
+											className="event-card" 
+											tabIndex={0}
+											onClick={() => router.push(`/edificios/${e.Id || e.id}`)}
+											style={{ cursor: 'pointer' }}
+										>
 											<h3>{nombre}</h3>
 											<p><strong>Capacidad:</strong> {capacidad}</p>
 											<p><strong>Pisos:</strong> {pisos}</p>
 											{codigo && (<p><strong>Código:</strong> {codigo}</p>)}
 											<p><strong>Ubicación:</strong> {ubicacion}</p>
 											<p><strong>Estado:</strong> {activo ? 'Activo' : 'Inactivo'}</p>
-											<div className="card-actions">
+											<div className="card-actions" onClick={(e) => e.stopPropagation()}>
 												<button
 													className="card-action-btn edit-btn"
 													onClick={() => router.push(`/edificios/editarEdificio/${e.Id || e.id}`)}
