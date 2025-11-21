@@ -96,8 +96,8 @@ export default function EscanerQR() {
       setError(null)
       
       // Usar URLService para obtener la URL correcta (producción o desarrollo)
-      const apiBase = URLService.getBaseUrl();
-      const response = await fetch(`${apiBase}/auth/validate`, {
+      const apiBase = URLService.getLink(); // Incluye /api/
+      const response = await fetch(`${apiBase}auth/validate`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

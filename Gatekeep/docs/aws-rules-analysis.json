@@ -1,0 +1,339 @@
+﻿{
+    "HTTPS":  {
+                  "Rules":  [
+                                {
+                                    "RuleArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:listener-rule/app/gatekeep-alb/ff82ae699b9862d2/d277ff2b7c7f46a8/269287247ddf46ec",
+                                    "Priority":  "100",
+                                    "Conditions":  [
+                                                       {
+                                                           "Field":  "path-pattern",
+                                                           "Values":  [
+                                                                          "/api/*"
+                                                                      ],
+                                                           "PathPatternConfig":  {
+                                                                                     "Values":  [
+                                                                                                    "/api/*"
+                                                                                                ]
+                                                                                 }
+                                                       }
+                                                   ],
+                                    "Actions":  [
+                                                    {
+                                                        "Type":  "forward",
+                                                        "TargetGroupArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:targetgroup/gatekeep-tg/27437174e066b9ee",
+                                                        "Order":  1,
+                                                        "ForwardConfig":  {
+                                                                              "TargetGroups":  [
+                                                                                                   {
+                                                                                                       "TargetGroupArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:targetgroup/gatekeep-tg/27437174e066b9ee",
+                                                                                                       "Weight":  1
+                                                                                                   }
+                                                                                               ],
+                                                                              "TargetGroupStickinessConfig":  {
+                                                                                                                  "Enabled":  false
+                                                                                                              }
+                                                                          }
+                                                    }
+                                                ],
+                                    "IsDefault":  false,
+                                    "Transforms":  [
+
+                                                   ]
+                                },
+                                {
+                                    "RuleArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:listener-rule/app/gatekeep-alb/ff82ae699b9862d2/d277ff2b7c7f46a8/518155826277b8f0",
+                                    "Priority":  "130",
+                                    "Conditions":  [
+                                                       {
+                                                           "Field":  "path-pattern",
+                                                           "Values":  [
+                                                                          "/swagger*",
+                                                                          "/swagger/*"
+                                                                      ],
+                                                           "PathPatternConfig":  {
+                                                                                     "Values":  [
+                                                                                                    "/swagger*",
+                                                                                                    "/swagger/*"
+                                                                                                ]
+                                                                                 }
+                                                       }
+                                                   ],
+                                    "Actions":  [
+                                                    {
+                                                        "Type":  "forward",
+                                                        "TargetGroupArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:targetgroup/gatekeep-tg/27437174e066b9ee",
+                                                        "Order":  1,
+                                                        "ForwardConfig":  {
+                                                                              "TargetGroups":  [
+                                                                                                   {
+                                                                                                       "TargetGroupArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:targetgroup/gatekeep-tg/27437174e066b9ee",
+                                                                                                       "Weight":  1
+                                                                                                   }
+                                                                                               ],
+                                                                              "TargetGroupStickinessConfig":  {
+                                                                                                                  "Enabled":  false
+                                                                                                              }
+                                                                          }
+                                                    }
+                                                ],
+                                    "IsDefault":  false,
+                                    "Transforms":  [
+
+                                                   ]
+                                },
+                                {
+                                    "RuleArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:listener-rule/app/gatekeep-alb/ff82ae699b9862d2/d277ff2b7c7f46a8/461173d853037548",
+                                    "Priority":  "140",
+                                    "Conditions":  [
+                                                       {
+                                                           "Field":  "path-pattern",
+                                                           "Values":  [
+                                                                          "/health*"
+                                                                      ],
+                                                           "PathPatternConfig":  {
+                                                                                     "Values":  [
+                                                                                                    "/health*"
+                                                                                                ]
+                                                                                 }
+                                                       }
+                                                   ],
+                                    "Actions":  [
+                                                    {
+                                                        "Type":  "forward",
+                                                        "TargetGroupArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:targetgroup/gatekeep-tg/27437174e066b9ee",
+                                                        "ForwardConfig":  {
+                                                                              "TargetGroups":  [
+                                                                                                   {
+                                                                                                       "TargetGroupArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:targetgroup/gatekeep-tg/27437174e066b9ee",
+                                                                                                       "Weight":  1
+                                                                                                   }
+                                                                                               ],
+                                                                              "TargetGroupStickinessConfig":  {
+                                                                                                                  "Enabled":  false
+                                                                                                              }
+                                                                          }
+                                                    }
+                                                ],
+                                    "IsDefault":  false,
+                                    "Transforms":  [
+
+                                                   ]
+                                },
+                                {
+                                    "RuleArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:listener-rule/app/gatekeep-alb/ff82ae699b9862d2/d277ff2b7c7f46a8/72378fe5079969f2",
+                                    "Priority":  "150",
+                                    "Conditions":  [
+                                                       {
+                                                           "Field":  "path-pattern",
+                                                           "Values":  [
+                                                                          "/system/*"
+                                                                      ],
+                                                           "PathPatternConfig":  {
+                                                                                     "Values":  [
+                                                                                                    "/system/*"
+                                                                                                ]
+                                                                                 }
+                                                       }
+                                                   ],
+                                    "Actions":  [
+                                                    {
+                                                        "Type":  "forward",
+                                                        "TargetGroupArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:targetgroup/gatekeep-tg/27437174e066b9ee",
+                                                        "ForwardConfig":  {
+                                                                              "TargetGroups":  [
+                                                                                                   {
+                                                                                                       "TargetGroupArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:targetgroup/gatekeep-tg/27437174e066b9ee",
+                                                                                                       "Weight":  1
+                                                                                                   }
+                                                                                               ],
+                                                                              "TargetGroupStickinessConfig":  {
+                                                                                                                  "Enabled":  false
+                                                                                                              }
+                                                                          }
+                                                    }
+                                                ],
+                                    "IsDefault":  false,
+                                    "Transforms":  [
+
+                                                   ]
+                                },
+                                {
+                                    "RuleArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:listener-rule/app/gatekeep-alb/ff82ae699b9862d2/d277ff2b7c7f46a8/9cd14e619443735e",
+                                    "Priority":  "default",
+                                    "Conditions":  [
+
+                                                   ],
+                                    "Actions":  [
+                                                    {
+                                                        "Type":  "forward",
+                                                        "TargetGroupArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:targetgroup/gatekeep-frontend-tg/fe6df7144ffc7ee4",
+                                                        "Order":  1,
+                                                        "ForwardConfig":  {
+                                                                              "TargetGroups":  [
+                                                                                                   {
+                                                                                                       "TargetGroupArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:targetgroup/gatekeep-frontend-tg/fe6df7144ffc7ee4",
+                                                                                                       "Weight":  1
+                                                                                                   }
+                                                                                               ],
+                                                                              "TargetGroupStickinessConfig":  {
+                                                                                                                  "Enabled":  false
+                                                                                                              }
+                                                                          }
+                                                    }
+                                                ],
+                                    "IsDefault":  true,
+                                    "Transforms":  [
+
+                                                   ]
+                                }
+                            ]
+              },
+    "HTTP":  {
+                 "Rules":  [
+                               {
+                                   "RuleArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:listener-rule/app/gatekeep-alb/ff82ae699b9862d2/d15f140471f37a0d/58a38317881cc61a",
+                                   "Priority":  "100",
+                                   "Conditions":  [
+                                                      {
+                                                          "Field":  "path-pattern",
+                                                          "Values":  [
+                                                                         "/api/*"
+                                                                     ],
+                                                          "PathPatternConfig":  {
+                                                                                    "Values":  [
+                                                                                                   "/api/*"
+                                                                                               ]
+                                                                                }
+                                                      }
+                                                  ],
+                                   "Actions":  [
+                                                   {
+                                                       "Type":  "forward",
+                                                       "TargetGroupArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:targetgroup/gatekeep-tg/27437174e066b9ee",
+                                                       "Order":  1,
+                                                       "ForwardConfig":  {
+                                                                             "TargetGroups":  [
+                                                                                                  {
+                                                                                                      "TargetGroupArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:targetgroup/gatekeep-tg/27437174e066b9ee",
+                                                                                                      "Weight":  1
+                                                                                                  }
+                                                                                              ],
+                                                                             "TargetGroupStickinessConfig":  {
+                                                                                                                 "Enabled":  false
+                                                                                                             }
+                                                                         }
+                                                   }
+                                               ],
+                                   "IsDefault":  false,
+                                   "Transforms":  [
+
+                                                  ]
+                               },
+                               {
+                                   "RuleArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:listener-rule/app/gatekeep-alb/ff82ae699b9862d2/d15f140471f37a0d/146c0d8d099a4f98",
+                                   "Priority":  "130",
+                                   "Conditions":  [
+                                                      {
+                                                          "Field":  "path-pattern",
+                                                          "Values":  [
+                                                                         "/swagger*",
+                                                                         "/swagger/*"
+                                                                     ],
+                                                          "PathPatternConfig":  {
+                                                                                    "Values":  [
+                                                                                                   "/swagger*",
+                                                                                                   "/swagger/*"
+                                                                                               ]
+                                                                                }
+                                                      }
+                                                  ],
+                                   "Actions":  [
+                                                   {
+                                                       "Type":  "forward",
+                                                       "TargetGroupArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:targetgroup/gatekeep-tg/27437174e066b9ee",
+                                                       "Order":  1,
+                                                       "ForwardConfig":  {
+                                                                             "TargetGroups":  [
+                                                                                                  {
+                                                                                                      "TargetGroupArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:targetgroup/gatekeep-tg/27437174e066b9ee",
+                                                                                                      "Weight":  1
+                                                                                                  }
+                                                                                              ],
+                                                                             "TargetGroupStickinessConfig":  {
+                                                                                                                 "Enabled":  false
+                                                                                                             }
+                                                                         }
+                                                   }
+                                               ],
+                                   "IsDefault":  false,
+                                   "Transforms":  [
+
+                                                  ]
+                               },
+                               {
+                                   "RuleArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:listener-rule/app/gatekeep-alb/ff82ae699b9862d2/d15f140471f37a0d/3fbd9152ca529e90",
+                                   "Priority":  "140",
+                                   "Conditions":  [
+                                                      {
+                                                          "Field":  "path-pattern",
+                                                          "Values":  [
+                                                                         "/health"
+                                                                     ],
+                                                          "PathPatternConfig":  {
+                                                                                    "Values":  [
+                                                                                                   "/health"
+                                                                                               ]
+                                                                                }
+                                                      }
+                                                  ],
+                                   "Actions":  [
+                                                   {
+                                                       "Type":  "forward",
+                                                       "TargetGroupArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:targetgroup/gatekeep-tg/27437174e066b9ee",
+                                                       "Order":  1,
+                                                       "ForwardConfig":  {
+                                                                             "TargetGroups":  [
+                                                                                                  {
+                                                                                                      "TargetGroupArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:targetgroup/gatekeep-tg/27437174e066b9ee",
+                                                                                                      "Weight":  1
+                                                                                                  }
+                                                                                              ],
+                                                                             "TargetGroupStickinessConfig":  {
+                                                                                                                 "Enabled":  false
+                                                                                                             }
+                                                                         }
+                                                   }
+                                               ],
+                                   "IsDefault":  false,
+                                   "Transforms":  [
+
+                                                  ]
+                               },
+                               {
+                                   "RuleArn":  "arn:aws:elasticloadbalancing:sa-east-1:126588786097:listener-rule/app/gatekeep-alb/ff82ae699b9862d2/d15f140471f37a0d/634a7b133e1f0e5e",
+                                   "Priority":  "default",
+                                   "Conditions":  [
+
+                                                  ],
+                                   "Actions":  [
+                                                   {
+                                                       "Type":  "redirect",
+                                                       "Order":  1,
+                                                       "RedirectConfig":  {
+                                                                              "Protocol":  "HTTPS",
+                                                                              "Port":  "443",
+                                                                              "Host":  "#{host}",
+                                                                              "Path":  "/#{path}",
+                                                                              "Query":  "#{query}",
+                                                                              "StatusCode":  "HTTP_301"
+                                                                          }
+                                                   }
+                                               ],
+                                   "IsDefault":  true,
+                                   "Transforms":  [
+
+                                                  ]
+                               }
+                           ]
+             }
+}

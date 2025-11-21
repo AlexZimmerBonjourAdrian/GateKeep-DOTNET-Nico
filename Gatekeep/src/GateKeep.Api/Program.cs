@@ -742,7 +742,10 @@ builder.Services.AddOpenTelemetry()
 
 var app = builder.Build();
 
-// Middleware de CORS - DEBE estar al inicio para manejar preflight requests (OPTIONS)
+// Middleware de Routing - DEBE estar primero para que el routing funcione correctamente
+app.UseRouting();
+
+// Middleware de CORS - DEBE estar después de UseRouting() pero antes de UseAuthentication()
 app.UseCors("AllowFrontend");
 
 // Swagger disponible en Development y Production (para demos)

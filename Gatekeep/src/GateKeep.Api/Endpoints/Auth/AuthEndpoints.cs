@@ -11,7 +11,7 @@ public static class AuthEndpoints
 {
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/auth").WithTags("Authentication");
+        var group = app.MapGroup("/api/auth").WithTags("Authentication");
 
         // Login endpoint - PÚBLICO (sin restricciones de seguridad)
         group.MapPost("/login", async (LoginRequest request, IAuthService authService) =>
