@@ -8,22 +8,6 @@ const Carousel = ({ items, route }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const router = useRouter();
   
-  // Ordenar items por fecha (más recientes primero - izquierda)
-  const sortedItems = React.useMemo(() => {
-    if (!items || items.length === 0) return [];
-    
-    return [...items].sort((a, b) => {
-      // Obtener las fechas de diferentes formatos posibles
-      const dateA = a.fecha || a.Fecha || a.date || a.fechaDeVencimiento || a.FechaDeVencimiento;
-      const dateB = b.fecha || b.Fecha || b.date || b.fechaDeVencimiento || b.FechaDeVencimiento;
-      
-      if (!dateA || !dateB) return 0;
-      
-      // Comparar fechas en orden descendente (más recientes primero)
-      return new Date(dateB) - new Date(dateA);
-    });
-  }, [items]);
-  
   // Derivar ruta de detalle en base a la ruta de listado provista
   const getDetailPath = (item) => {
     const id = item?.id ?? item?.Id;
@@ -44,7 +28,7 @@ const Carousel = ({ items, route }) => {
   // Lógica adaptable:
   // - Si hay <= 8 items: mostrar 3 + "Ver más"
   // - Si hay > 8 items: mostrar 4 por página, excepto la última que será 3 + "Ver más"
-  const totalItems = sortedItems.length;
+  const totalItems = items.length;
   const isSmallCollection = totalItems <= 8;
   
   // Determinar cuántos items mostrar en la página actual
@@ -64,7 +48,7 @@ const Carousel = ({ items, route }) => {
   }
   
   // Calcular cuántos items realmente mostrar (sin contar "Ver más")
-  const visibleItems = sortedItems.slice(currentIndex, currentIndex + itemsPerPage);
+  const visibleItems = items.slice(currentIndex, currentIndex + itemsPerPage);
   
   // Calcular si hay más items después de los visibles
   const hasMoreItems = (currentIndex + itemsPerPage) < totalItems;
