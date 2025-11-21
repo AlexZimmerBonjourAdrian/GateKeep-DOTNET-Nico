@@ -1,0 +1,29 @@
+{
+  "Comment": "Alias to ALB",
+  "Changes": [
+    {
+      "Action": "UPSERT",
+      "ResourceRecordSet": {
+        "Name": "zimmzimmgames.com.",
+        "Type": "A",
+        "AliasTarget": {
+          "HostedZoneId": "Z2P70J7HTTTPLU",
+          "DNSName": "dualstack.gatekeep-alb-878011876.sa-east-1.elb.amazonaws.com.",
+          "EvaluateTargetHealth": true
+        }
+      }
+    },
+    {
+      "Action": "UPSERT",
+      "ResourceRecordSet": {
+        "Name": "www.zimmzimmgames.com.",
+        "Type": "A",
+        "AliasTarget": {
+          "HostedZoneId": "Z2P70J7HTTTPLU",
+          "DNSName": "dualstack.gatekeep-alb-878011876.sa-east-1.elb.amazonaws.com.",
+          "EvaluateTargetHealth": true
+        }
+      }
+    }
+  ]
+}

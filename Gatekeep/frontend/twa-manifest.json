@@ -1,0 +1,21 @@
+{
+    "iconUrl":  "https://zimmzimmgames.com/assets/LogoGateKeep.webp",
+    "navigationColor":  "#0066cc",
+    "signingKey":  {
+                       "path":  "./android.keystore",
+                       "alias":  "android"
+                   },
+    "launcherName":  "GateKeep",
+    "name":  "GateKeep",
+    "host":  "zimmzimmgames.com",
+    "themeColor":  "#0066cc",
+    "display":  "standalone",
+    "appVersionCode":  1,
+    "webManifestUrl":  "https://zimmzimmgames.com/manifest.json",
+    "maskableIconUrl":  "https://zimmzimmgames.com/assets/LogoGateKeep.webp",
+    "backgroundColor":  "#ffffff",
+    "appVersionName":  "1.0.0",
+    "packageId":  "com.gatekeep.app",
+    "startUrl":  "/",
+    "generatorApp":  "bubblewrap-cli"
+}

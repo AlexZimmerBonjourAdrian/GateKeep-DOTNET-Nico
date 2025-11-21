@@ -3,11 +3,48 @@
   "short_name": "GateKeep",
   "description": "Sistema de gestión de acceso y control para espacios universitarios",
   "start_url": "/",
+  "scope": "/",
+  "id": "/?source=pwa",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0066cc",
+  "dir": "ltr",
+  "lang": "es",
+  "prefer_related_applications": false,
   "orientation": "portrait-primary",
+  "categories": ["business", "productivity"],
+  "display_override": ["standalone", "fullscreen"],
   "icons": [
+    {
+      "src": "/assets/LogoGateKeep.webp",
+      "sizes": "72x72",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/LogoGateKeep.webp",
+      "sizes": "96x96",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/LogoGateKeep.webp",
+      "sizes": "128x128",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/LogoGateKeep.webp",
+      "sizes": "144x144",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/LogoGateKeep.webp",
+      "sizes": "152x152",
+      "type": "image/webp",
+      "purpose": "any"
+    },
     {
       "src": "/assets/LogoGateKeep.webp",
       "sizes": "192x192",
@@ -16,9 +53,38 @@
     },
     {
       "src": "/assets/LogoGateKeep.webp",
+      "sizes": "384x384",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/LogoGateKeep.webp",
       "sizes": "512x512",
       "type": "image/webp",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Registrar Acceso",
+      "short_name": "Acceso",
+      "description": "Registra un nuevo evento de acceso",
+      "url": "/perfil/escaner",
+      "icons": [{ "src": "/assets/LogoGateKeep.webp", "sizes": "192x192", "type": "image/webp" }]
+    },
+    {
+      "name": "Ver Notificaciones",
+      "short_name": "Notificaciones",
+      "description": "Ver tus notificaciones recientes",
+      "url": "/notificaciones",
+      "icons": [{ "src": "/assets/LogoGateKeep.webp", "sizes": "192x192", "type": "image/webp" }]
+    },
+    {
+      "name": "Panel principal",
+      "short_name": "Panel",
+      "description": "Ir al panel de control de GateKeep",
+      "url": "/",
+      "icons": [{ "src": "/assets/LogoGateKeep.webp", "sizes": "192x192", "type": "image/webp" }]
     }
   ]
 }

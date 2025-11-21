@@ -3,14 +3,24 @@ FROM node:18-alpine AS build
 
 WORKDIR /app
 
+# Accept build argument for API URL (CRÍTICO: debe estar disponible en build time)
+ARG NEXT_PUBLIC_API_URL=https://api.zimmzimmgames.com
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 # Copy package files
 COPY package*.json ./
+
+# Copy scripts for postinstall
+COPY scripts ./scripts
 
 # Install dependencies
 RUN npm ci
 
 # Copy source code and configuration
 COPY . .
+
+# Log the API URL being used in the build
+RUN echo "Building with NEXT_PUBLIC_API_URL: $NEXT_PUBLIC_API_URL"
 
 # Build the application
 RUN npm run build
@@ -23,6 +33,9 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
+# Copy scripts for postinstall
+COPY scripts ./scripts
+
 # Install only production dependencies
 RUN npm ci --only=production
 
@@ -30,7 +43,8 @@ RUN npm ci --only=production
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
 COPY --from=build /app/next.config.js ./next.config.js
-COPY --from=build /app/node_modules/.cache ./node_modules/.cache 2>/dev/null || true
+# Cache directory is optional, skip if it doesn't exist
+RUN mkdir -p ./node_modules/.cache || true
 
 # Expose port
 EXPOSE 3000

@@ -7,7 +7,9 @@
         "dev": "next dev",
         "build": "next build",
         "start": "next start",
-        "lint": "next lint"
+        "lint": "next lint",
+        "test:offline": "cypress run --spec cypress/e2e/offline_sync.cy.ts",
+        "postinstall": "node scripts/copy-wasm.js"
     },
     "dependencies": {
         "axios": "^1.13.2",
@@ -21,16 +23,24 @@
         "primereact": "^10.9.4",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
-        "react-qr-scanner": "^1.0.0-alpha.11",
-        "react-router-dom": "^7.9.4"
+        "react-router-dom": "^7.9.4",
+        "sql.js": "^1.13.0"
     },
     "devDependencies": {
+        "@bubblewrap/cli": "^1.24.1",
         "@svgr/webpack": "^8.1.0",
+        "@testing-library/jest-dom": "^6.9.1",
+        "@testing-library/react": "^16.3.0",
+        "@types/jest": "^30.0.0",
         "@types/react": "^18.2.64",
         "@types/react-dom": "^18.2.21",
+        "@types/sql.js": "^1.4.9",
+        "cypress": "^15.6.0",
         "eslint": "^8.57.0",
         "eslint-plugin-react": "^7.34.0",
         "eslint-plugin-react-hooks": "^4.6.0",
-        "eslint-plugin-react-refresh": "^0.4.5"
+        "eslint-plugin-react-refresh": "^0.4.5",
+        "jest-environment-jsdom": "^30.2.0",
+        "ts-jest": "^29.4.5"
     }
 }

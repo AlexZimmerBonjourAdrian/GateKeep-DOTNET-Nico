@@ -9,6 +9,8 @@ using GateKeep.Api.Application.Notificaciones;
 using GateKeep.Api.Application.Security;
 using GateKeep.Api.Application.Events;
 using GateKeep.Api.Application.Usuarios;
+using GateKeep.Api.Application.Sync;
+using GateKeep.Api.Application.Seeding;
 using MassTransit;
 using GateKeep.Api.Contracts.Usuarios;
 using GateKeep.Api.Domain.Enums;
@@ -32,6 +34,7 @@ using GateKeep.Api.Infrastructure.Eventos;
 using GateKeep.Api.Infrastructure.Events;
 using GateKeep.Api.Infrastructure.Notificaciones;
 using GateKeep.Api.Infrastructure.Queues;
+using GateKeep.Api.Infrastructure.Sync;
 using GateKeep.Api.Application.Queues;
 using GateKeep.Api.Infrastructure.Persistence;
 using GateKeep.Api.Infrastructure.Security;
@@ -53,6 +56,7 @@ using Serilog;
 using Amazon;
 using Amazon.SecretsManager;
 using Amazon.SimpleSystemsManagement;
+using Amazon.CloudWatch;
 using GateKeep.Api.Infrastructure.AWS;
 using GateKeep.Api.Endpoints.AWS;
 using Serilog.Events;
@@ -305,7 +309,15 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://127.0.0.1:3000")
+        policy.WithOrigins(
+                // Desarrollo local
+                "http://localhost:3000", 
+                "http://127.0.0.1:3000",
+                "http://localhost",  // Para nginx local
+                // Producción AWS
+                "https://zimmzimmgames.com",
+                "https://www.zimmzimmgames.com"
+              )
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
@@ -390,6 +402,9 @@ builder.Services.AddScoped<IAccesoService, AccesoService>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
+// Servicio de Seeding
+builder.Services.AddScoped<IDataSeederService, DataSeederService>();
+
 // Utilidades
 builder.Services.AddSingleton<QrCodeGenerator>();
 
@@ -397,6 +412,9 @@ builder.Services.AddSingleton<QrCodeGenerator>();
 builder.Services.AddScoped<INotificacionRepository, NotificacionRepository>();
 builder.Services.AddScoped<INotificacionService, NotificacionService>();
 builder.Services.AddScoped<INotificacionUsuarioRepository, NotificacionUsuarioRepository>();
+
+// Servicios de Sincronización Offline
+builder.Services.AddScoped<ISyncService, SyncService>();
 builder.Services.AddScoped<INotificacionUsuarioService, NotificacionUsuarioService>();
 builder.Services.AddScoped<INotificacionUsuarioValidationService, NotificacionUsuarioValidationService>();
 builder.Services.AddScoped<INotificacionSincronizacionService, NotificacionSincronizacionService>();
@@ -514,9 +532,31 @@ builder.Services.AddSingleton<IAmazonSimpleSystemsManagement>(sp =>
     return new AmazonSimpleSystemsManagementClient(config);
 });
 
+// AWS CloudWatch (para exportar métricas de cache)
+builder.Services.AddSingleton<IAmazonCloudWatch>(sp =>
+{
+    var config = new AmazonCloudWatchConfig
+    {
+        RegionEndpoint = regionEndpoint
+    };
+    return new AmazonCloudWatchClient(config);
+});
+
 // Servicios AWS
 builder.Services.AddScoped<IAwsSecretsService, AwsSecretsService>();
 builder.Services.AddScoped<IAwsParameterService, AwsParameterService>();
+builder.Services.AddSingleton<ICloudWatchMetricsExporter, CloudWatchMetricsExporter>();
+
+// HttpClient para RabbitMQ Management API
+builder.Services.AddHttpClient("RabbitMQ", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+
+// Servicios de métricas de RabbitMQ
+builder.Services.AddSingleton<GateKeep.Api.Infrastructure.Messaging.IRabbitMqMetricsService, 
+    GateKeep.Api.Infrastructure.Messaging.RabbitMqMetricsService>();
+builder.Services.AddSingleton<IRabbitMqCloudWatchExporter, RabbitMqCloudWatchExporter>();
 
 // Servicios de Observabilidad
 builder.Services.AddSingleton<ICorrelationIdProvider, CorrelationIdProvider>();
@@ -572,13 +612,27 @@ builder.Services.AddMassTransit(x =>
         var initialIntervalSeconds = int.Parse(rabbitMqConfig["InitialIntervalSeconds"] ?? "5");
         var intervalIncrementSeconds = int.Parse(rabbitMqConfig["IntervalIncrementSeconds"] ?? "10");
 
-        Log.Information("Configurando RabbitMQ - Host: {Host}:{Port}, VHost: {VirtualHost}, Usuario: {Username}", 
-            host, port, virtualHost, username);
+        // Verificar si se debe usar SSL (Amazon MQ usa SSL en puerto 5671)
+        var useSsl = builder.Configuration["RABBITMQ:USE_SSL"]?.ToLower() == "true"
+            || Environment.GetEnvironmentVariable("RABBITMQ__USE_SSL")?.ToLower() == "true"
+            || port == 5671; // Puerto 5671 generalmente indica SSL
+
+        Log.Information("Configurando RabbitMQ - Host: {Host}:{Port}, VHost: {VirtualHost}, Usuario: {Username}, SSL: {UseSsl}", 
+            host, port, virtualHost, username, useSsl);
 
         cfg.Host(host, (ushort)port, virtualHost, h =>
         {
             h.Username(username);
             h.Password(password);
+            
+            // Configurar SSL si es necesario (Amazon MQ requiere SSL)
+            if (useSsl)
+            {
+                h.UseSsl(s =>
+                {
+                    s.Protocol = System.Security.Authentication.SslProtocols.Tls12;
+                });
+            }
         });
 
         // Configurar reintentos con backoff exponencial
@@ -632,8 +686,11 @@ builder.Services.AddSingleton<IEventoQueue, EventoQueue>();
 
 // Servicios de Background para procesar colas
 builder.Services.AddHostedService<SincronizacionQueueProcessor>();
-builder.Services.AddHostedService<EventoQueueProcessor>();
+// EventoQueueProcessor deshabilitado - ahora se usa RabbitMQ para procesamiento asíncrono
+// builder.Services.AddHostedService<EventoQueueProcessor>();
 builder.Services.AddHostedService<BacklogMetricsUpdater>();
+builder.Services.AddHostedService<CloudWatchMetricsExporter>(); // Exportador de métricas de Redis a CloudWatch
+builder.Services.AddHostedService<RabbitMqCloudWatchExporter>(); // Exportador de métricas de RabbitMQ a CloudWatch
 
 // Configuración de OpenTelemetry
 builder.Services.AddOpenTelemetry()
@@ -685,6 +742,9 @@ builder.Services.AddOpenTelemetry()
 
 var app = builder.Build();
 
+// Middleware de CORS - DEBE estar al inicio para manejar preflight requests (OPTIONS)
+app.UseCors("AllowFrontend");
+
 // Swagger disponible en Development y Production (para demos)
 // En un ambiente productivo real, esto debería estar protegido o deshabilitado
 app.UseSwagger();
@@ -700,9 +760,6 @@ app.UseSwaggerUI(c =>
     c.ShowExtensions();
     c.EnableValidator();
 });
-
-// Middleware de CORS
-app.UseCors("AllowFrontend");
 
 // Middleware de CorrelationId (antes de authentication para que esté disponible en logs)
 app.UseCorrelationId();
@@ -865,66 +922,9 @@ using (var scope = app.Services.CreateScope())
         db.Database.EnsureDeleted();
         db.Database.EnsureCreated();
         
-        // Seed data inicial
-        if (!db.Usuarios.Any())
-        {
-            var factory = scope.ServiceProvider.GetRequiredService<IUsuarioFactory>();
-            var passwordService = scope.ServiceProvider.GetRequiredService<IPasswordService>();
-            
-            // Crear usuario admin por defecto
-            var adminDto = new UsuarioDto
-            {
-                Id = 0,
-                Email = "admin@gatekeep.com",
-                Nombre = "Administrador",
-                Apellido = "Sistema",
-                Contrasenia = passwordService.HashPassword("admin123"),
-                Telefono = "+1234567890",
-                FechaAlta = DateTime.UtcNow,
-                Credencial = TipoCredencial.Vigente,
-                Rol = Rol.Admin
-            };
-            
-            var admin = factory.CrearUsuario(adminDto);
-            db.Usuarios.Add(admin);
-            
-            // Crear estudiante de ejemplo
-            var estudianteDto = new UsuarioDto
-            {
-                Id = 0,
-                Email = "estudiante@gatekeep.com",
-                Nombre = "Juan",
-                Apellido = "Pérez",
-                Contrasenia = passwordService.HashPassword("estudiante123"),
-                Telefono = "+1234567891",
-                FechaAlta = DateTime.UtcNow,
-                Credencial = TipoCredencial.Vigente,
-                Rol = Rol.Estudiante
-            };
-            
-            var estudiante = factory.CrearUsuario(estudianteDto);
-            db.Usuarios.Add(estudiante);
-            
-            // Crear funcionario de ejemplo
-            var funcionarioDto = new UsuarioDto
-            {
-                Id = 0,
-                Email = "funcionario@gatekeep.com",
-                Nombre = "María",
-                Apellido = "García",
-                Contrasenia = passwordService.HashPassword("funcionario123"),
-                Telefono = "+1234567892",
-                FechaAlta = DateTime.UtcNow,
-                Credencial = TipoCredencial.Vigente,
-                Rol = Rol.Funcionario
-            };
-            
-            var funcionario = factory.CrearUsuario(funcionarioDto);
-            db.Usuarios.Add(funcionario);
-            
-            await db.SaveChangesAsync();
-                logger.LogInformation("Datos iniciales creados exitosamente");
-        }
+        // Seed data inicial usando el servicio de seeding
+        var seeder = scope.ServiceProvider.GetRequiredService<IDataSeederService>();
+        await seeder.SeedAsync();
     }
     else
     {
@@ -999,6 +999,66 @@ using (var scope = app.Services.CreateScope())
         {
             logger.LogWarning("Continuando a pesar del error de migración (modo producción)");
         }
+    }
+
+    // Asegurar que el usuario admin de respaldo siempre exista (desarrollo y producción)
+    try
+    {
+        var usuarioRepo = scope.ServiceProvider.GetRequiredService<IUsuarioRepository>();
+        var factory = scope.ServiceProvider.GetRequiredService<IUsuarioFactory>();
+        var passwordService = scope.ServiceProvider.GetRequiredService<IPasswordService>();
+        
+        const string adminEmail = "admin1@gatekeep.com";
+        const string adminPassword = "admin123";
+        
+        var adminExistente = await usuarioRepo.GetByEmailAsync(adminEmail);
+        
+        if (adminExistente == null)
+        {
+            logger.LogInformation("Creando usuario admin de respaldo: {Email}", adminEmail);
+            
+            var adminDto = new UsuarioDto
+            {
+                Id = 0,
+                Email = adminEmail,
+                Nombre = "Administrador",
+                Apellido = "Respaldo",
+                Contrasenia = passwordService.HashPassword(adminPassword),
+                Telefono = "+1234567890",
+                FechaAlta = DateTime.UtcNow,
+                Credencial = TipoCredencial.Vigente,
+                Rol = Rol.Admin
+            };
+            
+            var admin = factory.CrearUsuario(adminDto);
+            await usuarioRepo.AddAsync(admin);
+            
+            logger.LogInformation("✅ Usuario admin de respaldo creado exitosamente: {Email}", adminEmail);
+        }
+        else
+        {
+            // Verificar que el usuario tenga el rol Admin y actualizar si es necesario
+            if (adminExistente.Rol != Rol.Admin)
+            {
+                logger.LogWarning("Usuario {Email} existe pero no tiene rol Admin. Actualizando rol...", adminEmail);
+                
+                // Actualizar el usuario con el rol Admin
+                var usuarioActualizado = adminExistente with { Rol = Rol.Admin };
+                await usuarioRepo.UpdateAsync(usuarioActualizado);
+                
+                logger.LogInformation("✅ Rol Admin actualizado para usuario: {Email}", adminEmail);
+            }
+            else
+            {
+                logger.LogInformation("✅ Usuario admin de respaldo ya existe: {Email}", adminEmail);
+            }
+        }
+    }
+    catch (Exception seedEx)
+    {
+        logger.LogError(seedEx, "Error al crear/verificar usuario admin de respaldo");
+        // No lanzar excepción - el sistema puede funcionar sin este usuario
+        // Solo registrar el error
     }
 }
 

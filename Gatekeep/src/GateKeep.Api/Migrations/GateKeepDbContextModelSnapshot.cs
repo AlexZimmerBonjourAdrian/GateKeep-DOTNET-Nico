@@ -101,6 +101,44 @@ namespace GateKeep.Api.Migrations
                     b.ToTable("beneficios_usuarios", (string)null);
                 });
 
+            modelBuilder.Entity("GateKeep.Api.Domain.Entities.DispositivoSync", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("DeviceId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Plataforma")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UltimaActualizacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("UltimaSincronizacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("UsuarioId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("VersionCliente")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DispositivosSync");
+                });
+
             modelBuilder.Entity("GateKeep.Api.Domain.Entities.Espacio", b =>
                 {
                     b.Property<long>("Id")
@@ -227,6 +265,57 @@ namespace GateKeep.Api.Migrations
                         .HasDatabaseName("IX_eventos_acceso_usuario_id");
 
                     b.ToTable("eventos_acceso", (string)null);
+                });
+
+            modelBuilder.Entity("GateKeep.Api.Domain.Entities.EventoOffline", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("DatosEvento")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("DeviceId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("FechaCreacionCliente")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("FechaRecepcion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("IdEventoPermanente")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("IdTemporal")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("IntentosProcessamiento")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("MensajeError")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TipoEvento")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UltimaActualizacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("EventosOffline");
                 });
 
             modelBuilder.Entity("GateKeep.Api.Domain.Entities.ReglaAcceso", b =>
