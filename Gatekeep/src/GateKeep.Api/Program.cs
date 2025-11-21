@@ -738,6 +738,9 @@ builder.Services.AddOpenTelemetry()
 
 var app = builder.Build();
 
+// Middleware de CORS - DEBE estar al inicio para manejar preflight requests (OPTIONS)
+app.UseCors("AllowFrontend");
+
 // Swagger disponible en Development y Production (para demos)
 // En un ambiente productivo real, esto debería estar protegido o deshabilitado
 app.UseSwagger();
@@ -753,9 +756,6 @@ app.UseSwaggerUI(c =>
     c.ShowExtensions();
     c.EnableValidator();
 });
-
-// Middleware de CORS
-app.UseCors("AllowFrontend");
 
 // Middleware de CorrelationId (antes de authentication para que esté disponible en logs)
 app.UseCorrelationId();

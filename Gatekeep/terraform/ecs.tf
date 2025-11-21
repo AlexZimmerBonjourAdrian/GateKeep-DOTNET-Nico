@@ -492,12 +492,29 @@ resource "aws_lb_listener" "main" {
 }
 
 # HTTPS Listener para ALB
-# YA EXISTE EN AWS - Usar data source para obtenerlo
-data "aws_lb_listener" "https_existing" {
+# Crear el listener HTTPS si no existe
+resource "aws_lb_listener" "https" {
   count = var.enable_https ? 1 : 0
   
   load_balancer_arn = aws_lb.main.arn
-  port              = 443
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS-1-2-2017-01"
+  certificate_arn   = aws_acm_certificate_validation.alb[0].certificate_arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.frontend.arn
+  }
+
+  lifecycle {
+    ignore_changes = [certificate_arn, ssl_policy]
+  }
+}
+
+# Local para usar el listener creado
+locals {
+  https_listener_arn = var.enable_https ? aws_lb_listener.https[0].arn : null
 }
 
 # Listener Rule para Backend API - /api/*
@@ -614,7 +631,7 @@ resource "aws_lb_listener_rule" "backend_health" {
 resource "aws_lb_listener_rule" "backend_api_https" {
   count = var.enable_https ? 1 : 0
   
-  listener_arn = data.aws_lb_listener.https_existing[0].arn
+  listener_arn = local.https_listener_arn
   priority     = 100
 
   action {
@@ -637,7 +654,7 @@ resource "aws_lb_listener_rule" "backend_api_https" {
 resource "aws_lb_listener_rule" "backend_auth_https" {
   count = var.enable_https ? 1 : 0
   
-  listener_arn = data.aws_lb_listener.https_existing[0].arn
+  listener_arn = local.https_listener_arn
   priority     = 110
 
   action {
@@ -660,7 +677,7 @@ resource "aws_lb_listener_rule" "backend_auth_https" {
 resource "aws_lb_listener_rule" "backend_usuarios_https" {
   count = var.enable_https ? 1 : 0
   
-  listener_arn = data.aws_lb_listener.https_existing[0].arn
+  listener_arn = local.https_listener_arn
   priority     = 120
 
   action {
@@ -683,7 +700,7 @@ resource "aws_lb_listener_rule" "backend_usuarios_https" {
 resource "aws_lb_listener_rule" "backend_swagger_https" {
   count = var.enable_https ? 1 : 0
   
-  listener_arn = data.aws_lb_listener.https_existing[0].arn
+  listener_arn = local.https_listener_arn
   priority     = 130
 
   action {
@@ -706,7 +723,7 @@ resource "aws_lb_listener_rule" "backend_swagger_https" {
 resource "aws_lb_listener_rule" "backend_health_https" {
   count = var.enable_https ? 1 : 0
   
-  listener_arn = data.aws_lb_listener.https_existing[0].arn
+  listener_arn = local.https_listener_arn
   priority     = 140
 
   action {
