@@ -26,4 +26,12 @@ export class EventoService {
   static createEvento(data: { nombre: string; fecha: string; resultado?: string; puntoControl?: string }) {
     return axios.post(API_URL, data, this.getAuthHeaders());
   }
+
+  static async updateEvento(id: number, data: { nombre: string; fecha: string; resultado?: string; puntoControl?: string }) {
+    return axios.put(`${API_URL}/${id}`, data, this.getAuthHeaders());
+  }
+
+  static async deleteEvento(id: number) {
+    return axios.delete(`${API_URL}/${id}`, this.getAuthHeaders());
+  }
 }

@@ -202,12 +202,18 @@ export default function ListadoSalones() {
 									const edificioId = salon.EdificioId || salon.edificioId;
 									
 									return (
-										<div key={id} className="event-card" tabIndex={0}>
+										<div 
+											key={id} 
+											className="event-card" 
+											tabIndex={0}
+											onClick={() => router.push(`/salones/${id}`)}
+											style={{ cursor: 'pointer' }}
+										>
 											<h3>{nombre}</h3>
 											<p><strong>Número:</strong> {numero}</p>
 											<p><strong>Capacidad:</strong> {capacidad}</p>
 											<p><strong>Edificio:</strong> {getEdificioNombre(edificioId)}</p>
-											<div className="card-actions">
+											<div className="card-actions" onClick={(e) => e.stopPropagation()}>
 												<button
 													className="card-action-btn edit-btn"
 													onClick={() => router.push(`/salones/editarSalon/${id}`)}
