@@ -14,7 +14,7 @@ public static class UsuarioEndpoints
 {
     public static IEndpointRouteBuilder MapUsuarioEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/usuarios").WithTags("Usuarios");
+        var group = app.MapGroup("/api/usuarios").WithTags("Usuarios");
 
         // GET /usuarios - Solo administradores pueden ver todos los usuarios
         group.MapGet("/", async ([FromServices] IUsuarioRepository repo) =>

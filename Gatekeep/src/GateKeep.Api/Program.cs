@@ -984,6 +984,19 @@ using (var scope = app.Services.CreateScope())
                     // Continuar de todas formas - la aplicación puede funcionar si las tablas existen
                 }
             }
+
+            // Ejecutar seeding de datos iniciales en producción (solo si la BD está vacía)
+            try
+            {
+                logger.LogInformation("Verificando si se requiere seeding de datos iniciales...");
+                var seeder = scope.ServiceProvider.GetRequiredService<IDataSeederService>();
+                await seeder.SeedAsync();
+            }
+            catch (Exception seedEx)
+            {
+                logger.LogWarning(seedEx, "Advertencia: Error al ejecutar seeding (puede que ya existan datos). Continuando...");
+                // No lanzar excepción - el seeding es opcional si ya hay datos
+            }
         }
     }
     catch (Exception ex)
