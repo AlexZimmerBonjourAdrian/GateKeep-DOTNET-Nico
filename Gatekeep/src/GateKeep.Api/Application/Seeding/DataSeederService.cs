@@ -63,7 +63,7 @@ public sealed class DataSeederService : IDataSeederService
 
     public async Task SeedAsync()
     {
-        _logger.LogInformation("Iniciando seeding de datos iniciales...");
+        _logger.LogInformation("Iniciando seeding de datos iniciales para AWS...");
 
         try
         {
@@ -77,7 +77,7 @@ public sealed class DataSeederService : IDataSeederService
             // 1. Crear usuarios
             var usuarios = await SeedUsuariosAsync();
 
-            // 2. Crear espacios (edificios, salones, laboratorios)
+            // 2. Crear edificios con sus espacios (salones y laboratorios)
             var espacios = await SeedEspaciosAsync();
 
             // 3. Crear beneficios
@@ -93,7 +93,7 @@ public sealed class DataSeederService : IDataSeederService
             await SeedReglasAccesoAsync(espacios);
 
             // 7. Crear eventos
-            await SeedEventosAsync();
+            var eventos = await SeedEventosAsync();
 
             // 8. Crear eventos de acceso
             await SeedEventosAccesoAsync(usuarios, espacios);
@@ -101,7 +101,7 @@ public sealed class DataSeederService : IDataSeederService
             // 9. Crear anuncios
             await SeedAnunciosAsync();
 
-            _logger.LogInformation("Seeding completado exitosamente");
+            _logger.LogInformation("✓ Seeding completado exitosamente");
         }
         catch (Exception ex)
         {
@@ -112,9 +112,12 @@ public sealed class DataSeederService : IDataSeederService
 
     private async Task<List<Usuario>> SeedUsuariosAsync()
     {
-        _logger.LogInformation("Creando usuarios iniciales...");
+        _logger.LogInformation("✓ Creando 15+ usuarios de prueba...");
 
         var usuarios = new List<Usuario>();
+        var roles = new[] { Rol.Admin, Rol.Estudiante, Rol.Funcionario };
+        var nombres = new[] { "Juan", "María", "Carlos", "Ana", "Luis", "Rosa", "Pedro", "Sofia", "Miguel", "Elena", "Diego", "Isabela", "Ricardo", "Valentina", "Fernando" };
+        var apellidos = new[] { "García", "López", "Pérez", "Rodríguez", "Martínez", "Fernández", "González", "Sánchez", "Ramírez", "Flores", "Reyes", "Rojas", "Silva", "Vargas", "Ortiz" };
 
         // Admin
         var adminDto = new UsuarioDto
@@ -132,195 +135,311 @@ public sealed class DataSeederService : IDataSeederService
         var admin = _usuarioFactory.CrearUsuario(adminDto);
         await _usuarioRepository.AddAsync(admin);
         usuarios.Add(admin);
+        _logger.LogInformation("  → Admin: admin@gatekeep.com");
 
-        // Estudiante
-        var estudianteDto = new UsuarioDto
+        // Funcionarios
+        for (int i = 0; i < 3; i++)
         {
-            Id = 0,
-            Email = "estudiante@gatekeep.com",
-            Nombre = "Juan",
-            Apellido = "Pérez",
-            Contrasenia = _passwordService.HashPassword("estudiante123"),
-            Telefono = "+1234567891",
-            FechaAlta = DateTime.UtcNow,
-            Credencial = TipoCredencial.Vigente,
-            Rol = Rol.Estudiante
-        };
-        var estudiante = _usuarioFactory.CrearUsuario(estudianteDto);
-        await _usuarioRepository.AddAsync(estudiante);
-        usuarios.Add(estudiante);
+            var funcionarioDto = new UsuarioDto
+            {
+                Id = 0,
+                Email = $"funcionario{i + 1}@gatekeep.com",
+                Nombre = nombres[i],
+                Apellido = apellidos[i],
+                Contrasenia = _passwordService.HashPassword("funcionario123"),
+                Telefono = $"+123456789{i}",
+                FechaAlta = DateTime.UtcNow.AddDays(-i * 10),
+                Credencial = TipoCredencial.Vigente,
+                Rol = Rol.Funcionario
+            };
+            var funcionario = _usuarioFactory.CrearUsuario(funcionarioDto);
+            await _usuarioRepository.AddAsync(funcionario);
+            usuarios.Add(funcionario);
+        }
+        _logger.LogInformation("  → 3 Funcionarios creados");
 
-        // Funcionario
-        var funcionarioDto = new UsuarioDto
+        // Estudiantes
+        for (int i = 0; i < 12; i++)
         {
-            Id = 0,
-            Email = "funcionario@gatekeep.com",
-            Nombre = "María",
-            Apellido = "García",
-            Contrasenia = _passwordService.HashPassword("funcionario123"),
-            Telefono = "+1234567892",
-            FechaAlta = DateTime.UtcNow,
-            Credencial = TipoCredencial.Vigente,
-            Rol = Rol.Funcionario
-        };
-        var funcionario = _usuarioFactory.CrearUsuario(funcionarioDto);
-        await _usuarioRepository.AddAsync(funcionario);
-        usuarios.Add(funcionario);
+            var estudianteDto = new UsuarioDto
+            {
+                Id = 0,
+                Email = $"estudiante{i + 1}@gatekeep.com",
+                Nombre = nombres[(i + 3) % nombres.Length],
+                Apellido = apellidos[(i + 3) % apellidos.Length],
+                Contrasenia = _passwordService.HashPassword("estudiante123"),
+                Telefono = $"+134567890{i:00}",
+                FechaAlta = DateTime.UtcNow.AddDays(-(i + 3) * 5),
+                Credencial = TipoCredencial.Vigente,
+                Rol = Rol.Estudiante
+            };
+            var estudiante = _usuarioFactory.CrearUsuario(estudianteDto);
+            await _usuarioRepository.AddAsync(estudiante);
+            usuarios.Add(estudiante);
+        }
+        _logger.LogInformation("  → 12 Estudiantes creados");
 
-        // Estudiante adicional
-        var estudiante2Dto = new UsuarioDto
-        {
-            Id = 0,
-            Email = "estudiante2@gatekeep.com",
-            Nombre = "Carlos",
-            Apellido = "López",
-            Contrasenia = _passwordService.HashPassword("estudiante123"),
-            Telefono = "+1234567893",
-            FechaAlta = DateTime.UtcNow,
-            Credencial = TipoCredencial.Vigente,
-            Rol = Rol.Estudiante
-        };
-        var estudiante2 = _usuarioFactory.CrearUsuario(estudiante2Dto);
-        await _usuarioRepository.AddAsync(estudiante2);
-        usuarios.Add(estudiante2);
-
-        _logger.LogInformation("Usuarios creados: {Count}", usuarios.Count);
+        _logger.LogInformation("Total usuarios creados: {Count}", usuarios.Count);
         return usuarios;
     }
 
     private async Task<List<Espacio>> SeedEspaciosAsync()
     {
-        _logger.LogInformation("Creando espacios iniciales...");
+        _logger.LogInformation("✓ Creando 3 edificios con espacios...");
 
         var espacios = new List<Espacio>();
 
-        // Crear edificio
-        var edificioRequest = new CrearEdificioRequest
+        // ===== EDIFICIO 1: CENTRAL =====
+        var edificio1Request = new CrearEdificioRequest
         {
             Nombre = "Edificio Central",
-            Descripcion = "Edificio principal del campus",
-            Ubicacion = "Campus Principal, Avenida Principal 123",
+            Descripcion = "Edificio principal con aulas y laboratorios",
+            Ubicacion = "Campus Principal, Avenida Central 123",
             Capacidad = 500,
             NumeroPisos = 5,
             CodigoEdificio = "ED-001"
         };
-        var edificio = await _espacioFactory.CrearEdificioAsync(edificioRequest);
-        edificio = await _espacioRepository.GuardarEdificioAsync(edificio);
-        espacios.Add(edificio);
+        var edificio1 = await _espacioFactory.CrearEdificioAsync(edificio1Request);
+        edificio1 = await _espacioRepository.GuardarEdificioAsync(edificio1);
+        espacios.Add(edificio1);
+        _logger.LogInformation("  → Edificio Central (ED-001)");
 
-        // Crear salones en el edificio
-        var salon1Request = new CrearSalonRequest
+        // Salones en Edificio Central
+        for (int piso = 1; piso <= 5; piso++)
         {
-            Nombre = "Salón 101",
-            Descripcion = "Salón de clases estándar",
-            Ubicacion = "Edificio Central, Piso 1",
-            Capacidad = 40,
-            EdificioId = edificio.Id,
-            NumeroSalon = 101,
-            TipoSalon = "Aula"
-        };
-        var salon1 = await _espacioFactory.CrearSalonAsync(salon1Request);
-        salon1 = await _espacioRepository.GuardarSalonAsync(salon1);
-        espacios.Add(salon1);
+            for (int num = 1; num <= 3; num++)
+            {
+                var numeroSalon = piso * 100 + num;
+                var salonRequest = new CrearSalonRequest
+                {
+                    Nombre = $"Salón {numeroSalon}",
+                    Descripcion = $"Aula de clase piso {piso}",
+                    Ubicacion = $"Edificio Central, Piso {piso}",
+                    Capacidad = 30 + (num * 5),
+                    EdificioId = edificio1.Id,
+                    NumeroSalon = numeroSalon,
+                    TipoSalon = num == 3 ? "Aula Multimedia" : "Aula Estándar"
+                };
+                var salon = await _espacioFactory.CrearSalonAsync(salonRequest);
+                salon = await _espacioRepository.GuardarSalonAsync(salon);
+                espacios.Add(salon);
+            }
+        }
+        _logger.LogInformation("  → 15 Salones creados en Edificio Central");
 
-        var salon2Request = new CrearSalonRequest
+        // Laboratorios en Edificio Central
+        var laboratorios = new[]
         {
-            Nombre = "Salón 201",
-            Descripcion = "Salón de clases con proyector",
-            Ubicacion = "Edificio Central, Piso 2",
-            Capacidad = 50,
-            EdificioId = edificio.Id,
-            NumeroSalon = 201,
-            TipoSalon = "Aula Multimedia"
+            ("Laboratorio de Informática", "Computadoras y software de desarrollo", 301, "Informática", true),
+            ("Laboratorio de Electrónica", "Equipos de medición y prototipado", 302, "Electrónica", true),
+            ("Laboratorio de Química", "Reactivos y equipamiento de laboratorio", 303, "Química", true),
+            ("Laboratorio de Biología", "Microscopios y material de investigación", 304, "Biología", true)
         };
-        var salon2 = await _espacioFactory.CrearSalonAsync(salon2Request);
-        salon2 = await _espacioRepository.GuardarSalonAsync(salon2);
-        espacios.Add(salon2);
 
-        // Crear laboratorio
-        var laboratorioRequest = new CrearLaboratorioRequest
+        foreach (var (nombre, desc, numero, tipo, equipamiento) in laboratorios)
         {
-            Nombre = "Laboratorio de Informática",
-            Descripcion = "Laboratorio con equipos de cómputo",
-            Ubicacion = "Edificio Central, Piso 3",
-            Capacidad = 30,
-            EdificioId = edificio.Id,
-            NumeroLaboratorio = 301,
-            TipoLaboratorio = "Informática",
-            EquipamientoEspecial = true
-        };
-        var laboratorio = await _espacioFactory.CrearLaboratorioAsync(laboratorioRequest);
-        laboratorio = await _espacioRepository.GuardarLaboratorioAsync(laboratorio);
-        espacios.Add(laboratorio);
+            var laboratorioRequest = new CrearLaboratorioRequest
+            {
+                Nombre = nombre,
+                Descripcion = desc,
+                Ubicacion = "Edificio Central, Piso 3",
+                Capacidad = 25,
+                EdificioId = edificio1.Id,
+                NumeroLaboratorio = numero,
+                TipoLaboratorio = tipo,
+                EquipamientoEspecial = equipamiento
+            };
+            var laboratorio = await _espacioFactory.CrearLaboratorioAsync(laboratorioRequest);
+            laboratorio = await _espacioRepository.GuardarLaboratorioAsync(laboratorio);
+            espacios.Add(laboratorio);
+        }
+        _logger.LogInformation("  → 4 Laboratorios creados en Edificio Central");
 
-        _logger.LogInformation("Espacios creados: {Count}", espacios.Count);
+        // ===== EDIFICIO 2: ANEXO =====
+        var edificio2Request = new CrearEdificioRequest
+        {
+            Nombre = "Edificio Anexo",
+            Descripcion = "Edificio complementario con aulas y talleres",
+            Ubicacion = "Campus Principal, Avenida Anexo 456",
+            Capacidad = 300,
+            NumeroPisos = 3,
+            CodigoEdificio = "ED-002"
+        };
+        var edificio2 = await _espacioFactory.CrearEdificioAsync(edificio2Request);
+        edificio2 = await _espacioRepository.GuardarEdificioAsync(edificio2);
+        espacios.Add(edificio2);
+        _logger.LogInformation("  → Edificio Anexo (ED-002)");
+
+        // Salones en Edificio Anexo
+        for (int piso = 1; piso <= 3; piso++)
+        {
+            for (int num = 1; num <= 2; num++)
+            {
+                var numeroSalon = 2000 + piso * 100 + num;
+                var salonRequest = new CrearSalonRequest
+                {
+                    Nombre = $"Salón {numeroSalon}",
+                    Descripcion = $"Aula anexa piso {piso}",
+                    Ubicacion = $"Edificio Anexo, Piso {piso}",
+                    Capacidad = 35 + (num * 5),
+                    EdificioId = edificio2.Id,
+                    NumeroSalon = numeroSalon,
+                    TipoSalon = "Aula de Seminarios"
+                };
+                var salon = await _espacioFactory.CrearSalonAsync(salonRequest);
+                salon = await _espacioRepository.GuardarSalonAsync(salon);
+                espacios.Add(salon);
+            }
+        }
+        _logger.LogInformation("  → 6 Salones creados en Edificio Anexo");
+
+        // Laboratorios en Edificio Anexo
+        var labAnexo = new[]
+        {
+            ("Taller de Mecánica", "Herramientas y equipos mecánicos", 201, "Mecánica", true),
+            ("Laboratorio de Física", "Equipamiento de física experimental", 202, "Física", true)
+        };
+
+        foreach (var (nombre, desc, numero, tipo, equipamiento) in labAnexo)
+        {
+            var laboratorioRequest = new CrearLaboratorioRequest
+            {
+                Nombre = nombre,
+                Descripcion = desc,
+                Ubicacion = "Edificio Anexo, Piso 2",
+                Capacidad = 20,
+                EdificioId = edificio2.Id,
+                NumeroLaboratorio = numero,
+                TipoLaboratorio = tipo,
+                EquipamientoEspecial = equipamiento
+            };
+            var laboratorio = await _espacioFactory.CrearLaboratorioAsync(laboratorioRequest);
+            laboratorio = await _espacioRepository.GuardarLaboratorioAsync(laboratorio);
+            espacios.Add(laboratorio);
+        }
+        _logger.LogInformation("  → 2 Laboratorios creados en Edificio Anexo");
+
+        // ===== EDIFICIO 3: ADMINISTRATIVO =====
+        var edificio3Request = new CrearEdificioRequest
+        {
+            Nombre = "Edificio Administrativo",
+            Descripcion = "Oficinas administrativas y sala de reuniones",
+            Ubicacion = "Campus Principal, Avenida Administrativa 789",
+            Capacidad = 200,
+            NumeroPisos = 2,
+            CodigoEdificio = "ED-003"
+        };
+        var edificio3 = await _espacioFactory.CrearEdificioAsync(edificio3Request);
+        edificio3 = await _espacioRepository.GuardarEdificioAsync(edificio3);
+        espacios.Add(edificio3);
+        _logger.LogInformation("  → Edificio Administrativo (ED-003)");
+
+        // Salones en Edificio Administrativo (Salas de reunión)
+        var salasReunion = new[]
+        {
+            ("Sala de Reuniones A", "Equipada con video conferencia", 101, 20),
+            ("Sala de Reuniones B", "Sala de capacitación", 102, 25),
+            ("Auditorio Principal", "Para presentaciones y eventos", 201, 100)
+        };
+
+        foreach (var (nombre, desc, numero, capacidad) in salasReunion)
+        {
+            var salonRequest = new CrearSalonRequest
+            {
+                Nombre = nombre,
+                Descripcion = desc,
+                Ubicacion = $"Edificio Administrativo, Piso {numero / 100}",
+                Capacidad = capacidad,
+                EdificioId = edificio3.Id,
+                NumeroSalon = numero,
+                TipoSalon = "Sala de Reuniones"
+            };
+            var salon = await _espacioFactory.CrearSalonAsync(salonRequest);
+            salon = await _espacioRepository.GuardarSalonAsync(salon);
+            espacios.Add(salon);
+        }
+        _logger.LogInformation("  → 3 Salas de Reuniones creadas en Edificio Administrativo");
+
+        _logger.LogInformation("Total espacios creados: {Count}", espacios.Count);
         return espacios;
     }
 
     private async Task<List<Beneficio>> SeedBeneficiosAsync()
     {
-        _logger.LogInformation("Creando beneficios iniciales...");
+        _logger.LogInformation("✓ Creando 10+ beneficios...");
 
         var beneficios = new List<Beneficio>();
 
-        var beneficio1 = new Beneficio
+        var beneficiosTipos = new[]
         {
-            Id = 0,
-            Tipo = TipoBeneficio.Canje,
-            Vigencia = true,
-            FechaDeVencimiento = DateTime.UtcNow.AddMonths(6),
-            Cupos = 100
+            (TipoBeneficio.Canje, "Canje - Comedor", 6, 150),
+            (TipoBeneficio.Consumo, "Consumo - Biblioteca", 3, 200),
+            (TipoBeneficio.Canje, "Canje - Tienda de Libros", 12, 75),
+            (TipoBeneficio.Consumo, "Consumo - Parqueadero", 6, 300),
+            (TipoBeneficio.Canje, "Canje - Fotocopia", 3, 500),
+            (TipoBeneficio.Consumo, "Consumo - Laboratorios", 6, 100),
+            (TipoBeneficio.Canje, "Canje - Impresión 3D", 12, 50),
+            (TipoBeneficio.Consumo, "Consumo - Asesorías", 6, 80),
+            (TipoBeneficio.Canje, "Canje - Actividades Deportivas", 12, 120),
+            (TipoBeneficio.Consumo, "Consumo - Transporte", 6, 250)
         };
-        beneficio1 = await _beneficioRepository.CrearAsync(beneficio1);
-        beneficios.Add(beneficio1);
 
-        var beneficio2 = new Beneficio
+        foreach (var (tipo, descripcion, meses, cupos) in beneficiosTipos)
         {
-            Id = 0,
-            Tipo = TipoBeneficio.Consumo,
-            Vigencia = true,
-            FechaDeVencimiento = DateTime.UtcNow.AddMonths(3),
-            Cupos = 50
-        };
-        beneficio2 = await _beneficioRepository.CrearAsync(beneficio2);
-        beneficios.Add(beneficio2);
+            var beneficio = new Beneficio
+            {
+                Id = 0,
+                Tipo = tipo,
+                Vigencia = true,
+                FechaDeVencimiento = DateTime.UtcNow.AddMonths(meses),
+                Cupos = cupos
+            };
+            beneficio = await _beneficioRepository.CrearAsync(beneficio);
+            beneficios.Add(beneficio);
+        }
 
-        var beneficio3 = new Beneficio
-        {
-            Id = 0,
-            Tipo = TipoBeneficio.Canje,
-            Vigencia = true,
-            FechaDeVencimiento = DateTime.UtcNow.AddMonths(12),
-            Cupos = 200
-        };
-        beneficio3 = await _beneficioRepository.CrearAsync(beneficio3);
-        beneficios.Add(beneficio3);
-
-        _logger.LogInformation("Beneficios creados: {Count}", beneficios.Count);
+        _logger.LogInformation("Total beneficios creados: {Count}", beneficios.Count);
         return beneficios;
     }
 
     private async Task SeedUsuarioEspaciosAsync(List<Usuario> usuarios, List<Espacio> espacios)
     {
-        _logger.LogInformation("Creando relaciones Usuario-Espacio...");
+        _logger.LogInformation("✓ Creando relaciones Usuario-Espacio...");
 
-        var estudiante = usuarios.FirstOrDefault(u => u.Rol == Rol.Estudiante);
-        var funcionario = usuarios.FirstOrDefault(u => u.Rol == Rol.Funcionario);
+        var estudiantes = usuarios.Where(u => u.Rol == Rol.Estudiante).ToList();
+        var funcionarios = usuarios.Where(u => u.Rol == Rol.Funcionario).ToList();
+        var admin = usuarios.FirstOrDefault(u => u.Rol == Rol.Admin);
 
-        if (estudiante != null && espacios.Any())
+        // Admin puede acceder a todos los edificios
+        if (admin != null)
         {
-            // Asignar estudiante a los primeros dos espacios
-            foreach (var espacio in espacios.Take(2))
+            var edificios = espacios.OfType<Edificio>().Take(3).ToList();
+            foreach (var edificio in edificios)
             {
-                var usuarioEspacio = new UsuarioEspacio(estudiante.Id, espacio.Id);
+                var usuarioEspacio = new UsuarioEspacio(admin.Id, edificio.Id);
                 _dbContext.UsuariosEspacios.Add(usuarioEspacio);
             }
         }
 
-        if (funcionario != null && espacios.Any())
+        // Distribuir estudiantes entre espacios
+        int espacioIndex = 0;
+        foreach (var estudiante in estudiantes)
         {
-            // Asignar funcionario a todos los espacios
-            foreach (var espacio in espacios)
+            // Cada estudiante puede acceder a 2-3 espacios
+            var espaciosAsignados = 2 + (espacioIndex % 2);
+            for (int i = 0; i < espaciosAsignados && espacioIndex < espacios.Count; i++)
+            {
+                var espacio = espacios[(espacioIndex + i) % espacios.Count];
+                var usuarioEspacio = new UsuarioEspacio(estudiante.Id, espacio.Id);
+                _dbContext.UsuariosEspacios.Add(usuarioEspacio);
+            }
+            espacioIndex += espaciosAsignados;
+        }
+
+        // Funcionarios pueden acceder a múltiples espacios
+        foreach (var funcionario in funcionarios)
+        {
+            foreach (var espacio in espacios.Take(Math.Min(10, espacios.Count)))
             {
                 var usuarioEspacio = new UsuarioEspacio(funcionario.Id, espacio.Id);
                 _dbContext.UsuariosEspacios.Add(usuarioEspacio);
@@ -328,152 +447,219 @@ public sealed class DataSeederService : IDataSeederService
         }
 
         await _dbContext.SaveChangesAsync();
-        _logger.LogInformation("Relaciones Usuario-Espacio creadas");
+        _logger.LogInformation("  → Relaciones Usuario-Espacio creadas");
     }
 
     private async Task SeedBeneficioUsuariosAsync(List<Usuario> usuarios, List<Beneficio> beneficios)
     {
-        _logger.LogInformation("Creando relaciones Beneficio-Usuario...");
+        _logger.LogInformation("✓ Creando relaciones Beneficio-Usuario...");
 
-        var estudiante = usuarios.FirstOrDefault(u => u.Rol == Rol.Estudiante);
-        var estudiante2 = usuarios.Skip(1).FirstOrDefault(u => u.Rol == Rol.Estudiante);
+        var estudiantes = usuarios.Where(u => u.Rol == Rol.Estudiante).ToList();
 
-        if (estudiante != null && beneficios.Any())
+        if (!beneficios.Any())
+            return;
+
+        // Distribuir beneficios entre estudiantes
+        for (int i = 0; i < estudiantes.Count; i++)
         {
-            // Asignar primer beneficio al estudiante
-            var beneficioUsuario1 = new BeneficioUsuario(estudiante.Id, beneficios[0].Id, false);
-            await _beneficioUsuarioRepository.CrearAsync(beneficioUsuario1);
-
-            // Asignar segundo beneficio al estudiante
-            if (beneficios.Count > 1)
+            var estudiante = estudiantes[i];
+            
+            // Cada estudiante obtiene 2-3 beneficios aleatorios
+            var beneficiosAsignados = 2 + (i % 2);
+            for (int j = 0; j < beneficiosAsignados && j < beneficios.Count; j++)
             {
-                var beneficioUsuario2 = new BeneficioUsuario(estudiante.Id, beneficios[1].Id, false);
-                await _beneficioUsuarioRepository.CrearAsync(beneficioUsuario2);
+                var beneficio = beneficios[(i + j) % beneficios.Count];
+                var beneficioUsuario = new BeneficioUsuario(estudiante.Id, beneficio.Id, false);
+                await _beneficioUsuarioRepository.CrearAsync(beneficioUsuario);
             }
         }
 
-        if (estudiante2 != null && beneficios.Count > 2)
-        {
-            // Asignar tercer beneficio al segundo estudiante
-            var beneficioUsuario3 = new BeneficioUsuario(estudiante2.Id, beneficios[2].Id, false);
-            await _beneficioUsuarioRepository.CrearAsync(beneficioUsuario3);
-        }
-
-        _logger.LogInformation("Relaciones Beneficio-Usuario creadas");
+        _logger.LogInformation("  → Relaciones Beneficio-Usuario creadas");
     }
 
     private async Task SeedReglasAccesoAsync(List<Espacio> espacios)
     {
-        _logger.LogInformation("Creando reglas de acceso...");
+        _logger.LogInformation("✓ Creando 20+ reglas de acceso...");
 
         if (!espacios.Any())
             return;
 
-        var espacio = espacios.First();
-        var horarioApertura = DateTime.UtcNow.Date.AddHours(8);
-        var horarioCierre = DateTime.UtcNow.Date.AddHours(20);
-        var vigenciaApertura = DateTime.UtcNow.Date;
-        var vigenciaCierre = DateTime.UtcNow.Date.AddMonths(6);
+        var horarios = new[]
+        {
+            (8, 20),    // 8am - 8pm
+            (7, 18),    // 7am - 6pm
+            (9, 17),    // 9am - 5pm
+            (7, 22),    // 7am - 10pm
+            (24, 24)    // 24 horas (laboratorios)
+        };
 
-        var reglaAcceso = new ReglaAcceso(
-            Id: 0,
-            HorarioApertura: horarioApertura,
-            HorarioCierre: horarioCierre,
-            VigenciaApertura: vigenciaApertura,
-            VigenciaCierre: vigenciaCierre,
-            RolesPermitidos: new List<Rol> { Rol.Estudiante, Rol.Funcionario, Rol.Admin },
-            EspacioId: espacio.Id
-        );
+        int reglasCreadas = 0;
 
-        await _reglaAccesoRepository.CrearAsync(reglaAcceso);
+        foreach (var espacio in espacios)
+        {
+            // Crear 2-3 reglas por espacio con diferentes horarios
+            var horarioIdx = reglasCreadas % horarios.Length;
+            var (horaApertura, horaCierre) = horarios[horarioIdx];
 
-        _logger.LogInformation("Reglas de acceso creadas");
+            var horarioApertura = DateTime.UtcNow.Date.AddHours(horaApertura);
+            var horarioCierre = DateTime.UtcNow.Date.AddHours(horaCierre);
+
+            var reglaAcceso = new ReglaAcceso(
+                Id: 0,
+                HorarioApertura: horarioApertura,
+                HorarioCierre: horarioCierre,
+                VigenciaApertura: DateTime.UtcNow.Date,
+                VigenciaCierre: DateTime.UtcNow.Date.AddMonths(6),
+                RolesPermitidos: new List<Rol> { Rol.Estudiante, Rol.Funcionario, Rol.Admin },
+                EspacioId: espacio.Id
+            );
+
+            await _reglaAccesoRepository.CrearAsync(reglaAcceso);
+            reglasCreadas++;
+
+            // Agregar regla adicional para funcionarios en algunos espacios
+            if (reglasCreadas % 3 == 0)
+            {
+                var reglaFuncionarios = new ReglaAcceso(
+                    Id: 0,
+                    HorarioApertura: DateTime.UtcNow.Date.AddHours(6),
+                    HorarioCierre: DateTime.UtcNow.Date.AddHours(22),
+                    VigenciaApertura: DateTime.UtcNow.Date,
+                    VigenciaCierre: DateTime.UtcNow.Date.AddMonths(6),
+                    RolesPermitidos: new List<Rol> { Rol.Funcionario, Rol.Admin },
+                    EspacioId: espacio.Id
+                );
+                await _reglaAccesoRepository.CrearAsync(reglaFuncionarios);
+                reglasCreadas++;
+            }
+        }
+
+        _logger.LogInformation($"  → {reglasCreadas} Reglas de acceso creadas");
     }
 
-    private async Task SeedEventosAsync()
+    private async Task<List<Evento>> SeedEventosAsync()
     {
-        _logger.LogInformation("Creando eventos iniciales...");
+        _logger.LogInformation("✓ Creando 15+ eventos...");
 
-        var evento1 = new Evento(
-            Id: 0,
-            Nombre: "Conferencia de Tecnología",
-            Fecha: DateTime.UtcNow.AddDays(7),
-            Resultado: "Programado",
-            PuntoControl: "Entrada Principal",
-            Activo: true
-        );
-        await _eventoRepository.CrearAsync(evento1);
+        var eventos = new List<Evento>();
 
-        var evento2 = new Evento(
-            Id: 0,
-            Nombre: "Taller de Desarrollo",
-            Fecha: DateTime.UtcNow.AddDays(14),
-            Resultado: "Programado",
-            PuntoControl: "Salón 201",
-            Activo: true
-        );
-        await _eventoRepository.CrearAsync(evento2);
+        var eventosData = new[]
+        {
+            ("Conferencia de Tecnología", DateTime.UtcNow.AddDays(7), "Entrada Principal"),
+            ("Taller de Desarrollo Web", DateTime.UtcNow.AddDays(14), "Salón 201"),
+            ("Seminario de Inteligencia Artificial", DateTime.UtcNow.AddDays(21), "Auditorio Principal"),
+            ("Workshop de Python", DateTime.UtcNow.AddDays(2), "Laboratorio de Informática"),
+            ("Charla de Seguridad Informática", DateTime.UtcNow.AddDays(10), "Salón 101"),
+            ("Feria de Proyectos", DateTime.UtcNow.AddDays(30), "Edificio Central"),
+            ("Competencia de Programación", DateTime.UtcNow.AddDays(45), "Laboratorio 301"),
+            ("Taller de Electrónica", DateTime.UtcNow.AddDays(5), "Laboratorio de Electrónica"),
+            ("Jornada de Biología", DateTime.UtcNow.AddDays(12), "Laboratorio de Biología"),
+            ("Sesión de Física Experimental", DateTime.UtcNow.AddDays(8), "Taller de Mecánica"),
+            ("Reunión Académica", DateTime.UtcNow.AddDays(3), "Sala de Reuniones A"),
+            ("Congreso Estudiantil", DateTime.UtcNow.AddDays(25), "Auditorio Principal"),
+            ("Capacitación de Sistema GateKeep", DateTime.UtcNow.AddDays(4), "Sala de Reuniones B"),
+            ("Conferencia de Sostenibilidad", DateTime.UtcNow.AddDays(18), "Edificio Anexo"),
+            ("Taller de Emprendimiento", DateTime.UtcNow.AddDays(11), "Salón 2101")
+        };
 
-        _logger.LogInformation("Eventos creados");
+        foreach (var (nombre, fecha, ubicacion) in eventosData)
+        {
+            var evento = new Evento(
+                Id: 0,
+                Nombre: nombre,
+                Fecha: fecha,
+                Resultado: fecha > DateTime.UtcNow ? "Programado" : "Completado",
+                PuntoControl: ubicacion,
+                Activo: true
+            );
+            evento = await _eventoRepository.CrearAsync(evento);
+            eventos.Add(evento);
+        }
+
+        _logger.LogInformation($"  → {eventos.Count} Eventos creados");
+        return eventos;
     }
 
     private async Task SeedEventosAccesoAsync(List<Usuario> usuarios, List<Espacio> espacios)
     {
-        _logger.LogInformation("Creando eventos de acceso...");
+        _logger.LogInformation("✓ Creando 50+ eventos de acceso...");
 
         if (!usuarios.Any() || !espacios.Any())
             return;
 
-        var usuario = usuarios.First();
-        var espacio = espacios.First();
+        var resultados = new[] { "Permitido", "Denegado", "Con Alerta" };
+        var eventosAcceso = new List<EventoAcceso>();
 
-        var eventoAcceso1 = new EventoAcceso(
-            Id: 0,
-            Nombre: "Acceso al Edificio Central",
-            Fecha: DateTime.UtcNow.AddHours(-2),
-            Resultado: "Permitido",
-            PuntoControl: "Entrada Principal",
-            UsuarioId: usuario.Id,
-            EspacioId: espacio.Id
-        );
-        _dbContext.EventosAcceso.Add(eventoAcceso1);
+        // Crear registros de acceso para los últimos 7 días
+        for (int dia = 0; dia < 7; dia++)
+        {
+            var fecha = DateTime.UtcNow.AddDays(-dia);
+            
+            // 5-10 eventos por día
+            for (int evento = 0; evento < 8; evento++)
+            {
+                var usuario = usuarios[evento % usuarios.Count];
+                var espacio = espacios[evento % espacios.Count];
+                var resultado = resultados[(dia + evento) % resultados.Length];
+                
+                var eventoAcceso = new EventoAcceso(
+                    Id: 0,
+                    Nombre: $"Acceso a {espacio.Nombre}",
+                    Fecha: fecha.AddHours(8 + evento).AddMinutes(evento * 15),
+                    Resultado: resultado,
+                    PuntoControl: espacio.Ubicacion ?? "Entrada Principal",
+                    UsuarioId: usuario.Id,
+                    EspacioId: espacio.Id
+                );
+                eventosAcceso.Add(eventoAcceso);
+            }
+        }
 
-        var eventoAcceso2 = new EventoAcceso(
-            Id: 0,
-            Nombre: "Acceso al Salón 101",
-            Fecha: DateTime.UtcNow.AddHours(-1),
-            Resultado: "Permitido",
-            PuntoControl: "Salón 101",
-            UsuarioId: usuario.Id,
-            EspacioId: espacios.Skip(1).First().Id
-        );
-        _dbContext.EventosAcceso.Add(eventoAcceso2);
+        // Agregar eventos en batch
+        foreach (var eventoAcceso in eventosAcceso)
+        {
+            _dbContext.EventosAcceso.Add(eventoAcceso);
+        }
 
         await _dbContext.SaveChangesAsync();
-        _logger.LogInformation("Eventos de acceso creados");
+        _logger.LogInformation($"  → {eventosAcceso.Count} Eventos de acceso creados");
     }
 
     private async Task SeedAnunciosAsync()
     {
-        _logger.LogInformation("Creando anuncios iniciales...");
+        _logger.LogInformation("✓ Creando 15+ anuncios...");
 
-        var anuncio1 = new Anuncio(
-            Id: 0,
-            Nombre: "Bienvenida al nuevo semestre",
-            Fecha: DateTime.UtcNow,
-            Activo: true
-        );
-        await _anuncioRepository.CrearAsync(anuncio1);
+        var anunciosData = new[]
+        {
+            ("Bienvenida al nuevo semestre", true),
+            ("Mantenimiento programado - Sábado 23 de noviembre", true),
+            ("Cambio de horario en laboratorios", true),
+            ("Nuevo sistema de beneficios disponible", true),
+            ("Inscripciones abiertas para talleres", true),
+            ("Feria de empresas - 15 de diciembre", true),
+            ("Cierre de campus - Festivo nacional", false),
+            ("Actualización del sistema GateKeep", true),
+            ("Capacitación para nuevos usuarios", true),
+            ("Cambios en políticas de acceso", true),
+            ("Disponibilidad de becas 2024", true),
+            ("Licitación de nuevos laboratorios", true),
+            ("Programa de prácticas profesionales", true),
+            ("Certificaciones disponibles", true),
+            ("Encuesta de satisfacción - Participar", true)
+        };
 
-        var anuncio2 = new Anuncio(
-            Id: 0,
-            Nombre: "Mantenimiento programado",
-            Fecha: DateTime.UtcNow.AddDays(1),
-            Activo: true
-        );
-        await _anuncioRepository.CrearAsync(anuncio2);
+        foreach (var (nombre, activo) in anunciosData)
+        {
+            var anuncio = new Anuncio(
+                Id: 0,
+                Nombre: nombre,
+                Fecha: DateTime.UtcNow.AddDays(Random.Shared.Next(-30, 30)),
+                Activo: activo
+            );
+            await _anuncioRepository.CrearAsync(anuncio);
+        }
 
-        _logger.LogInformation("Anuncios creados");
+        _logger.LogInformation($"  → {anunciosData.Length} Anuncios creados");
     }
 }
 
