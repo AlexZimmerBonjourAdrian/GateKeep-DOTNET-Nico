@@ -107,22 +107,15 @@ $ecsService = $null
 Write-Log "Buscando repositorios ECR..." -Level "Info"
 $reposJson = aws ecr describe-repositories --region $awsRegion --output json 2>&1
 if ($LASTEXITCODE -eq 0) {
-    $reposObject = $reposJson | ConvertFrom-Json
-    $repos = @($reposObject.repositories)  # Convertir a array siempre
-    
+    $repos = ($reposJson | ConvertFrom-Json).repositories
     if ($repos -and $repos.Count -gt 0) {
         Write-Log "Se encontraron $($repos.Count) repositorio(s) ECR" -Level "Info"
         Write-Log "Repositorios disponibles: $($repos.repositoryName -join ', ')" -Level "Info"
         
         # Buscar repositorio API: primero los que contengan "api", luego los que contengan "gatekeep" pero NO "frontend"
-        $apiRepos = @($repos | Where-Object { $_.repositoryName -like "*api*" })
-        if ($apiRepos.Count -gt 0) {
-            $apiRepo = $apiRepos[0]
-        } else {
-            $apiRepos = @($repos | Where-Object { $_.repositoryName -like "*gatekeep*" -and $_.repositoryName -notlike "*frontend*" })
-            if ($apiRepos.Count -gt 0) {
-                $apiRepo = $apiRepos[0]
-            }
+        $apiRepo = $repos | Where-Object { $_.repositoryName -like "*api*" } | Select-Object -First 1
+        if (-not $apiRepo) {
+            $apiRepo = $repos | Where-Object { $_.repositoryName -like "*gatekeep*" -and $_.repositoryName -notlike "*frontend*" } | Select-Object -First 1
         }
         
         if ($apiRepo) {
@@ -132,9 +125,8 @@ if ($LASTEXITCODE -eq 0) {
             Write-Log "No se encontro repositorio que coincida con 'api' o 'gatekeep' (sin frontend)" -Level "Warning"
         }
         
-        $frontendRepos = @($repos | Where-Object { $_.repositoryName -like "*frontend*" })
-        if ($frontendRepos.Count -gt 0) {
-            $frontendRepo = $frontendRepos[0]
+        $frontendRepo = $repos | Where-Object { $_.repositoryName -like "*frontend*" } | Select-Object -First 1
+        if ($frontendRepo) {
             $ecrFrontendUrl = $frontendRepo.repositoryUri
             Write-Log "Repositorio ECR Frontend encontrado: $ecrFrontendUrl" -Level "Success"
         }
@@ -149,14 +141,10 @@ if ($LASTEXITCODE -eq 0) {
 Write-Log "Buscando cluster y servicio ECS..." -Level "Info"
 $clustersJson = aws ecs list-clusters --region $awsRegion --output json 2>&1
 if ($LASTEXITCODE -eq 0) {
-    $clustersObject = $clustersJson | ConvertFrom-Json
-    $clusters = @($clustersObject.clusterArns)  # Convertir a array siempre
-    
+    $clusters = ($clustersJson | ConvertFrom-Json).clusterArns
     if ($clusters -and $clusters.Count -gt 0) {
-        $gatekeepClusters = @($clusters | Where-Object { $_ -like "*gatekeep*" })
-        if ($gatekeepClusters.Count -gt 0) {
-            $gatekeepCluster = $gatekeepClusters[0]
-        } else {
+        $gatekeepCluster = ($clusters | Where-Object { $_ -like "*gatekeep*" } | Select-Object -First 1)
+        if (-not $gatekeepCluster) {
             $gatekeepCluster = $clusters[0]
         }
         
@@ -166,14 +154,10 @@ if ($LASTEXITCODE -eq 0) {
             # Obtener servicios del cluster
             $servicesJson = aws ecs list-services --cluster $ecsCluster --region $awsRegion --output json 2>&1
             if ($LASTEXITCODE -eq 0) {
-                $servicesObject = $servicesJson | ConvertFrom-Json
-                $services = @($servicesObject.serviceArns)  # Convertir a array siempre
-                
+                $services = ($servicesJson | ConvertFrom-Json).serviceArns
                 if ($services -and $services.Count -gt 0) {
-                    $apiServices = @($services | Where-Object { $_ -like "*api*" -or $_ -like "*gatekeep*" })
-                    if ($apiServices.Count -gt 0) {
-                        $apiService = $apiServices[0]
-                    } else {
+                    $apiService = ($services | Where-Object { $_ -like "*api*" -or $_ -like "*gatekeep*" } | Select-Object -First 1)
+                    if (-not $apiService) {
                         $apiService = $services[0]
                     }
                     
@@ -263,19 +247,7 @@ if (-not (Test-Path $dockerfilePath)) {
     exit 1
 }
 
-# Construir el imageTag de forma explícita
-Write-Log "Construyendo imageTag: ecrApiUrl='$ecrApiUrl'" -Level "Debug"
-$imageTag = $ecrApiUrl + ":latest"
-Write-Log "imageTag construido: '$imageTag'" -Level "Debug"
-
-# Validar que $imageTag no esté vacío
-if ([string]::IsNullOrWhiteSpace($imageTag)) {
-    Write-Log "Error: imageTag está vacío. ecrApiUrl='$ecrApiUrl'" -Level "Error"
-    Write-Log "Longitud de ecrApiUrl: $($ecrApiUrl.Length)" -Level "Error"
-    Write-Log "Tipo de ecrApiUrl: $($ecrApiUrl.GetType())" -Level "Error"
-    exit 1
-}
-
+$imageTag = "$ecrApiUrl:latest"
 Write-Log "  Contexto: $apiPath" -Level "Info"
 Write-Log "  Dockerfile: $dockerfilePath" -Level "Info"
 Write-Log "  Tag: $imageTag" -Level "Info"
