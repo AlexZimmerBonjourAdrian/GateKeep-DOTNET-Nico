@@ -34,5 +34,10 @@ public interface IEventObserver
     /// Notifica cuando se desasigna un beneficio de un usuario
     /// </summary>
     Task OnBeneficioDesasignadoAsync(long usuarioId, long beneficioId, string beneficioNombre, DateTime fecha);
+
+    /// <summary>
+    /// Notifica cuando un usuario canjea un beneficio
+    /// </summary>
+    Task OnBeneficioCanjeadoAsync(long usuarioId, long beneficioId, string beneficioNombre, string puntoControl, DateTime fecha);
 }
 

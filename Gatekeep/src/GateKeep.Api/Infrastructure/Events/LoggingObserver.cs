@@ -61,5 +61,13 @@ public sealed class LoggingObserver : IEventObserver
             usuarioId, beneficioId, beneficioNombre, fecha);
         return Task.CompletedTask;
     }
+
+    public Task OnBeneficioCanjeadoAsync(long usuarioId, long beneficioId, string beneficioNombre, string puntoControl, DateTime fecha)
+    {
+        _logger.LogInformation(
+            "Evento: Beneficio Canjeado - UsuarioId: {UsuarioId}, BeneficioId: {BeneficioId}, BeneficioNombre: {BeneficioNombre}, PuntoControl: {PuntoControl}, Fecha: {Fecha}",
+            usuarioId, beneficioId, beneficioNombre, puntoControl, fecha);
+        return Task.CompletedTask;
+    }
 }
 

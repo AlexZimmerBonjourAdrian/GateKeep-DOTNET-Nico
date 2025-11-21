@@ -80,5 +80,7 @@ public class EventoQueueProcessor : BackgroundService
     public record UsuarioCreadoData(long UsuarioId, string Email, string Nombre, string Apellido, string Rol, DateTime Fecha);
     public record BeneficioAsignadoData(long UsuarioId, long BeneficioId, string BeneficioNombre, DateTime Fecha);
     public record BeneficioDesasignadoData(long UsuarioId, long BeneficioId, string BeneficioNombre, DateTime Fecha);
+    public record BeneficioCanjeadoData(long UsuarioId, long BeneficioId, string BeneficioNombre, string PuntoControl, DateTime Fecha);
 }
+
 
