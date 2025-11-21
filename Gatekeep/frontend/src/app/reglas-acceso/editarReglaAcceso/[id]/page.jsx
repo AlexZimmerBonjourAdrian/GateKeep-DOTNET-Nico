@@ -52,6 +52,7 @@ export default function editarReglaAcceso() {
       <div className="header-middle-bar">
         <form className="text-card">
           <div style={{alignItems: 'center', width: '100%'}}>
+            <button type="button" onClick={() => window.history.back()} style={{ background: 'transparent', border: '2px solid #F37426', color: '#F37426', padding: '6px 16px', borderRadius: '20px', cursor: 'pointer', marginBottom: '12px', fontSize: '0.9rem', fontWeight: '500', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.background = '#F37426'; e.target.style.color = 'white'; }} onMouseLeave={(e) => { e.target.style.background = 'transparent'; e.target.style.color = '#F37426'; }}>← Regresar</button>
             <h1 className="text-3xl font-bold text-white">Editar Regla de Acceso</h1>
             <hr />
           </div>

@@ -123,7 +123,8 @@ public static class EdificioEndpoints
                 NumeroPisos = request.NumeroPisos,
                 CodigoEdificio = request.CodigoEdificio ?? edificio.CodigoEdificio,
                 Descripcion = request.Descripcion ?? edificio.Descripcion,
-                Ubicacion = request.Ubicacion ?? edificio.Ubicacion
+                Ubicacion = request.Ubicacion ?? edificio.Ubicacion,
+                Activo = request.Activo
             };
             
             await espacioRepository.ActualizarAsync(edificioActualizado);

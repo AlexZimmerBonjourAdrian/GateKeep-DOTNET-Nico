@@ -3,19 +3,35 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useParams } from 'next/navigation';
 import logo from '/public/assets/LogoGateKeep.webp';
 import harvard from '/public/assets/Harvard.webp';
-import { SecurityService } from '../../../services/securityService';
-import { SalonService } from '../../../services/SalonService';
-import { EdificioService } from '../../../services/EdificioService';
+import { SecurityService } from '../../../../services/securityService';
+import { SalonService } from '../../../../services/SalonService';
+import { EdificioService } from '../../../../services/EdificioService';
 
-export default function CrearSalonPage() {
+export default function EditarSalonPage() {
 	const pathname = usePathname();
 	const router = useRouter();
+	const params = useParams();
+	const salonId = parseInt(params.id, 10);
+
 	SecurityService.checkAuthAndRedirect(pathname);
 
 	const [isAdmin, setIsAdmin] = useState(false);
+	const [loading, setLoading] = useState(true);
+	const [edificios, setEdificios] = useState([]);
+	const [nombre, setNombre] = useState('');
+	const [descripcion, setDescripcion] = useState('');
+	const [ubicacion, setUbicacion] = useState('');
+	const [capacidad, setCapacidad] = useState('');
+	const [numeroSalon, setNumeroSalon] = useState('');
+	const [edificioId, setEdificioId] = useState('');
+	const [activo, setActivo] = useState(true);
+	const [submitting, setSubmitting] = useState(false);
+	const [error, setError] = useState(null);
+	const [success, setSuccess] = useState(false);
+
 	useEffect(() => {
 		try {
 			const tipo = SecurityService.getTipoUsuario?.() || null;
@@ -38,7 +54,7 @@ export default function CrearSalonPage() {
 		}
 	}, [router]);
 
-	const [edificios, setEdificios] = useState([]);
+	// Cargar edificios
 	useEffect(() => {
 		const fetchEdificios = async () => {
 			try {
@@ -51,16 +67,29 @@ export default function CrearSalonPage() {
 		fetchEdificios();
 	}, []);
 
-	const [nombre, setNombre] = useState('');
-	const [descripcion, setDescripcion] = useState('');
-	const [ubicacion, setUbicacion] = useState('');
-	const [capacidad, setCapacidad] = useState('');
-	const [numeroSalon, setNumeroSalon] = useState('');
-	const [edificioId, setEdificioId] = useState('');
-	const [activo, setActivo] = useState(true);
-	const [submitting, setSubmitting] = useState(false);
-	const [error, setError] = useState(null);
-	const [success, setSuccess] = useState(false);
+	// Cargar datos del salón
+	useEffect(() => {
+		if (!salonId || isNaN(salonId)) return;
+		const fetchSalon = async () => {
+			try {
+				const response = await SalonService.getSalonById(salonId);
+				const salon = response.data;
+				setNombre(salon.Nombre || salon.nombre || '');
+				setDescripcion(salon.Descripcion || salon.descripcion || '');
+				setUbicacion(salon.Ubicacion || salon.ubicacion || '');
+				setCapacidad(String(salon.Capacidad ?? salon.capacidad ?? ''));
+				setNumeroSalon(String(salon.NumeroSalon ?? salon.numeroSalon ?? ''));
+				setEdificioId(String(salon.EdificioId ?? salon.edificioId ?? ''));
+				setActivo(salon.Activo ?? salon.activo ?? true);
+			} catch (e) {
+				console.error('Error cargando salón:', e);
+				setError('No se pudo cargar el salón');
+			} finally {
+				setLoading(false);
+			}
+		};
+		fetchSalon();
+	}, [salonId]);
 
 	const validate = () => {
 		if (!nombre || !ubicacion || !capacidad || !numeroSalon || !edificioId) return 'Completa los campos obligatorios.';
@@ -85,22 +114,22 @@ export default function CrearSalonPage() {
 		};
 		setSubmitting(true);
 		try {
-			const response = await SalonService.createSalon(payload);
+			const response = await SalonService.updateSalon(salonId, payload);
 			if (response.status >= 200 && response.status < 300) {
 				setSuccess(true);
 				setTimeout(() => router.push('/salones/listadoSalones'), 900);
 			} else {
-				setError('No se pudo crear el salón.');
+				setError('No se pudo actualizar el salón.');
 			}
 		} catch (e) {
-			console.error('Error creando salón:', e);
-			setError(e.response?.data?.error || e.response?.data?.message || 'Error al crear el salón');
+			console.error('Error actualizando salón:', e);
+			setError(e.response?.data?.error || e.response?.data?.message || 'Error al actualizar el salón');
 		} finally {
 			setSubmitting(false);
 		}
 	};
 
-	if (!isAdmin) return null;
+	if (!isAdmin || loading) return <div style={{color:'white', padding:'2rem'}}>Cargando...</div>;
 
 	return (
 		<div className="header-root">
@@ -115,66 +144,41 @@ export default function CrearSalonPage() {
 					</div>
 				</div>
 				<div className="header-middle-bar">
-					<form className="text-card" onSubmit={(e) => { e.preventDefault(); if (!submitting) handleSubmit(); }} aria-label="Formulario crear salón">
+					<form className="text-card" onSubmit={(e) => { e.preventDefault(); if (!submitting) handleSubmit(); }} aria-label="Formulario editar salón">
 					<div style={{alignItems: 'center', width: '100%'}}>
 						<button type="button" onClick={() => router.back()} style={{ background: 'transparent', border: '2px solid #F37426', color: '#F37426', padding: '6px 16px', borderRadius: '20px', cursor: 'pointer', marginBottom: '12px', fontSize: '0.9rem', fontWeight: '500', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.background = '#F37426'; e.target.style.color = 'white'; }} onMouseLeave={(e) => { e.target.style.background = 'transparent'; e.target.style.color = '#F37426'; }}>← Regresar</button>
-						<h1 className="text-3xl font-bold text-white">Crear Salón</h1>
+						<h1 className="text-3xl font-bold text-white">Editar Salón</h1>
 						<hr />
 					</div>
 						<div className='input-container'>
 							<div className='w-full'>
 								<span>Nombre *</span>
-								<input type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre del salón" />
+								<input type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre" />
 							</div>
 							<div className='w-full'>
 								<span>Ubicación *</span>
-								<input type="text" value={ubicacion} onChange={(e) => setUbicacion(e.target.value)} placeholder="Ej: Piso 2, Ala Norte" />
-							</div>
-							<div className='w-full'>
-								<span>Número de Salón *</span>
-								<input type="number" value={numeroSalon} onChange={(e) => setNumeroSalon(e.target.value)} placeholder="Ej: 201" />
+								<input type="text" value={ubicacion} onChange={(e) => setUbicacion(e.target.value)} placeholder="Ubicación" />
 							</div>
 							<div className='w-full'>
 								<span>Capacidad *</span>
-								<input type="number" value={capacidad} onChange={(e) => setCapacidad(e.target.value)} placeholder="Capacidad de personas" />
+								<input type="number" value={capacidad} onChange={(e) => setCapacidad(e.target.value)} placeholder="Capacidad" />
+							</div>
+							<div className='w-full'>
+								<span>Número de salón *</span>
+								<input type="number" value={numeroSalon} onChange={(e) => setNumeroSalon(e.target.value)} placeholder="Número" />
 							</div>
 							<div className='w-full'>
 								<span>Edificio *</span>
-								<select 
-									value={edificioId} 
-									onChange={(e) => setEdificioId(e.target.value)}
-									style={{
-										borderRadius:'20px', 
-										width:'calc(100% - 2vw)', 
-										marginLeft:'1vw', 
-										marginRight:'1vw', 
-										padding:'8px',
-										backgroundColor: 'white'
-									}}
-								>
-									<option value="">Selecciona un edificio</option>
+								<select value={edificioId} onChange={(e) => setEdificioId(e.target.value)} style={{width:'100%', padding:'8px', borderRadius:'20px', border:'1px solid #ccc'}}>
+									<option value="">Selecciona edificio</option>
 									{edificios.map(e => (
-										<option key={e.Id || e.id} value={e.Id || e.id}>
-											{e.Nombre || e.nombre}
-										</option>
+										<option key={e.Id || e.id} value={e.Id || e.id}>{e.Nombre || e.nombre}</option>
 									))}
 								</select>
 							</div>
 							<div className='w-full'>
 								<span>Descripción (opcional)</span>
-								<textarea 
-									style={{
-										borderRadius:'20px', 
-										width:'calc(100% - 2vw)', 
-										marginLeft:'1vw', 
-										marginRight:'1vw', 
-										padding:'8px', 
-										minHeight:'80px'
-									}} 
-									value={descripcion} 
-									onChange={(e) => setDescripcion(e.target.value)} 
-									placeholder="Descripción del salón" 
-								/>
+								<textarea style={{borderRadius:'20px', width:'calc(100% - 2vw)', marginLeft:'1vw', marginRight:'1vw', padding:'8px', minHeight:'80px'}} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción" />
 							</div>
 							<div className='w-full' style={{display:'flex', alignItems:'center', gap:'8px', marginLeft:'1vw', marginRight:'1vw'}}>
 								<input id="activo-salon" type="checkbox" checked={activo} onChange={(e) => setActivo(e.target.checked)} />
@@ -185,11 +189,11 @@ export default function CrearSalonPage() {
 							<div style={{ color: '#ffdddd', background:'#7e1e1e', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>{error}</div>
 						)}
 						{success && (
-							<div style={{ color: '#e9ffe9', background:'#1e7e3a', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>Salón creado. Redirigiendo...</div>
+							<div style={{ color: '#e9ffe9', background:'#1e7e3a', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>Salón actualizado. Redirigiendo...</div>
 						)}
 						<div className='button-container'>
 							<button type="submit" disabled={submitting} style={{ opacity: submitting ? 0.6 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }}>
-								{submitting ? 'Creando...' : 'Crear Salón'}
+								{submitting ? 'Actualizando...' : 'Actualizar Salón'}
 							</button>
 						</div>
 					</form>

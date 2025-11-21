@@ -78,19 +78,32 @@ public sealed class EspacioRepository : IEspacioRepository
 
     public async Task<Espacio?> ActualizarAsync(Espacio espacio)
     {
-        switch (espacio)
+        // Verificar si la entidad ya está siendo rastreada
+        var existingEntry = _context.ChangeTracker.Entries<Espacio>()
+            .FirstOrDefault(e => e.Entity.Id == espacio.Id);
+
+        if (existingEntry != null)
         {
-            case Edificio edificio:
-                _context.Edificios.Update(edificio);
-                break;
-            case Salon salon:
-                _context.Salones.Update(salon);
-                break;
-            case Laboratorio laboratorio:
-                _context.Laboratorios.Update(laboratorio);
-                break;
-            default:
-                throw new ArgumentException($"Tipo de espacio no soportado: {espacio.GetType().Name}");
+            // Si ya está rastreada, actualizar sus propiedades
+            existingEntry.CurrentValues.SetValues(espacio);
+        }
+        else
+        {
+            // Si no está rastreada, hacer Update según el tipo
+            switch (espacio)
+            {
+                case Edificio edificio:
+                    _context.Edificios.Update(edificio);
+                    break;
+                case Salon salon:
+                    _context.Salones.Update(salon);
+                    break;
+                case Laboratorio laboratorio:
+                    _context.Laboratorios.Update(laboratorio);
+                    break;
+                default:
+                    throw new ArgumentException($"Tipo de espacio no soportado: {espacio.GetType().Name}");
+            }
         }
 
         await _context.SaveChangesAsync();

@@ -102,10 +102,11 @@ export default function CrearEdificioPage() {
 				</div>
 				<div className="header-middle-bar">
 					<form className="text-card" onSubmit={(e) => { e.preventDefault(); if (!submitting) handleSubmit(); }} aria-label="Formulario crear edificio">
-						<div style={{alignItems: 'center', width: '100%'}}>
-							<h1 className="text-3xl font-bold text-white">Crear Edificio</h1>
-							<hr />
-						</div>
+					<div style={{alignItems: 'center', width: '100%'}}>
+						<button type="button" onClick={() => router.back()} style={{ background: 'transparent', border: '2px solid #F37426', color: '#F37426', padding: '6px 16px', borderRadius: '20px', cursor: 'pointer', marginBottom: '12px', fontSize: '0.9rem', fontWeight: '500', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.background = '#F37426'; e.target.style.color = 'white'; }} onMouseLeave={(e) => { e.target.style.background = 'transparent'; e.target.style.color = '#F37426'; }}>← Regresar</button>
+						<h1 className="text-3xl font-bold text-white">Crear Edificio</h1>
+						<hr />
+					</div>
 						<div className='input-container'>
 							<div className='w-full'>
 								<span>Nombre *</span>
