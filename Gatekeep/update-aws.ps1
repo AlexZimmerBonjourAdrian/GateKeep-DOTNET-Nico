@@ -108,14 +108,24 @@ Write-Log "Buscando repositorios ECR..." -Level "Info"
 $reposJson = aws ecr describe-repositories --region $awsRegion --output json 2>&1
 if ($LASTEXITCODE -eq 0) {
     $repos = ($reposJson | ConvertFrom-Json).repositories
-    $apiRepo = $repos | Where-Object { $_.repositoryName -like "*api*" -or $_.repositoryName -like "*gatekeep*" } | Select-Object -First 1
-    if ($apiRepo) {
-        $ecrApiUrl = $apiRepo.repositoryUri
-    }
-    
-    $frontendRepo = $repos | Where-Object { $_.repositoryName -like "*frontend*" } | Select-Object -First 1
-    if ($frontendRepo) {
-        $ecrFrontendUrl = $frontendRepo.repositoryUri
+    if ($repos -and $repos.Count -gt 0) {
+        Write-Log "Se encontraron $($repos.Count) repositorio(s) ECR" -Level "Info"
+        $apiRepo = $repos | Where-Object { $_.repositoryName -like "*api*" -or $_.repositoryName -like "*gatekeep*" } | Select-Object -First 1
+        if ($apiRepo) {
+            $ecrApiUrl = $apiRepo.repositoryUri
+            Write-Log "Repositorio ECR API encontrado: $ecrApiUrl" -Level "Success"
+        } else {
+            Write-Log "No se encontro repositorio que coincida con 'api' o 'gatekeep'" -Level "Warning"
+            Write-Log "Repositorios disponibles: $($repos.repositoryName -join ', ')" -Level "Info"
+        }
+        
+        $frontendRepo = $repos | Where-Object { $_.repositoryName -like "*frontend*" } | Select-Object -First 1
+        if ($frontendRepo) {
+            $ecrFrontendUrl = $frontendRepo.repositoryUri
+            Write-Log "Repositorio ECR Frontend encontrado: $ecrFrontendUrl" -Level "Success"
+        }
+    } else {
+        Write-Log "No se encontraron repositorios ECR en la region $awsRegion" -Level "Warning"
     }
 } else {
     Write-Log "Error al obtener repositorios ECR: $reposJson" -Level "Warning"
@@ -202,6 +212,22 @@ try {
 
 # Construir y subir imagen de API
 Write-Step "Construyendo y Subiendo Imagen de API"
+
+# Validar que tenemos la URL de ECR antes de continuar
+if ([string]::IsNullOrWhiteSpace($ecrApiUrl)) {
+    Write-Log "Error: No se pudo obtener la URL del repositorio ECR para API" -Level "Error"
+    Write-Log "El proceso no puede continuar sin esta informacion." -Level "Error"
+    Write-Log "" -Level "Info"
+    Write-Log "Verifica que:" -Level "Info"
+    Write-Log "  1. Tienes permisos para listar repositorios ECR" -Level "Info"
+    Write-Log "  2. El repositorio existe en la region $awsRegion" -Level "Info"
+    Write-Log "  3. El nombre del repositorio contiene 'api' o 'gatekeep'" -Level "Info"
+    Write-Log "" -Level "Info"
+    Write-Log "Puedes obtener la URL manualmente con:" -Level "Info"
+    Write-Log "  aws ecr describe-repositories --region $awsRegion --output json" -Level "Info"
+    exit 1
+}
+
 $apiPath = Join-Path $PSScriptRoot "src"
 
 if (-not (Test-Path $apiPath)) {
@@ -239,7 +265,7 @@ try {
     
     if (-not $pushSuccess) {
         Write-Log "Error: Fallo el push de la imagen de API" -Level "Error"
-        exit 1
+            exit 1
     }
     
     Write-Log "Imagen de API actualizada exitosamente" -Level "Success"
