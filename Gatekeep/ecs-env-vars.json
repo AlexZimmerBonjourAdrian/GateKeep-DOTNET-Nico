@@ -1,0 +1,63 @@
+{
+  "environment": [
+    {
+      "name": "ASPNETCORE_ENVIRONMENT",
+      "value": "Production"
+    },
+    {
+      "name": "ASPNETCORE_URLS",
+      "value": "http://+:5011"
+    },
+    {
+      "name": "GATEKEEP_PORT",
+      "value": "5011"
+    },
+    {
+      "name": "AWS_REGION",
+      "value": "sa-east-1"
+    },
+    {
+      "name": "DATABASE__HOST",
+      "value": "{{resolve:ssm:/gatekeep/db/host}}"
+    },
+    {
+      "name": "DATABASE__PORT",
+      "value": "{{resolve:ssm:/gatekeep/db/port}}"
+    },
+    {
+      "name": "DATABASE__NAME",
+      "value": "{{resolve:ssm:/gatekeep/db/name}}"
+    },
+    {
+      "name": "DATABASE__USER",
+      "value": "{{resolve:ssm:/gatekeep/db/username}}"
+    },
+    {
+      "name": "MONGODB_DATABASE",
+      "value": "GateKeepMongo"
+    },
+    {
+      "name": "MONGODB_USE_STABLE_API",
+      "value": "true"
+    },
+    {
+      "name": "REDIS_ENABLED",
+      "value": "false"
+    }
+  ],
+  "secrets": [
+    {
+      "name": "DATABASE__PASSWORD",
+      "valueFrom": "{{resolve:secretsmanager:gatekeep/db/password:password::}}"
+    },
+    {
+      "name": "JWT__KEY",
+      "valueFrom": "{{resolve:secretsmanager:gatekeep/jwt/key:key::}}"
+    },
+    {
+      "name": "MONGODB_CONNECTION",
+      "valueFrom": "{{resolve:secretsmanager:gatekeep/mongodb/connection:connection::}}"
+    }
+  ]
+}
+

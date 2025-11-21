@@ -1,6 +1,11 @@
 # Script para recrear completamente los contenedores Docker
 # Ubicación: Gatekeep/recrear-docker.ps1
 
+param(
+    [switch]$NonInteractive,
+    [int]$Option = 1  # 1 = mantener datos, 2 = eliminar datos
+)
+
 Write-Host "==================================" -ForegroundColor Cyan
 Write-Host "  Recrear GateKeep Docker        " -ForegroundColor Cyan
 Write-Host "==================================" -ForegroundColor Cyan
@@ -10,15 +15,25 @@ Write-Host ""
 
 # Navegar al directorio src
 $srcPath = Join-Path $PSScriptRoot "src"
+if (-not (Test-Path $srcPath)) {
+    Write-Host "Error: No se encontró el directorio src en: $srcPath" -ForegroundColor Red
+    exit 1
+}
 Set-Location $srcPath
 
-# Preguntar si mantener datos
-Write-Host "Opciones:" -ForegroundColor Cyan
-Write-Host "  1. Recrear contenedores (mantener datos)" -ForegroundColor White
-Write-Host "  2. Recrear todo (ELIMINAR DATOS)" -ForegroundColor Red
-Write-Host "  3. Cancelar" -ForegroundColor White
-Write-Host ""
-$opcion = Read-Host "Selecciona una opción (1-3)"
+# Preguntar si mantener datos (solo si no es no interactivo)
+if (-not $NonInteractive) {
+    Write-Host "Opciones:" -ForegroundColor Cyan
+    Write-Host "  1. Recrear contenedores (mantener datos)" -ForegroundColor White
+    Write-Host "  2. Recrear todo (ELIMINAR DATOS)" -ForegroundColor Red
+    Write-Host "  3. Cancelar" -ForegroundColor White
+    Write-Host ""
+    $opcion = Read-Host "Selecciona una opción (1-3)"
+} else {
+    $opcion = $Option.ToString()
+    Write-Host "Modo no interactivo: usando opción $opcion" -ForegroundColor Cyan
+    Write-Host ""
+}
 
 switch ($opcion) {
     "1" {
@@ -41,8 +56,13 @@ switch ($opcion) {
     }
     "2" {
         Write-Host ""
-        Write-Host "ULTIMA ADVERTENCIA: Esto eliminará TODOS los datos (PostgreSQL, Redis, etc.)" -ForegroundColor Red
-        $confirmar = Read-Host "Estás seguro? Escribe 'ELIMINAR' para confirmar"
+        if (-not $NonInteractive) {
+            Write-Host "ULTIMA ADVERTENCIA: Esto eliminará TODOS los datos (PostgreSQL, Redis, etc.)" -ForegroundColor Red
+            $confirmar = Read-Host "Estás seguro? Escribe 'ELIMINAR' para confirmar"
+        } else {
+            $confirmar = "ELIMINAR"
+            Write-Host "Modo no interactivo: eliminando datos automáticamente" -ForegroundColor Yellow
+        }
         
         if ($confirmar -eq "ELIMINAR") {
             Write-Host ""
@@ -80,8 +100,11 @@ switch ($opcion) {
         Write-Host ""
         Write-Host "Opción inválida" -ForegroundColor Red
         Write-Host ""
+        exit 1
     }
 }
 
-Read-Host "Presiona Enter para salir"
+if (-not $NonInteractive) {
+    Read-Host "Presiona Enter para salir"
+}
 

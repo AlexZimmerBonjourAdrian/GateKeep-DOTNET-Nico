@@ -2,6 +2,10 @@
 # Elimina todos los contenedores, imágenes, volúmenes, redes y caché
 # ADVERTENCIA: Esto eliminará TODO en Docker, no solo los contenedores de GateKeep
 
+param(
+    [switch]$NonInteractive
+)
+
 Write-Host "========================================" -ForegroundColor Red
 Write-Host "  GateKeep - Limpieza Completa Docker" -ForegroundColor Red
 Write-Host "========================================" -ForegroundColor Red
@@ -30,12 +34,17 @@ Write-Host "Espacio usado por Docker antes de la limpieza:" -ForegroundColor Cya
 docker system df
 Write-Host ""
 
-# Confirmación
-$confirm = Read-Host "¿Estás seguro de que deseas continuar? Escribe 'SI' para confirmar"
-if ($confirm -ne "SI") {
+# Confirmación (solo si no es no interactivo)
+if (-not $NonInteractive) {
+    $confirm = Read-Host "¿Estás seguro de que deseas continuar? Escribe 'SI' para confirmar"
+    if ($confirm -ne "SI") {
+        Write-Host ""
+        Write-Host "Operación cancelada" -ForegroundColor Yellow
+        exit 0
+    }
+} else {
+    Write-Host "Modo no interactivo: continuando automáticamente..." -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "Operación cancelada" -ForegroundColor Yellow
-    exit 0
 }
 
 Write-Host ""

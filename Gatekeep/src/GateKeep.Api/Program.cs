@@ -10,6 +10,7 @@ using GateKeep.Api.Application.Security;
 using GateKeep.Api.Application.Events;
 using GateKeep.Api.Application.Usuarios;
 using GateKeep.Api.Application.Sync;
+using GateKeep.Api.Application.Seeding;
 using MassTransit;
 using GateKeep.Api.Contracts.Usuarios;
 using GateKeep.Api.Domain.Enums;
@@ -400,6 +401,9 @@ builder.Services.AddScoped<IAccesoService, AccesoService>();
 // Servicios de Seguridad
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+
+// Servicio de Seeding
+builder.Services.AddScoped<IDataSeederService, DataSeederService>();
 
 // Utilidades
 builder.Services.AddSingleton<QrCodeGenerator>();
@@ -918,66 +922,9 @@ using (var scope = app.Services.CreateScope())
         db.Database.EnsureDeleted();
         db.Database.EnsureCreated();
         
-        // Seed data inicial
-        if (!db.Usuarios.Any())
-        {
-            var factory = scope.ServiceProvider.GetRequiredService<IUsuarioFactory>();
-            var passwordService = scope.ServiceProvider.GetRequiredService<IPasswordService>();
-            
-            // Crear usuario admin por defecto
-            var adminDto = new UsuarioDto
-            {
-                Id = 0,
-                Email = "admin@gatekeep.com",
-                Nombre = "Administrador",
-                Apellido = "Sistema",
-                Contrasenia = passwordService.HashPassword("admin123"),
-                Telefono = "+1234567890",
-                FechaAlta = DateTime.UtcNow,
-                Credencial = TipoCredencial.Vigente,
-                Rol = Rol.Admin
-            };
-            
-            var admin = factory.CrearUsuario(adminDto);
-            db.Usuarios.Add(admin);
-            
-            // Crear estudiante de ejemplo
-            var estudianteDto = new UsuarioDto
-            {
-                Id = 0,
-                Email = "estudiante@gatekeep.com",
-                Nombre = "Juan",
-                Apellido = "Pérez",
-                Contrasenia = passwordService.HashPassword("estudiante123"),
-                Telefono = "+1234567891",
-                FechaAlta = DateTime.UtcNow,
-                Credencial = TipoCredencial.Vigente,
-                Rol = Rol.Estudiante
-            };
-            
-            var estudiante = factory.CrearUsuario(estudianteDto);
-            db.Usuarios.Add(estudiante);
-            
-            // Crear funcionario de ejemplo
-            var funcionarioDto = new UsuarioDto
-            {
-                Id = 0,
-                Email = "funcionario@gatekeep.com",
-                Nombre = "María",
-                Apellido = "García",
-                Contrasenia = passwordService.HashPassword("funcionario123"),
-                Telefono = "+1234567892",
-                FechaAlta = DateTime.UtcNow,
-                Credencial = TipoCredencial.Vigente,
-                Rol = Rol.Funcionario
-            };
-            
-            var funcionario = factory.CrearUsuario(funcionarioDto);
-            db.Usuarios.Add(funcionario);
-            
-            await db.SaveChangesAsync();
-                logger.LogInformation("Datos iniciales creados exitosamente");
-        }
+        // Seed data inicial usando el servicio de seeding
+        var seeder = scope.ServiceProvider.GetRequiredService<IDataSeederService>();
+        await seeder.SeedAsync();
     }
     else
     {
