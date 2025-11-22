@@ -1,0 +1,117 @@
+﻿{
+    "executionRoleArn":  "arn:aws:iam::126588786097:role/gatekeep-ecs-execution-role",
+    "networkMode":  "awsvpc",
+    "cpu":  "512",
+    "requiresCompatibilities":  [
+                                    "FARGATE"
+                                ],
+    "containerDefinitions":  [
+                                 {
+                                     "name":  "gatekeep-api",
+                                     "image":  "126588786097.dkr.ecr.sa-east-1.amazonaws.com/gatekeep-api:latest",
+                                     "cpu":  0,
+                                     "portMappings":  [
+                                                          {
+                                                              "containerPort":  5011,
+                                                              "hostPort":  5011,
+                                                              "protocol":  "tcp"
+                                                          }
+                                                      ],
+                                     "essential":  true,
+                                     "environment":  [
+                                                         {
+                                                             "name":  "DATABASE__USER",
+                                                             "value":  "postgres"
+                                                         },
+                                                         {
+                                                             "name":  "AWS_REGION",
+                                                             "value":  "sa-east-1"
+                                                         },
+                                                         {
+                                                             "name":  "DATABASE__HOST",
+                                                             "value":  "gatekeep-db.c7o0qk42qmwh.sa-east-1.rds.amazonaws.com"
+                                                         },
+                                                         {
+                                                             "name":  "DATABASE__NAME",
+                                                             "value":  "Gatekeep"
+                                                         },
+                                                         {
+                                                             "name":  "ASPNETCORE_ENVIRONMENT",
+                                                             "value":  "dev"
+                                                         },
+                                                         {
+                                                             "name":  "GATEKEEP_PORT",
+                                                             "value":  "5011"
+                                                         },
+                                                         {
+                                                             "name":  "MONGODB_USE_STABLE_API",
+                                                             "value":  "true"
+                                                         },
+                                                         {
+                                                             "name":  "REDIS_CONNECTION",
+                                                             "value":  "gatekeep-redis.35dilc.ng.0001.sae1.cache.amazonaws.com:6379"
+                                                         },
+                                                         {
+                                                             "name":  "REDIS_INSTANCE",
+                                                             "value":  "GateKeep:"
+                                                         },
+                                                         {
+                                                             "name":  "ASPNETCORE_URLS",
+                                                             "value":  "http://+:5011"
+                                                         },
+                                                         {
+                                                             "name":  "DATABASE__PORT",
+                                                             "value":  "5432"
+                                                         },
+                                                         {
+                                                             "name":  "MONGODB_DATABASE",
+                                                             "value":  "GateKeepMongo"
+                                                         }
+                                                     ],
+                                     "mountPoints":  [
+
+                                                     ],
+                                     "volumesFrom":  [
+
+                                                     ],
+                                     "secrets":  [
+                                                     {
+                                                         "name":  "DATABASE__PASSWORD",
+                                                         "valueFrom":  "arn:aws:secretsmanager:sa-east-1:126588786097:secret:gatekeep/db/password-14XBlu"
+                                                     },
+                                                     {
+                                                         "name":  "JWT__KEY",
+                                                         "valueFrom":  "arn:aws:secretsmanager:sa-east-1:126588786097:secret:gatekeep/jwt/key-14XBlu"
+                                                     },
+                                                     {
+                                                         "name":  "MONGODB_CONNECTION",
+                                                         "valueFrom":  "arn:aws:secretsmanager:sa-east-1:126588786097:secret:gatekeep/mongodb/connection-TJsSv0"
+                                                     }
+                                                 ],
+                                     "logConfiguration":  {
+                                                              "logDriver":  "awslogs",
+                                                              "options":  {
+                                                                              "awslogs-group":  "/ecs/gatekeep",
+                                                                              "awslogs-region":  "sa-east-1",
+                                                                              "awslogs-stream-prefix":  "ecs"
+                                                                          }
+                                                          },
+                                     "healthCheck":  {
+                                                         "command":  [
+                                                                         "CMD-SHELL",
+                                                                         "curl -f http://localhost:5011/health || exit 1"
+                                                                     ],
+                                                         "interval":  30,
+                                                         "timeout":  5,
+                                                         "retries":  3,
+                                                         "startPeriod":  60
+                                                     },
+                                     "systemControls":  [
+
+                                                        ]
+                                 }
+                             ],
+    "family":  "gatekeep-api",
+    "taskRoleArn":  "arn:aws:iam::126588786097:role/gatekeep-ecs-task-role",
+    "memory":  "1024"
+}

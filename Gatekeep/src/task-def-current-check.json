@@ -1,0 +1,200 @@
+﻿{
+    "taskDefinitionArn":  "arn:aws:ecs:sa-east-1:126588786097:task-definition/gatekeep-api:7",
+    "containerDefinitions":  [
+                                 {
+                                     "name":  "gatekeep-api",
+                                     "image":  "126588786097.dkr.ecr.sa-east-1.amazonaws.com/gatekeep-api:latest",
+                                     "cpu":  0,
+                                     "portMappings":  [
+                                                          {
+                                                              "containerPort":  5011,
+                                                              "hostPort":  5011,
+                                                              "protocol":  "tcp"
+                                                          }
+                                                      ],
+                                     "essential":  true,
+                                     "environment":  [
+                                                         {
+                                                             "name":  "RABBITMQ__MANAGEMENT_PORT",
+                                                             "value":  "443"
+                                                         },
+                                                         {
+                                                             "name":  "DATABASE__USER",
+                                                             "value":  "postgres"
+                                                         },
+                                                         {
+                                                             "name":  "AWS_REGION",
+                                                             "value":  "sa-east-1"
+                                                         },
+                                                         {
+                                                             "name":  "DATABASE__HOST",
+                                                             "value":  "gatekeep-db.c7o0qk42qmwh.sa-east-1.rds.amazonaws.com"
+                                                         },
+                                                         {
+                                                             "name":  "DATABASE__NAME",
+                                                             "value":  "Gatekeep"
+                                                         },
+                                                         {
+                                                             "name":  "ASPNETCORE_ENVIRONMENT",
+                                                             "value":  "dev"
+                                                         },
+                                                         {
+                                                             "name":  "RABBITMQ__HOST",
+                                                             "value":  "b-e1ab35ba-c0f6-4846-83f1-cf14e97eb62a.mq.sa-east-1.amazonaws.com"
+                                                         },
+                                                         {
+                                                             "name":  "GATEKEEP_PORT",
+                                                             "value":  "5011"
+                                                         },
+                                                         {
+                                                             "name":  "MONGODB_USE_STABLE_API",
+                                                             "value":  "true"
+                                                         },
+                                                         {
+                                                             "name":  "RABBITMQ__USE_HTTPS",
+                                                             "value":  "true"
+                                                         },
+                                                         {
+                                                             "name":  "REDIS_CONNECTION",
+                                                             "value":  "gatekeep-redis.35dilc.ng.0001.sae1.cache.amazonaws.com:6379"
+                                                         },
+                                                         {
+                                                             "name":  "REDIS_INSTANCE",
+                                                             "value":  "GateKeep:"
+                                                         },
+                                                         {
+                                                             "name":  "RABBITMQ__VIRTUALHOST",
+                                                             "value":  "/"
+                                                         },
+                                                         {
+                                                             "name":  "RABBITMQ__USERNAME",
+                                                             "value":  "admin"
+                                                         },
+                                                         {
+                                                             "name":  "ASPNETCORE_URLS",
+                                                             "value":  "http://+:5011"
+                                                         },
+                                                         {
+                                                             "name":  "RABBITMQ__USE_SSL",
+                                                             "value":  "true"
+                                                         },
+                                                         {
+                                                             "name":  "RABBITMQ__PORT",
+                                                             "value":  "5671"
+                                                         },
+                                                         {
+                                                             "name":  "DATABASE__PORT",
+                                                             "value":  "5432"
+                                                         },
+                                                         {
+                                                             "name":  "MONGODB_DATABASE",
+                                                             "value":  "GateKeepMongo"
+                                                         }
+                                                     ],
+                                     "mountPoints":  [
+
+                                                     ],
+                                     "volumesFrom":  [
+
+                                                     ],
+                                     "secrets":  [
+                                                     {
+                                                         "name":  "DATABASE__PASSWORD",
+                                                         "valueFrom":  "arn:aws:secretsmanager:sa-east-1:126588786097:secret:gatekeep/db/password-14XBlu"
+                                                     },
+                                                     {
+                                                         "name":  "JWT__KEY",
+                                                         "valueFrom":  "arn:aws:secretsmanager:sa-east-1:126588786097:secret:gatekeep/jwt/key-14XBlu"
+                                                     },
+                                                     {
+                                                         "name":  "MONGODB_CONNECTION",
+                                                         "valueFrom":  "arn:aws:secretsmanager:sa-east-1:126588786097:secret:gatekeep/mongodb/connection-TJsSv0"
+                                                     },
+                                                     {
+                                                         "name":  "RABBITMQ__PASSWORD",
+                                                         "valueFrom":  "arn:aws:secretsmanager:sa-east-1:126588786097:secret:gatekeep/rabbitmq/password-A2NgZt"
+                                                     }
+                                                 ],
+                                     "logConfiguration":  {
+                                                              "logDriver":  "awslogs",
+                                                              "options":  {
+                                                                              "awslogs-group":  "/ecs/gatekeep",
+                                                                              "awslogs-region":  "sa-east-1",
+                                                                              "awslogs-stream-prefix":  "ecs"
+                                                                          }
+                                                          },
+                                     "healthCheck":  {
+                                                         "command":  [
+                                                                         "CMD-SHELL",
+                                                                         "curl -f http://localhost:5011/health || exit 1"
+                                                                     ],
+                                                         "interval":  30,
+                                                         "timeout":  5,
+                                                         "retries":  3,
+                                                         "startPeriod":  60
+                                                     },
+                                     "systemControls":  [
+
+                                                        ]
+                                 }
+                             ],
+    "family":  "gatekeep-api",
+    "taskRoleArn":  "arn:aws:iam::126588786097:role/gatekeep-ecs-task-role",
+    "executionRoleArn":  "arn:aws:iam::126588786097:role/gatekeep-ecs-execution-role",
+    "networkMode":  "awsvpc",
+    "revision":  7,
+    "volumes":  [
+
+                ],
+    "status":  "ACTIVE",
+    "requiresAttributes":  [
+                               {
+                                   "name":  "com.amazonaws.ecs.capability.logging-driver.awslogs"
+                               },
+                               {
+                                   "name":  "ecs.capability.execution-role-awslogs"
+                               },
+                               {
+                                   "name":  "com.amazonaws.ecs.capability.ecr-auth"
+                               },
+                               {
+                                   "name":  "com.amazonaws.ecs.capability.docker-remote-api.1.19"
+                               },
+                               {
+                                   "name":  "ecs.capability.secrets.asm.environment-variables"
+                               },
+                               {
+                                   "name":  "com.amazonaws.ecs.capability.task-iam-role"
+                               },
+                               {
+                                   "name":  "ecs.capability.container-health-check"
+                               },
+                               {
+                                   "name":  "ecs.capability.execution-role-ecr-pull"
+                               },
+                               {
+                                   "name":  "com.amazonaws.ecs.capability.docker-remote-api.1.18"
+                               },
+                               {
+                                   "name":  "ecs.capability.task-eni"
+                               },
+                               {
+                                   "name":  "com.amazonaws.ecs.capability.docker-remote-api.1.29"
+                               }
+                           ],
+    "placementConstraints":  [
+
+                             ],
+    "compatibilities":  [
+                            "EC2",
+                            "MANAGED_INSTANCES",
+                            "FARGATE"
+                        ],
+    "requiresCompatibilities":  [
+                                    "FARGATE"
+                                ],
+    "cpu":  "512",
+    "memory":  "1024",
+    "registeredAt":  "2025-11-22T16:07:36.241000-03:00",
+    "registeredBy":  "arn:aws:iam::126588786097:user/Alex"
+}
