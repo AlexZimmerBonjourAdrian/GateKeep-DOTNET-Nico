@@ -1,13 +1,27 @@
 apply plugin: 'com.android.application'
 
 android {
+            signingConfigs {
+                release {
+                    storeFile file("gatekeep-release.jks")  // tu keystore
+                    storePassword "123456"                 // password del keystore
+                    keyAlias "gatekeep"                     // alias que elegiste
+                    keyPassword "123456"                   // password de la key
+                }
+            }
+        applicationVariants.all { variant ->
+            variant.outputs.all { output ->
+                def newApkName = "Gatekeep.apk"
+                outputFileName = newApkName
+            }
+        }
     compileSdkVersion 36
-    namespace "app.ngrok_free.fe272d47d0f6.twa"
+    namespace "com.zimmzimmgames.gatekeep"
 
     defaultConfig {
-        applicationId "app.ngrok_free.fe272d47d0f6.twa"
+        applicationId "com.zimmzimmgames.gatekeep"
         minSdkVersion 21
-        targetSdkVersion 35
+        targetSdkVersion 36
         versionCode 1
         versionName "1"
 
@@ -25,6 +39,7 @@ android {
     buildTypes {
         release {
             minifyEnabled false
+            signingConfig signingConfigs.release
         }
     }
 
