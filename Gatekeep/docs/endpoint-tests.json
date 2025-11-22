@@ -1,0 +1,50 @@
+﻿[
+    {
+        "Endpoint":  "/health",
+        "Result":  "✅ OK (200)",
+        "Status":  200,
+        "Method":  "GET"
+    },
+    {
+        "Endpoint":  "/health/mongodb",
+        "Result":  "❌ FAIL (Error)",
+        "Status":  "Error",
+        "Method":  "GET"
+    },
+    {
+        "Endpoint":  "/health/redis",
+        "Result":  "❌ FAIL (500)",
+        "Status":  500,
+        "Method":  "GET"
+    },
+    {
+        "Endpoint":  "/api/auth/login",
+        "Result":  "❌ FAIL (401)",
+        "Status":  401,
+        "Method":  "POST"
+    },
+    {
+        "Endpoint":  "/api/auth/qr",
+        "Result":  "❌ FAIL (401)",
+        "Status":  401,
+        "Method":  "GET"
+    },
+    {
+        "Endpoint":  "/api/auth/validate",
+        "Result":  "❌ FAIL (401)",
+        "Status":  401,
+        "Method":  "GET"
+    },
+    {
+        "Endpoint":  "/api/usuarios",
+        "Result":  "❌ FAIL (401)",
+        "Status":  401,
+        "Method":  "GET"
+    },
+    {
+        "Endpoint":  "/api/beneficios",
+        "Result":  "❌ FAIL (401)",
+        "Status":  401,
+        "Method":  "GET"
+    }
+]

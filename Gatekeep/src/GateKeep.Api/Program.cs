@@ -874,7 +874,10 @@ builder.Services.AddOpenTelemetry()
 
 var app = builder.Build();
 
-// Middleware de CORS - DEBE estar al inicio para manejar preflight requests (OPTIONS)
+// Middleware de Routing - DEBE estar primero para que el routing funcione correctamente
+app.UseRouting();
+
+// Middleware de CORS - DEBE estar después de UseRouting() pero antes de UseAuthentication()
 app.UseCors("AllowFrontend");
 
 // Swagger disponible en Development y Production (para demos)
@@ -1115,6 +1118,19 @@ using (var scope = app.Services.CreateScope())
                     logger.LogError(checkEx, "No se pudo verificar el estado de las migraciones");
                     // Continuar de todas formas - la aplicación puede funcionar si las tablas existen
                 }
+            }
+
+            // Ejecutar seeding de datos iniciales en producción (solo si la BD está vacía)
+            try
+            {
+                logger.LogInformation("Verificando si se requiere seeding de datos iniciales...");
+                var seeder = scope.ServiceProvider.GetRequiredService<IDataSeederService>();
+                await seeder.SeedAsync();
+            }
+            catch (Exception seedEx)
+            {
+                logger.LogWarning(seedEx, "Advertencia: Error al ejecutar seeding (puede que ya existan datos). Continuando...");
+                // No lanzar excepción - el seeding es opcional si ya hay datos
             }
         }
     }

@@ -25,22 +25,38 @@ public sealed class CachedBeneficioService : ICachedBeneficioService
 
     public async Task<IEnumerable<BeneficioDto>> ObtenerTodosAsync()
     {
-        var cacheKey = CacheKeys.AllBeneficios;
-        
-        // Intentar obtener del cache
-        var cachedBeneficios = await _cacheService.GetAsync<List<BeneficioDto>>(cacheKey);
-        if (cachedBeneficios is not null)
+        try
         {
-            return cachedBeneficios;
-        }
+            var cacheKey = CacheKeys.AllBeneficios;
+            
+            // Intentar obtener del cache
+            var cachedBeneficios = await _cacheService.GetAsync<List<BeneficioDto>>(cacheKey);
+            if (cachedBeneficios is not null)
+            {
+                return cachedBeneficios;
+            }
 
-        // Si no está en cache, obtener de la BD
-        var beneficios = (await _beneficioService.ObtenerTodosAsync()).ToList();
-        
-        // Guardar en cache
-        await _cacheService.SetAsync(cacheKey, beneficios, CacheKeys.TTL.Beneficios);
-        
-        return beneficios;
+            // Si no está en cache, obtener de la BD
+            var beneficios = (await _beneficioService.ObtenerTodosAsync()).ToList();
+            
+            // Guardar en cache (puede fallar, pero no es crítico)
+            try
+            {
+                await _cacheService.SetAsync(cacheKey, beneficios, CacheKeys.TTL.Beneficios);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "No se pudo guardar en cache, pero los datos se obtuvieron de la BD correctamente");
+            }
+            
+            return beneficios;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener beneficios. Intentando obtener directamente de la BD sin cache...");
+            // Fallback directo a la BD si todo falla
+            return await _beneficioService.ObtenerTodosAsync();
+        }
     }
 
     public async Task<BeneficioDto?> ObtenerPorIdAsync(long id)

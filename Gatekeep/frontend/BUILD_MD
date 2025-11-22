@@ -1,8 +1,0 @@
-Ir a Frontend y tirar:
-npm install; npm run dev
-
-en otro consola ir a Frontend y tirar:
-ngrok http 3000
-
-en otra consola ir a ../android y tirar:
-./gradlew clean assembleRelease --stacktrace

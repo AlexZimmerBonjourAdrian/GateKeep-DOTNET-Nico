@@ -3,11 +3,10 @@ import type { InternalAxiosRequestConfig } from "axios";
 import { URLService } from "./urlService";
 
 // Base URL del backend y recursos específicos
-const API_URL = URLService.getLink(); // URL dinámica según entorno (producción o desarrollo)
-// Usuarios en backend están expuestos en "/usuarios" (sin prefijo /api)
-const BASE_URL = URLService.getBaseUrl();
-const USUARIOS_URL = `${BASE_URL}/usuarios/`;
-const AUTH_URL = `${BASE_URL}/auth/`;
+const API_URL = URLService.getLink(); // URL dinámica según entorno (producción o desarrollo) - incluye /api/
+// Todas las rutas del backend están bajo /api/
+const USUARIOS_URL = `${API_URL}usuarios/`;  // → /api/usuarios/
+const AUTH_URL = `${API_URL}auth/`;           // → /api/auth/
 
 // Instancia Axios para usuarios (reutiliza token si existe)
 const api: AxiosInstance = axios.create({
