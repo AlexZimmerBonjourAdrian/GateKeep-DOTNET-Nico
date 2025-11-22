@@ -55,3 +55,7 @@ nunit-*.xml
 demo1-apis-patterns/
 
 Gatekeep/frontend/.next/
+
+node_modules/
+
+Gatekeep/frontend/out/

@@ -1,0 +1,59 @@
+apply plugin: 'com.android.application'
+
+android {
+            signingConfigs {
+                release {
+                    storeFile file("gatekeep-release.jks")  // tu keystore
+                    storePassword "123456"                 // password del keystore
+                    keyAlias "gatekeep"                     // alias que elegiste
+                    keyPassword "123456"                   // password de la key
+                }
+            }
+        applicationVariants.all { variant ->
+            variant.outputs.all { output ->
+                def newApkName = "Gatekeep.apk"
+                outputFileName = newApkName
+            }
+        }
+    compileSdkVersion 36
+    namespace "com.zimmzimmgames.gatekeep"
+
+    defaultConfig {
+        applicationId "com.zimmzimmgames.gatekeep"
+        minSdkVersion 21
+        targetSdkVersion 36
+        versionCode 1
+        versionName "1"
+
+        resValue "string", "launchUrl", "https://zimmzimmgames.com/"
+        resValue "string", "hostName", "zimmzimmgames.com"
+
+        resValue "string", "appName", "GateKeep"
+        resValue "string", "launcherName", "GateKeep"
+
+        resValue "color", "colorPrimary", "#F37426"
+        resValue "color", "colorPrimaryDark", "#000000"
+        resValue "color", "backgroundColor", "#FFFFFF"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.6.2'
+}
