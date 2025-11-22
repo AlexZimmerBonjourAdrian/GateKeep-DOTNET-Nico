@@ -935,7 +935,11 @@ app.MapNotificacionEndpoints();
 app.MapUsuarioEndpoints();
 app.MapUsuarioProfileEndpoints();
 app.MapCacheMetricsEndpoints(); // Endpoint de métricas de cache
-app.MapAwsTestEndpoints(); // Endpoints de prueba AWS
+// Endpoints de AWS - Solo en producción (requieren servicios AWS)
+if (!app.Environment.IsDevelopment())
+{
+    app.MapAwsTestEndpoints();
+}
 
 // Auto-aplicar migraciones al iniciar
 using (var scope = app.Services.CreateScope())

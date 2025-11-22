@@ -46,7 +46,7 @@ public static class AwsTestEndpoint
 
     private static async Task<IResult> GetSecret(
         string secretName,
-        IAwsSecretsService secretsService)
+        [FromServices] IAwsSecretsService secretsService)
     {
         try
         {
@@ -67,7 +67,7 @@ public static class AwsTestEndpoint
 
     private static async Task<IResult> GetParameter(
         string parameterName,
-        IAwsParameterService parameterService)
+        [FromServices] IAwsParameterService parameterService)
     {
         try
         {
@@ -94,7 +94,7 @@ public static class AwsTestEndpoint
 
     private static async Task<IResult> ListParameters(
         [FromQuery] string? path,
-        IAwsParameterService parameterService)
+        [FromServices] IAwsParameterService parameterService)
     {
         try
         {
