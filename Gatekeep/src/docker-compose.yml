@@ -1,3 +1,5 @@
+name: gatekeep
+
 networks:
   gatekeep-network:
     driver: bridge
@@ -212,18 +214,26 @@ services:
 
 volumes:
   postgres_data:
+    name: gatekeep_postgres_data
     driver: local
   redis_data:
+    name: gatekeep_redis_data
     driver: local
   mongodb_data:
+    name: gatekeep_mongodb_data
     driver: local
   seq_data:
+    name: gatekeep_seq_data
     driver: local
   prometheus_data:
+    name: gatekeep_prometheus_data
     driver: local
   grafana_data:
+    name: gatekeep_grafana_data
     driver: local
   rabbitmq_data:
+    name: gatekeep_rabbitmq_data
     driver: local
   rabbitmq_log:
+    name: gatekeep_rabbitmq_log
     driver: local

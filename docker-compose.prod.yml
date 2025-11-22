@@ -1,5 +1,7 @@
 version: '3.8'
 
+name: gatekeep
+
 networks:
   gatekeep-network:
     driver: bridge
@@ -44,8 +46,8 @@ services:
 
   api:
     build:
-      context: ./Gatekeep/src
-      dockerfile: Dockerfile
+      context: ./Gatekeep
+      dockerfile: src/Dockerfile
     container_name: gatekeep-api
     restart: unless-stopped
     environment:
@@ -102,5 +104,8 @@ services:
 
 volumes:
   postgres_data:
+    name: gatekeep_postgres_data
   redis_data:
+    name: gatekeep_redis_data
   mongodb_data:
+    name: gatekeep_mongodb_data
