@@ -490,12 +490,34 @@ builder.Services.AddStackExchangeRedisCache(options =>
 });
 
 // Servicios de Redis y Caching
+// Configuración optimizada para ElastiCache Redis en AWS
 builder.Services.AddSingleton<IConnectionMultiplexer>(serviceProvider =>
 {
     var redisConfig = builder.Configuration.GetSection("redis");
     var connectionString = Environment.GetEnvironmentVariable("REDIS_CONNECTION") ?? redisConfig["connectionString"] ?? "localhost:6379";
+    
     Log.Information("Conectando a Redis: {Connection}", connectionString);
-    return ConnectionMultiplexer.Connect(connectionString);
+    
+    // Configuración para ElastiCache Redis en AWS
+    var configurationOptions = ConfigurationOptions.Parse(connectionString);
+    
+    // Configuración de timeouts para ElastiCache
+    configurationOptions.ConnectTimeout = 5000; // 5 segundos
+    configurationOptions.SyncTimeout = 5000; // 5 segundos
+    configurationOptions.AsyncTimeout = 5000; // 5 segundos
+    
+    // Configuración de reconexión automática
+    configurationOptions.AbortOnConnectFail = false; // No abortar si falla la conexión inicial
+    configurationOptions.ConnectRetry = 3; // Reintentar conexión 3 veces
+    
+    // Configuración para alta disponibilidad
+    configurationOptions.AllowAdmin = false; // No permitir comandos admin por seguridad
+    
+    // Para ElastiCache, no usar SSL a menos que esté habilitado explícitamente
+    // (ElastiCache Redis no usa SSL por defecto, solo en modo cluster con TLS)
+    // SSL se configura automáticamente si la connection string incluye ssl=true
+    
+    return ConnectionMultiplexer.Connect(configurationOptions);
 });
 
 builder.Services.AddSingleton<ICacheMetricsService, CacheMetricsService>();
@@ -548,9 +570,49 @@ builder.Services.AddScoped<IAwsParameterService, AwsParameterService>();
 builder.Services.AddSingleton<ICloudWatchMetricsExporter, CloudWatchMetricsExporter>();
 
 // HttpClient para RabbitMQ Management API
+// Configurado para manejar HTTPS con certificados SSL válidos de Amazon MQ
 builder.Services.AddHttpClient("RabbitMQ", client =>
 {
-    client.Timeout = TimeSpan.FromSeconds(10);
+    client.Timeout = TimeSpan.FromSeconds(30);
+})
+.ConfigurePrimaryHttpMessageHandler(() =>
+{
+    var handler = new HttpClientHandler();
+    
+    // Amazon MQ usa certificados SSL válidos emitidos por AWS
+    // Por defecto, .NET valida correctamente los certificados SSL
+    // Solo necesitamos manejar el caso donde el nombre del certificado no coincida exactamente
+    // (común con certificados wildcard de AWS)
+    handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+    {
+        // Si no hay errores, aceptar
+        if (errors == System.Net.Security.SslPolicyErrors.None)
+            return true;
+        
+        // Si solo hay error de nombre pero el certificado es válido y de AWS, aceptar
+        // Esto es necesario porque Amazon MQ puede usar certificados con nombres que no coinciden exactamente
+        if (errors == System.Net.Security.SslPolicyErrors.RemoteCertificateNameMismatch)
+        {
+            if (cert != null)
+            {
+                // Verificar que el certificado sea de AWS/Amazon (Amazon MQ usa certificados de AWS)
+                var issuer = cert.Issuer.ToUpperInvariant();
+                if (issuer.Contains("AMAZON") || issuer.Contains("AWS") || issuer.Contains("AMAZON ROOT"))
+                {
+                    // Verificar que la cadena de certificados sea válida
+                    if (chain != null && chain.ChainElements.Count > 0)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        // Para cualquier otro error (certificado inválido, cadena rota, etc.), rechazar por seguridad
+        return false;
+    };
+    
+    return handler;
 });
 
 // Servicios de métricas de RabbitMQ
@@ -566,8 +628,76 @@ builder.Services.AddSingleton<IObservabilityService, ObservabilityService>();
 builder.Services.AddSingleton<IEventPublisher, EventPublisher>();
 
 // Configuración de RabbitMQ Settings
-builder.Services.Configure<GateKeep.Api.Infrastructure.Messaging.RabbitMqSettings>(
-    builder.Configuration.GetSection("RabbitMQ"));
+// PRIORIDAD: Variables de entorno directas > Configuration (convertido) > appsettings.json > valores por defecto
+// En ECS, las variables están en formato RABBITMQ__HOST, leerlas directamente primero
+builder.Services.Configure<GateKeep.Api.Infrastructure.Messaging.RabbitMqSettings>(options =>
+{
+    var config = builder.Configuration.GetSection("RabbitMQ");
+    
+    // Mapear propiedades básicas - LEER PRIMERO DE VARIABLES DE ENTORNO DIRECTAS (formato ECS)
+    // Luego de Configuration (convertido automáticamente), luego appsettings.json, luego defaults
+    options.Host = Environment.GetEnvironmentVariable("RABBITMQ__HOST")
+        ?? builder.Configuration["RABBITMQ:HOST"]
+        ?? config["Host"]
+        ?? "localhost";
+    
+    var portStr = Environment.GetEnvironmentVariable("RABBITMQ__PORT")
+        ?? builder.Configuration["RABBITMQ:PORT"]
+        ?? config["Port"];
+    options.Port = int.TryParse(portStr, out var port) ? port : 5672;
+    
+    options.Username = Environment.GetEnvironmentVariable("RABBITMQ__USERNAME")
+        ?? builder.Configuration["RABBITMQ:USERNAME"]
+        ?? config["Username"]
+        ?? "guest";
+    
+    options.Password = Environment.GetEnvironmentVariable("RABBITMQ__PASSWORD")
+        ?? builder.Configuration["RABBITMQ:PASSWORD"]
+        ?? config["Password"]
+        ?? "guest";
+    
+    options.VirtualHost = Environment.GetEnvironmentVariable("RABBITMQ__VIRTUALHOST")
+        ?? builder.Configuration["RABBITMQ:VIRTUALHOST"]
+        ?? config["VirtualHost"]
+        ?? "/";
+    
+    // Configuración SSL para AMQP
+    var useSslStr = Environment.GetEnvironmentVariable("RABBITMQ__USE_SSL")
+        ?? builder.Configuration["RABBITMQ:USE_SSL"]
+        ?? config["UseSsl"];
+    options.UseSsl = useSslStr?.ToLower() == "true" || options.Port == 5671;
+    
+    // Configuración Management API
+    var mgmtPortStr = Environment.GetEnvironmentVariable("RABBITMQ__MANAGEMENT_PORT")
+        ?? builder.Configuration["RABBITMQ:MANAGEMENT_PORT"]
+        ?? config["ManagementPort"];
+    options.ManagementPort = int.TryParse(mgmtPortStr, out var mgmtPort) ? mgmtPort : (options.UseHttps ? 443 : 15672);
+    
+    var useHttpsStr = Environment.GetEnvironmentVariable("RABBITMQ__USE_HTTPS")
+        ?? builder.Configuration["RABBITMQ:USE_HTTPS"]
+        ?? config["UseHttps"];
+    options.UseHttps = useHttpsStr?.ToLower() == "true";
+    
+    // Si no se especifica ManagementPort pero UseHttps es true, usar 443
+    if (options.ManagementPort == 15672 && options.UseHttps)
+    {
+        options.ManagementPort = 443;
+    }
+    
+    // Otras configuraciones
+    options.RetryCount = int.TryParse(config["RetryCount"], out var retryCount) ? retryCount : 3;
+    options.InitialIntervalSeconds = int.TryParse(config["InitialIntervalSeconds"], out var initialInterval) ? initialInterval : 5;
+    options.IntervalIncrementSeconds = int.TryParse(config["IntervalIncrementSeconds"], out var intervalIncrement) ? intervalIncrement : 10;
+    options.EnableDLQ = config["EnableDLQ"]?.ToLower() != "false";
+    options.DLQMessageTTLDays = int.TryParse(config["DLQMessageTTLDays"], out var dlqTtl) ? dlqTtl : 7;
+    
+    // Log de configuración para debugging (sin mostrar password)
+    Log.Information(
+        "RabbitMQ Settings configurado - Host: {Host}, Port: {Port}, ManagementPort: {ManagementPort}, " +
+        "UseSsl: {UseSsl}, UseHttps: {UseHttps}, VirtualHost: {VirtualHost}, Username: {Username}",
+        options.Host, options.Port, options.ManagementPort, options.UseSsl, options.UseHttps, 
+        options.VirtualHost, options.Username);
+});
 
 // Servicios de Mensajería Asíncrona
 builder.Services.AddSingleton<GateKeep.Api.Infrastructure.Messaging.IIdempotencyService, 
@@ -586,25 +716,27 @@ builder.Services.AddMassTransit(x =>
     {
         var rabbitMqConfig = builder.Configuration.GetSection("RabbitMQ");
         
-        // Leer configuración con fallback a variables de entorno
-        var host = builder.Configuration["RABBITMQ:HOST"]
-            ?? Environment.GetEnvironmentVariable("RABBITMQ__HOST")
+        // Leer configuración - PRIORIDAD: Variables de entorno directas > Configuration > appsettings.json > defaults
+        // En ECS, las variables están en formato RABBITMQ__HOST, leerlas directamente primero
+        var host = Environment.GetEnvironmentVariable("RABBITMQ__HOST")
+            ?? builder.Configuration["RABBITMQ:HOST"]
             ?? rabbitMqConfig["Host"]
             ?? "localhost";
-        var port = int.Parse(builder.Configuration["RABBITMQ:PORT"]
-            ?? Environment.GetEnvironmentVariable("RABBITMQ__PORT")
+        var portStr = Environment.GetEnvironmentVariable("RABBITMQ__PORT")
+            ?? builder.Configuration["RABBITMQ:PORT"]
             ?? rabbitMqConfig["Port"]
-            ?? "5672");
-        var username = builder.Configuration["RABBITMQ:USERNAME"]
-            ?? Environment.GetEnvironmentVariable("RABBITMQ__USERNAME")
+            ?? "5672";
+        var port = int.Parse(portStr);
+        var username = Environment.GetEnvironmentVariable("RABBITMQ__USERNAME")
+            ?? builder.Configuration["RABBITMQ:USERNAME"]
             ?? rabbitMqConfig["Username"]
             ?? "guest";
-        var password = builder.Configuration["RABBITMQ:PASSWORD"]
-            ?? Environment.GetEnvironmentVariable("RABBITMQ__PASSWORD")
+        var password = Environment.GetEnvironmentVariable("RABBITMQ__PASSWORD")
+            ?? builder.Configuration["RABBITMQ:PASSWORD"]
             ?? rabbitMqConfig["Password"]
             ?? "guest";
-        var virtualHost = builder.Configuration["RABBITMQ:VIRTUALHOST"]
-            ?? Environment.GetEnvironmentVariable("RABBITMQ__VIRTUALHOST")
+        var virtualHost = Environment.GetEnvironmentVariable("RABBITMQ__VIRTUALHOST")
+            ?? builder.Configuration["RABBITMQ:VIRTUALHOST"]
             ?? rabbitMqConfig["VirtualHost"]
             ?? "/";
 
@@ -613,9 +745,9 @@ builder.Services.AddMassTransit(x =>
         var intervalIncrementSeconds = int.Parse(rabbitMqConfig["IntervalIncrementSeconds"] ?? "10");
 
         // Verificar si se debe usar SSL (Amazon MQ usa SSL en puerto 5671)
-        var useSsl = builder.Configuration["RABBITMQ:USE_SSL"]?.ToLower() == "true"
-            || Environment.GetEnvironmentVariable("RABBITMQ__USE_SSL")?.ToLower() == "true"
-            || port == 5671; // Puerto 5671 generalmente indica SSL
+        var useSslStr = Environment.GetEnvironmentVariable("RABBITMQ__USE_SSL")
+            ?? builder.Configuration["RABBITMQ:USE_SSL"];
+        var useSsl = useSslStr?.ToLower() == "true" || port == 5671; // Puerto 5671 generalmente indica SSL
 
         Log.Information("Configurando RabbitMQ - Host: {Host}:{Port}, VHost: {VirtualHost}, Usuario: {Username}, SSL: {UseSsl}", 
             host, port, virtualHost, username, useSsl);

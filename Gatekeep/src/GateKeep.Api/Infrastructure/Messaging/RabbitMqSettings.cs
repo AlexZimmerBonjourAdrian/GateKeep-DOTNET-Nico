@@ -11,6 +11,13 @@ public class RabbitMqSettings
     public string Password { get; set; } = "guest";
     public string VirtualHost { get; set; } = "/";
     
+    // Configuración de SSL para AMQP
+    public bool UseSsl { get; set; } = false;
+    
+    // Configuración de Management API
+    public int ManagementPort { get; set; } = 15672;
+    public bool UseHttps { get; set; } = false;
+    
     // Configuración de reintentos
     public int RetryCount { get; set; } = 3;
     public int InitialIntervalSeconds { get; set; } = 5;

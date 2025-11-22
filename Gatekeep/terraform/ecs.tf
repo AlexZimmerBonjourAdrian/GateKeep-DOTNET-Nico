@@ -88,8 +88,8 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
         Resource = [
           aws_secretsmanager_secret.db_password.arn,
           aws_secretsmanager_secret.jwt_key.arn,
-          aws_secretsmanager_secret.mongodb_connection.arn
-          # aws_secretsmanager_secret.rabbitmq_password.arn  # COMENTADO TEMPORALMENTE
+          aws_secretsmanager_secret.mongodb_connection.arn,
+          data.aws_secretsmanager_secret.rabbitmq_password.arn
         ]
       },
       {
@@ -154,8 +154,8 @@ resource "aws_iam_role_policy" "ecs_task_cloudwatch" {
           StringEquals = {
             "cloudwatch:namespace" = [
               "GateKeep/Redis",
-              "GateKeep/Redis/Logs"
-              # "GateKeep/RabbitMQ"  # COMENTADO TEMPORALMENTE
+              "GateKeep/Redis/Logs",
+              "GateKeep/RabbitMQ"
             ]
           }
         }
@@ -229,36 +229,44 @@ resource "aws_ecs_task_definition" "main" {
           name  = "MONGODB_USE_STABLE_API"
           value = "true"
         },
-        # Redis - COMENTADO TEMPORALMENTE (ElastiCache no disponible)
-        # {
-        #   name  = "REDIS_CONNECTION"
-        #   value = "${aws_elasticache_replication_group.main.configuration_endpoint_address != "" ? aws_elasticache_replication_group.main.configuration_endpoint_address : aws_elasticache_replication_group.main.primary_endpoint_address}:${aws_elasticache_replication_group.main.port}"
-        # },
-        # {
-        #   name  = "REDIS_INSTANCE"
-        #   value = "GateKeep:"
-        # }
-        # RabbitMQ - COMENTADO TEMPORALMENTE
-        # {
-        #   name  = "RABBITMQ__HOST"
-        #   value = "${aws_mq_broker.main.broker_id}.mq.${var.aws_region}.amazonaws.com"
-        # },
-        # {
-        #   name  = "RABBITMQ__PORT"
-        #   value = "5671"
-        # },
-        # {
-        #   name  = "RABBITMQ__USE_SSL"
-        #   value = "true"
-        # },
-        # {
-        #   name  = "RABBITMQ__USERNAME"
-        #   value = "admin"
-        # },
-        # {
-        #   name  = "RABBITMQ__VIRTUALHOST"
-        #   value = "/"
-        # }
+        # Redis
+        {
+          name  = "REDIS_CONNECTION"
+          value = "${coalesce(aws_elasticache_replication_group.main.configuration_endpoint_address, aws_elasticache_replication_group.main.primary_endpoint_address, "")}:${coalesce(aws_elasticache_replication_group.main.port, 6379)}"
+        },
+        {
+          name  = "REDIS_INSTANCE"
+          value = "GateKeep:"
+        },
+        # RabbitMQ
+        {
+          name  = "RABBITMQ__HOST"
+          value = "${aws_mq_broker.main.id}.mq.${var.aws_region}.amazonaws.com"
+        },
+        {
+          name  = "RABBITMQ__PORT"
+          value = "5671"
+        },
+        {
+          name  = "RABBITMQ__USE_SSL"
+          value = "true"
+        },
+        {
+          name  = "RABBITMQ__USERNAME"
+          value = "admin"
+        },
+        {
+          name  = "RABBITMQ__VIRTUALHOST"
+          value = "/"
+        },
+        {
+          name  = "RABBITMQ__MANAGEMENT_PORT"
+          value = "443"
+        },
+        {
+          name  = "RABBITMQ__USE_HTTPS"
+          value = "true"
+        }
       ]
 
       secrets = [
@@ -276,12 +284,12 @@ resource "aws_ecs_task_definition" "main" {
         {
           name      = "MONGODB_CONNECTION"
           valueFrom = aws_secretsmanager_secret.mongodb_connection.arn
+        },
+        # RabbitMQ - desde Secrets Manager
+        {
+          name      = "RABBITMQ__PASSWORD"
+          valueFrom = data.aws_secretsmanager_secret.rabbitmq_password.arn
         }
-        # RabbitMQ - COMENTADO TEMPORALMENTE
-        # {
-        #   name      = "RABBITMQ__PASSWORD"
-        #   valueFrom = aws_secretsmanager_secret.rabbitmq_password.arn
-        # }
       ]
 
       logConfiguration = {

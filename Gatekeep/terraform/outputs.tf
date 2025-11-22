@@ -149,37 +149,37 @@ output "ecr_frontend_repository_url" {
 #   value       = aws_ecs_service.frontend.name
 # }
 
-# ElastiCache Redis - COMENTADO TEMPORALMENTE
-# output "redis_endpoint" {
-#   description = "Endpoint de ElastiCache Redis"
-#   value       = aws_elasticache_replication_group.main.configuration_endpoint_address != "" ? aws_elasticache_replication_group.main.configuration_endpoint_address : aws_elasticache_replication_group.main.primary_endpoint_address
-# }
-#
-# output "redis_port" {
-#   description = "Puerto de ElastiCache Redis"
-#   value       = aws_elasticache_replication_group.main.port
-# }
-#
-# output "redis_connection_string" {
-#   description = "Connection string completo de Redis (endpoint:port)"
-#   value       = "${aws_elasticache_replication_group.main.configuration_endpoint_address != "" ? aws_elasticache_replication_group.main.configuration_endpoint_address : aws_elasticache_replication_group.main.primary_endpoint_address}:${aws_elasticache_replication_group.main.port}"
-# }
+# ElastiCache Redis
+output "redis_endpoint" {
+  description = "Endpoint de ElastiCache Redis"
+  value       = try(coalesce(aws_elasticache_replication_group.main.configuration_endpoint_address, aws_elasticache_replication_group.main.primary_endpoint_address), "")
+}
 
-# Amazon MQ RabbitMQ - COMENTADO TEMPORALMENTE
-# output "rabbitmq_endpoint" {
-#   description = "Endpoint de Amazon MQ RabbitMQ"
-#   value       = "${aws_mq_broker.main.broker_id}.mq.${var.aws_region}.amazonaws.com"
-# }
+output "redis_port" {
+  description = "Puerto de ElastiCache Redis"
+  value       = aws_elasticache_replication_group.main.port
+}
 
-# output "rabbitmq_amqp_endpoint" {
-#   description = "Endpoint AMQP de RabbitMQ (hostname sin puerto)"
-#   value       = "${aws_mq_broker.main.broker_id}.mq.${var.aws_region}.amazonaws.com"
-# }
+output "redis_connection_string" {
+  description = "Connection string completo de Redis (endpoint:port)"
+  value       = try("${coalesce(aws_elasticache_replication_group.main.configuration_endpoint_address, aws_elasticache_replication_group.main.primary_endpoint_address, "")}:${coalesce(aws_elasticache_replication_group.main.port, 6379)}", "")
+}
 
-# output "rabbitmq_console_url" {
-#   description = "URL de la consola de administración de RabbitMQ"
-#   value       = "https://${aws_mq_broker.main.instances[0].console_url}"
-# }
+# Amazon MQ RabbitMQ
+output "rabbitmq_endpoint" {
+  description = "Endpoint de Amazon MQ RabbitMQ"
+  value       = "${aws_mq_broker.main.id}.mq.${var.aws_region}.amazonaws.com"
+}
+
+output "rabbitmq_amqp_endpoint" {
+  description = "Endpoint AMQP de RabbitMQ (hostname sin puerto)"
+  value       = "${aws_mq_broker.main.id}.mq.${var.aws_region}.amazonaws.com"
+}
+
+output "rabbitmq_console_url" {
+  description = "URL de la consola de administración de RabbitMQ"
+  value       = "https://${aws_mq_broker.main.instances[0].console_url}"
+}
 
 # Secrets Manager - Nuevos secretos
 output "mongodb_connection_secret_arn" {

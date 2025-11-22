@@ -1,0 +1,90 @@
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "AllowCloudWatchLogsFullAccess",
+			"Effect": "Allow",
+			"Action": [
+				"logs:*"
+			],
+			"Resource": "*"
+		},
+		{
+			"Sid": "AllowIAMUserChangePassword",
+			"Effect": "Allow",
+			"Action": [
+				"iam:ChangePassword",
+				"iam:GetUser"
+			],
+			"Resource": "arn:aws:iam::126588786097:user/Alex"
+		},
+		{
+			"Sid": "ElastiCacheRedisMinimalAccess",
+			"Effect": "Allow",
+			"Action": [
+				"elasticache:CreateCacheSubnetGroup",
+				"elasticache:CreateCacheParameterGroup",
+				"elasticache:CreateReplicationGroup",
+				"elasticache:DescribeCacheSubnetGroups",
+				"elasticache:DescribeCacheParameterGroups",
+				"elasticache:DescribeReplicationGroups",
+				"elasticache:ModifyReplicationGroup",
+				"elasticache:DeleteCacheSubnetGroup",
+				"elasticache:DeleteCacheParameterGroup",
+				"elasticache:DeleteReplicationGroup",
+				"elasticache:AddTagsToResource",
+				"elasticache:ListTagsForResource"
+			],
+			"Resource": [
+				"arn:aws:elasticache:*:*:subnetgroup:gatekeep-*",
+				"arn:aws:elasticache:*:*:parametergroup:gatekeep-*",
+				"arn:aws:elasticache:*:*:replicationgroup:gatekeep-*"
+			]
+		},
+		{
+			"Sid": "ElastiCacheRedisListAccess",
+			"Effect": "Allow",
+			"Action": [
+				"elasticache:DescribeCacheSubnetGroups",
+				"elasticache:DescribeCacheParameterGroups",
+				"elasticache:DescribeReplicationGroups"
+			],
+			"Resource": "*"
+		},
+		{
+			"Sid": "AmazonMQRabbitMQMinimalAccess",
+			"Effect": "Allow",
+			"Action": [
+				"mq:CreateBroker",
+				"mq:DescribeBroker",
+				"mq:ListBrokers",
+				"mq:UpdateBroker",
+				"mq:DeleteBroker",
+				"mq:CreateTags",
+				"mq:ListTags"
+			],
+			"Resource": [
+				"arn:aws:mq:*:*:broker:gatekeep-*"
+			]
+		},
+		{
+			"Sid": "AmazonMQRabbitMQListAccess",
+			"Effect": "Allow",
+			"Action": [
+				"mq:ListBrokers"
+			],
+			"Resource": "*"
+		},
+		{
+			"Sid": "EC2SecurityGroupAccess",
+			"Effect": "Allow",
+			"Action": [
+				"ec2:DescribeSecurityGroups",
+				"ec2:DescribeSubnets",
+				"ec2:DescribeVpcs"
+			],
+			"Resource": "*"
+		}
+	]
+}
+

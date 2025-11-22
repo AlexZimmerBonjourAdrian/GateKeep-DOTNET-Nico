@@ -42,8 +42,14 @@ public class RabbitMqMetricsService : IRabbitMqMetricsService
         try
         {
             var metrics = new RabbitMqMetrics();
-            var baseUrl = $"http://{_settings.Host}:15672/api";
+            var protocol = _settings.UseHttps ? "https" : "http";
+            var managementPort = _settings.ManagementPort > 0 ? _settings.ManagementPort : (_settings.UseHttps ? 443 : 15672);
+            var baseUrl = $"{protocol}://{_settings.Host}:{managementPort}/api";
             var vhost = Uri.EscapeDataString(_settings.VirtualHost);
+
+            _logger.LogDebug(
+                "Obteniendo métricas de RabbitMQ - URL: {BaseUrl}, Protocol: {Protocol}, Port: {Port}",
+                baseUrl, protocol, managementPort);
 
             // Obtener información de todas las colas
             using var httpClient = CreateHttpClient();
