@@ -11,7 +11,7 @@ public static class SalonEndpoints
 {
     public static IEndpointRouteBuilder MapSalonEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/espacios/salones").WithTags("Salones");
+        var group = app.MapGroup("/api/espacios/salones").WithTags("Salones");
 
         // GET /api/espacios/salones - Todos los usuarios autenticados pueden ver salones
         group.MapGet("/", async (IEspacioRepository espacioRepository) =>

@@ -44,10 +44,5 @@ public interface IEventPublisher
     /// Notifica a todos los observers sobre la desasignación de un beneficio
     /// </summary>
     Task NotifyBeneficioDesasignadoAsync(long usuarioId, long beneficioId, string beneficioNombre, DateTime fecha);
-
-    /// <summary>
-    /// Notifica a todos los observers sobre el canje de un beneficio
-    /// </summary>
-    Task NotifyBeneficioCanjeadoAsync(long usuarioId, long beneficioId, string beneficioNombre, string puntoControl, DateTime fecha);
 }
 

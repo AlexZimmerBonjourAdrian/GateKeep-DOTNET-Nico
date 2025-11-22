@@ -45,17 +45,44 @@ public static class NotificacionEndpoints
         .Produces(403);
 
         // GET - Todos los usuarios autenticados pueden ver notificaciones
-        group.MapGet("/", async (INotificacionService service) =>
+        group.MapGet("/", async (INotificacionService service, ILoggerFactory loggerFactory) =>
         {
-            var notificaciones = await service.ObtenerTodasAsync();
-            return Results.Ok(notificaciones);
+            var logger = loggerFactory.CreateLogger("NotificacionEndpoints");
+            try
+            {
+                var notificaciones = await service.ObtenerTodasAsync();
+                return Results.Ok(notificaciones);
+            }
+            catch (MongoDB.Driver.MongoConnectionException ex)
+            {
+                logger.LogError(ex, "Error de conexión a MongoDB al obtener notificaciones");
+                return Results.Problem(
+                    detail: "Error de conexión a la base de datos de notificaciones. Por favor, intente más tarde.",
+                    statusCode: 503);
+            }
+            catch (MongoDB.Driver.MongoException ex)
+            {
+                logger.LogError(ex, "Error de MongoDB al obtener notificaciones");
+                return Results.Problem(
+                    detail: $"Error al acceder a las notificaciones: {ex.Message}",
+                    statusCode: 500);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error inesperado al obtener notificaciones");
+                return Results.Problem(
+                    detail: $"Error inesperado: {ex.Message}",
+                    statusCode: 500);
+            }
         })
         .RequireAuthorization("AllUsers")
         .WithName("ObtenerTodasNotificaciones")
         .WithSummary("Obtener todas las notificaciones")
         .Produces<IEnumerable<NotificacionDto>>(200)
         .Produces(401)
-        .Produces(403);
+        .Produces(403)
+        .Produces(500)
+        .Produces(503);
 
         // GET - Todos los usuarios autenticados pueden ver una notificación específica
         group.MapGet("/{id}", async (string id, INotificacionService service) =>

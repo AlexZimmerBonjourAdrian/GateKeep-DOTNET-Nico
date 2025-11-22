@@ -1,3 +1,4 @@
+using GateKeep.Api.Application.Seeding;
 using GateKeep.Api.Infrastructure.AWS;
 using Microsoft.AspNetCore.Mvc;
 
@@ -32,6 +33,14 @@ public static class AwsTestEndpoint
             .WithName("ListParameters")
             .WithSummary("Listar parámetros de AWS Parameter Store")
             .Produces<List<string>>(200)
+            .Produces(500);
+
+        // Endpoint para ejecutar seeding de recursos (sin usuarios)
+        group.MapPost("/seed-resources", SeedResources)
+            .WithName("SeedResources")
+            .WithSummary("Ejecutar seeding de recursos (espacios, beneficios, eventos, etc.)")
+            .WithDescription("Crea los recursos que faltan sin verificar usuarios. Útil cuando ya hay usuarios pero faltan otros recursos.")
+            .Produces<string>(200)
             .Produces(500);
     }
 
@@ -92,6 +101,22 @@ public static class AwsTestEndpoint
             var searchPath = path ?? "/gatekeep";
             var parameters = await parameterService.ListParametersAsync(searchPath);
             return Results.Ok(new { path = searchPath, parameters });
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem(
+                detail: ex.Message,
+                statusCode: 500);
+        }
+    }
+
+    private static async Task<IResult> SeedResources(
+        IDataSeederService seeder)
+    {
+        try
+        {
+            await seeder.SeedResourcesAsync();
+            return Results.Ok(new { message = "Seeding de recursos completado exitosamente" });
         }
         catch (Exception ex)
         {

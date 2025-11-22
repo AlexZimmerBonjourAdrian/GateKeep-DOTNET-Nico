@@ -33,60 +33,105 @@ public sealed class RedisCacheService : ICacheService
 
     public async Task<T?> GetAsync<T>(string key) where T : class
     {
-        var value = await _cache.GetStringAsync(key);
-        
-        if (value is null)
+        try
         {
+            var value = await _cache.GetStringAsync(key);
+            
+            if (value is null)
+            {
+                _metrics.RecordMiss(key);
+                _observabilityService.RecordCacheOperation("get", false);
+                _logger.LogWarning("-----[CACHE]--- cache miss: {Key}", key);
+                return null;
+            }
+
+            _metrics.RecordHit(key);
+            _observabilityService.RecordCacheOperation("get", true);
+            _logger.LogWarning("-----[CACHE]--- cache hit: {Key}", key);
+            return JsonSerializer.Deserialize<T>(value);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener del cache Redis para clave {Key}. Continuando sin cache.", key);
             _metrics.RecordMiss(key);
             _observabilityService.RecordCacheOperation("get", false);
-            _logger.LogWarning("-----[CACHE]--- cache miss: {Key}", key);
+            // Fallback: retornar null para que se obtenga de la BD
             return null;
         }
-
-        _metrics.RecordHit(key);
-        _observabilityService.RecordCacheOperation("get", true);
-        _logger.LogWarning("-----[CACHE]--- cache hit: {Key}", key);
-        return JsonSerializer.Deserialize<T>(value);
     }
 
     public async Task SetAsync<T>(string key, T value, TimeSpan? expiration = null) where T : class
     {
-        var serializedValue = JsonSerializer.Serialize(value);
-        
-        var options = new DistributedCacheEntryOptions
+        try
         {
-            AbsoluteExpirationRelativeToNow = expiration ?? TimeSpan.FromMinutes(10)
-        };
+            var serializedValue = JsonSerializer.Serialize(value);
+            
+            var options = new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = expiration ?? TimeSpan.FromMinutes(10)
+            };
 
-        await _cache.SetStringAsync(key, serializedValue, options);
-        _observabilityService.RecordCacheOperation("set", true);
-        _logger.LogWarning("-----[CACHE]--- cache set: {Key}, Expiration={Expiration}", key, expiration);
+            await _cache.SetStringAsync(key, serializedValue, options);
+            _observabilityService.RecordCacheOperation("set", true);
+            _logger.LogWarning("-----[CACHE]--- cache set: {Key}, Expiration={Expiration}", key, expiration);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al guardar en cache Redis para clave {Key}. Continuando sin cache.", key);
+            _observabilityService.RecordCacheOperation("set", false);
+            // Fallback: no hacer nada, la operación continúa sin cache
+        }
     }
 
     public async Task RemoveAsync(string key)
     {
-        await _cache.RemoveAsync(key);
-        _metrics.RecordInvalidation(key);
-        _observabilityService.RecordCacheOperation("remove", true);
-        _logger.LogWarning("-----[CACHE]--- cache removed: {Key}", key);
+        try
+        {
+            await _cache.RemoveAsync(key);
+            _metrics.RecordInvalidation(key);
+            _observabilityService.RecordCacheOperation("remove", true);
+            _logger.LogWarning("-----[CACHE]--- cache removed: {Key}", key);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al eliminar del cache Redis para clave {Key}. Continuando sin cache.", key);
+            _observabilityService.RecordCacheOperation("remove", false);
+            // Fallback: no hacer nada
+        }
     }
 
     public async Task RemoveByPatternAsync(string pattern)
     {
-        var server = _redis.GetServer(_redis.GetEndPoints().First());
-        var keys = server.Keys(pattern: pattern).ToList();
-        
-        foreach (var key in keys)
+        try
         {
-            await _cache.RemoveAsync(key.ToString());
-            _metrics.RecordInvalidation(key.ToString());
+            var server = _redis.GetServer(_redis.GetEndPoints().First());
+            var keys = server.Keys(pattern: pattern).ToList();
+            
+            foreach (var key in keys)
+            {
+                await _cache.RemoveAsync(key.ToString());
+                _metrics.RecordInvalidation(key.ToString());
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al eliminar patrones del cache Redis para patrón {Pattern}. Continuando sin cache.", pattern);
+            // Fallback: no hacer nada
         }
     }
 
     public async Task<bool> ExistsAsync(string key)
     {
-        var value = await _cache.GetStringAsync(key);
-        return value is not null;
+        try
+        {
+            var value = await _cache.GetStringAsync(key);
+            return value is not null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al verificar existencia en cache Redis para clave {Key}. Retornando false.", key);
+            return false;
+        }
     }
 }
 

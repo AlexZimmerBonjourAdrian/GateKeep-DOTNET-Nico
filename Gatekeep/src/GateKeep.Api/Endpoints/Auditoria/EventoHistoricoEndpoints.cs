@@ -17,6 +17,7 @@ public static class EventoHistoricoEndpoints
 
         group.MapGet("/", async (
             [FromServices] IEventoHistoricoRepository repository,
+            [FromServices] ILoggerFactory loggerFactory,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 50,
             [FromQuery] DateTime? fechaDesde = null,
@@ -25,58 +26,85 @@ public static class EventoHistoricoEndpoints
             [FromQuery] string? tipoEvento = null,
             [FromQuery] string? resultado = null) =>
         {
-            var filtroBuilder = Builders<EventoHistorico>.Filter.Empty;
-
-            if (fechaDesde.HasValue)
-                filtroBuilder &= Builders<EventoHistorico>.Filter.Gte(e => e.Fecha, fechaDesde.Value);
-
-            if (fechaHasta.HasValue)
-                filtroBuilder &= Builders<EventoHistorico>.Filter.Lte(e => e.Fecha, fechaHasta.Value);
-
-            if (usuarioId.HasValue)
-                filtroBuilder &= Builders<EventoHistorico>.Filter.Eq(e => e.UsuarioId, usuarioId.Value);
-
-            if (!string.IsNullOrEmpty(tipoEvento))
-                filtroBuilder &= Builders<EventoHistorico>.Filter.Eq(e => e.TipoEvento, tipoEvento);
-
-            if (!string.IsNullOrEmpty(resultado))
-                filtroBuilder &= Builders<EventoHistorico>.Filter.Eq(e => e.Resultado, resultado);
-
-            var (eventos, totalCount) = await repository.ObtenerFiltradosAsync(
-                filtroBuilder,
-                page,
-                pageSize);
-
-            var eventosDto = eventos.Select(e => new EventoHistoricoDto
+            var logger = loggerFactory.CreateLogger("EventoHistoricoEndpoints");
+            try
             {
-                Id = e.Id,
-                TipoEvento = e.TipoEvento,
-                Fecha = e.Fecha,
-                UsuarioId = e.UsuarioId,
-                EspacioId = e.EspacioId,
-                Resultado = e.Resultado,
-                PuntoControl = e.PuntoControl,
-                Datos = e.Datos != null ? ConvertirBsonADict(e.Datos) : null
-            });
+                var filtroBuilder = Builders<EventoHistorico>.Filter.Empty;
 
-            return Results.Ok(new EventoHistoricoPaginadoDto
-            {
-                Eventos = eventosDto,
-                Paginacion = new PaginacionDto
+                if (fechaDesde.HasValue)
+                    filtroBuilder &= Builders<EventoHistorico>.Filter.Gte(e => e.Fecha, fechaDesde.Value);
+
+                if (fechaHasta.HasValue)
+                    filtroBuilder &= Builders<EventoHistorico>.Filter.Lte(e => e.Fecha, fechaHasta.Value);
+
+                if (usuarioId.HasValue)
+                    filtroBuilder &= Builders<EventoHistorico>.Filter.Eq(e => e.UsuarioId, usuarioId.Value);
+
+                if (!string.IsNullOrEmpty(tipoEvento))
+                    filtroBuilder &= Builders<EventoHistorico>.Filter.Eq(e => e.TipoEvento, tipoEvento);
+
+                if (!string.IsNullOrEmpty(resultado))
+                    filtroBuilder &= Builders<EventoHistorico>.Filter.Eq(e => e.Resultado, resultado);
+
+                var (eventos, totalCount) = await repository.ObtenerFiltradosAsync(
+                    filtroBuilder,
+                    page,
+                    pageSize);
+
+                var eventosDto = eventos.Select(e => new EventoHistoricoDto
                 {
-                    Pagina = page,
-                    TamanoPagina = pageSize,
-                    TotalCount = totalCount,
-                    TotalPaginas = (int)Math.Ceiling(totalCount / (double)pageSize)
-                }
-            });
+                    Id = e.Id,
+                    TipoEvento = e.TipoEvento,
+                    Fecha = e.Fecha,
+                    UsuarioId = e.UsuarioId,
+                    EspacioId = e.EspacioId,
+                    Resultado = e.Resultado,
+                    PuntoControl = e.PuntoControl,
+                    Datos = e.Datos != null ? ConvertirBsonADict(e.Datos) : null
+                });
+
+                return Results.Ok(new EventoHistoricoPaginadoDto
+                {
+                    Eventos = eventosDto,
+                    Paginacion = new PaginacionDto
+                    {
+                        Pagina = page,
+                        TamanoPagina = pageSize,
+                        TotalCount = totalCount,
+                        TotalPaginas = (int)Math.Ceiling(totalCount / (double)pageSize)
+                    }
+                });
+            }
+            catch (MongoDB.Driver.MongoConnectionException ex)
+            {
+                logger.LogError(ex, "Error de conexión a MongoDB al obtener eventos históricos");
+                return Results.Problem(
+                    detail: "Error de conexión a la base de datos de auditoría. Por favor, intente más tarde.",
+                    statusCode: 503);
+            }
+            catch (MongoDB.Driver.MongoException ex)
+            {
+                logger.LogError(ex, "Error de MongoDB al obtener eventos históricos");
+                return Results.Problem(
+                    detail: $"Error al acceder a los eventos históricos: {ex.Message}",
+                    statusCode: 500);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error inesperado al obtener eventos históricos");
+                return Results.Problem(
+                    detail: $"Error inesperado: {ex.Message}",
+                    statusCode: 500);
+            }
         })
         .RequireAuthorization("FuncionarioOrAdmin")
         .WithName("GetEventosHistoricos")
         .WithSummary("Obtener eventos históricos con paginación y filtros")
         .Produces<EventoHistoricoPaginadoDto>(200)
         .Produces(401)
-        .Produces(403);
+        .Produces(403)
+        .Produces(500)
+        .Produces(503);
 
         group.MapGet("/usuario/{usuarioId}", async (
             long usuarioId,

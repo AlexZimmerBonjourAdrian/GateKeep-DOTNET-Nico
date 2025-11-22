@@ -44,29 +44,4 @@ export class EdificioService {
     };
     return axios.post(API_URL, payload, this.getAuthHeaders());
   }
-
-  static async updateEdificio(id: number, data: {
-    nombre: string;
-    descripcion?: string;
-    ubicacion: string;
-    capacidad: number;
-    activo: boolean;
-    numeroPisos: number;
-    codigoEdificio?: string;
-  }) {
-    const payload = {
-      Nombre: data.nombre,
-      Descripcion: data.descripcion,
-      Ubicacion: data.ubicacion,
-      Capacidad: data.capacidad,
-      Activo: data.activo,
-      NumeroPisos: data.numeroPisos,
-      CodigoEdificio: data.codigoEdificio || null,
-    };
-    return axios.put(`${API_URL}/${id}`, payload, this.getAuthHeaders());
-  }
-
-  static async deleteEdificio(id: number) {
-    return axios.delete(`${API_URL}/${id}`, this.getAuthHeaders());
-  }
 }

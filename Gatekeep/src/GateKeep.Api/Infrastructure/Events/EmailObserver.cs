@@ -117,13 +117,6 @@ public sealed class EmailObserver : IEventObserver
         }
     }
 
-    public Task OnBeneficioCanjeadoAsync(long usuarioId, long beneficioId, string beneficioNombre, string puntoControl, DateTime fecha)
-    {
-        // No se envía email para canje de beneficios
-        _logger?.LogDebug($"Beneficio canjeado - Usuario: {usuarioId}, No se envía email");
-        return Task.CompletedTask;
-    }
-
     private async Task EnviarEmailAsync(long usuarioId, string asunto, string cuerpo, string? email = null)
     {
         // Simulación de envío de email - En producción implementar servicio real

@@ -11,7 +11,6 @@ public sealed class BeneficioUsuarioConfiguration : IEntityTypeConfiguration<Ben
         builder.ToTable("beneficios_usuarios");
         builder.HasKey(x => new { x.UsuarioId, x.BeneficioId });
         builder.Property(x => x.EstadoCanje).IsRequired();
-        builder.Property(x => x.FechaCanje).IsRequired(false);
 
         // Índices individuales para optimizar consultas por usuario o beneficio
         builder.HasIndex(x => x.UsuarioId)

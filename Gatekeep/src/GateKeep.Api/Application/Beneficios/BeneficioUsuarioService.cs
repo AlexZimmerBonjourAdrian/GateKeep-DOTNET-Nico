@@ -23,44 +23,13 @@ public sealed class BeneficioUsuarioService : IBeneficioUsuarioService
     public async Task<IEnumerable<BeneficioUsuarioDto>> ObtenerBeneficiosPorUsuarioAsync(long usuarioId)
     {
         var beneficiosUsuarios = await _repository.ObtenerPorUsuarioAsync(usuarioId);
-        var dtos = new List<BeneficioUsuarioDto>();
-        
-        foreach (var bu in beneficiosUsuarios)
-        {
-            var dto = await MapToDtoAsync(bu);
-            dtos.Add(dto);
-        }
-        
-        return dtos;
-    }
-
-    public async Task<IEnumerable<BeneficioUsuarioDto>> ObtenerBeneficiosCanjeadosPorUsuarioAsync(long usuarioId)
-    {
-        var beneficiosUsuarios = await _repository.ObtenerPorUsuarioAsync(usuarioId);
-        var canjeados = beneficiosUsuarios.Where(b => b.EstadoCanje);
-        var dtos = new List<BeneficioUsuarioDto>();
-        
-        foreach (var bu in canjeados)
-        {
-            var dto = await MapToDtoAsync(bu);
-            dtos.Add(dto);
-        }
-        
-        return dtos.OrderByDescending(d => d.FechaCanje);
+        return beneficiosUsuarios.Select(MapToDto);
     }
 
     public async Task<IEnumerable<BeneficioUsuarioDto>> ObtenerUsuariosPorBeneficioAsync(long beneficioId)
     {
         var beneficiosUsuarios = await _repository.ObtenerPorBeneficioAsync(beneficioId);
-        var dtos = new List<BeneficioUsuarioDto>();
-        
-        foreach (var bu in beneficiosUsuarios)
-        {
-            var dto = await MapToDtoAsync(bu);
-            dtos.Add(dto);
-        }
-        
-        return dtos;
+        return beneficiosUsuarios.Select(MapToDto);
     }
 
     public async Task<BeneficioUsuarioDto> AsignarBeneficioAsync(long usuarioId, long beneficioId)
@@ -90,7 +59,7 @@ public sealed class BeneficioUsuarioService : IBeneficioUsuarioService
             }
         }
 
-        return await MapToDtoAsync(resultado);
+        return MapToDto(resultado);
     }
 
     public async Task DesasignarBeneficioAsync(long usuarioId, long beneficioId)
@@ -121,92 +90,13 @@ public sealed class BeneficioUsuarioService : IBeneficioUsuarioService
         return beneficioUsuario is not null;
     }
 
-    public async Task<BeneficioUsuarioDto> CanjearBeneficioAsync(long usuarioId, long beneficioId, string puntoControl)
+    private static BeneficioUsuarioDto MapToDto(BeneficioUsuario beneficioUsuario)
     {
-        // Obtener información del beneficio primero
-        var beneficio = await _beneficioRepository.ObtenerPorIdAsync(beneficioId);
-        if (beneficio is null)
-        {
-            throw new InvalidOperationException("Beneficio no encontrado");
-        }
-
-        // Verificar vigencia
-        if (!beneficio.Vigencia || beneficio.FechaDeVencimiento < DateTime.UtcNow)
-        {
-            throw new InvalidOperationException("El beneficio no está vigente o ha vencido");
-        }
-
-        // Verificar cupos disponibles
-        if (beneficio.Cupos <= 0)
-        {
-            throw new InvalidOperationException("No hay cupos disponibles para este beneficio");
-        }
-
-        // Verificar si el usuario ya tiene este beneficio
-        var beneficioUsuario = await _repository.ObtenerAsync(usuarioId, beneficioId);
-        
-        if (beneficioUsuario is null)
-        {
-            // Si no lo tiene, asignarlo automáticamente
-            beneficioUsuario = new BeneficioUsuario(
-                UsuarioId: usuarioId,
-                BeneficioId: beneficioId,
-                EstadoCanje: false
-            );
-            beneficioUsuario = await _repository.CrearAsync(beneficioUsuario);
-        }
-        else if (beneficioUsuario.EstadoCanje)
-        {
-            // Si ya lo canjeó antes, no permitir canje duplicado
-            throw new InvalidOperationException("Ya has canjeado este beneficio anteriormente");
-        }
-
-        var fecha = DateTime.UtcNow;
-        
-        // Actualizar estado de canje con fecha
-        var beneficioActualizado = beneficioUsuario with { EstadoCanje = true, FechaCanje = fecha };
-        await _repository.ActualizarAsync(beneficioActualizado);
-
-        // Decrementar cupos disponibles del beneficio
-        var beneficioConCuposActualizados = beneficio with { Cupos = beneficio.Cupos - 1 };
-        await _beneficioRepository.ActualizarAsync(beneficioConCuposActualizados);
-
-        var beneficioNombre = $"Beneficio {beneficio.Tipo}";
-
-        // Notificar a observers (Observer Pattern)
-        if (_eventPublisher != null)
-        {
-            try
-            {
-                await _eventPublisher.NotifyBeneficioCanjeadoAsync(
-                    usuarioId, 
-                    beneficioId, 
-                    beneficioNombre, 
-                    puntoControl, 
-                    fecha);
-            }
-            catch
-            {
-                // Log error pero no romper el flujo principal
-            }
-        }
-
-        return await MapToDtoAsync(beneficioActualizado);
-    }
-
-    private async Task<BeneficioUsuarioDto> MapToDtoAsync(BeneficioUsuario beneficioUsuario)
-    {
-        var beneficio = await _beneficioRepository.ObtenerPorIdAsync(beneficioUsuario.BeneficioId);
-        
         return new BeneficioUsuarioDto
         {
             UsuarioId = beneficioUsuario.UsuarioId,
             BeneficioId = beneficioUsuario.BeneficioId,
-            EstadoCanje = beneficioUsuario.EstadoCanje,
-            FechaCanje = beneficioUsuario.FechaCanje,
-            Tipo = beneficio?.Tipo,
-            Vigencia = beneficio?.Vigencia,
-            FechaDeVencimiento = beneficio?.FechaDeVencimiento
+            EstadoCanje = beneficioUsuario.EstadoCanje
         };
     }
 }

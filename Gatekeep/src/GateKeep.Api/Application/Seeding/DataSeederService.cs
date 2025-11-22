@@ -190,175 +190,308 @@ public sealed class DataSeederService : IDataSeederService
         var espacios = new List<Espacio>();
 
         // ===== EDIFICIO 1: CENTRAL =====
-        var edificio1Request = new CrearEdificioRequest
+        Edificio? edificio1 = null;
+        try
         {
-            Nombre = "Edificio Central",
-            Descripcion = "Edificio principal con aulas y laboratorios",
-            Ubicacion = "Campus Principal, Avenida Central 123",
-            Capacidad = 500,
-            NumeroPisos = 5,
-            CodigoEdificio = "ED-001"
-        };
-        var edificio1 = await _espacioFactory.CrearEdificioAsync(edificio1Request);
-        edificio1 = await _espacioRepository.GuardarEdificioAsync(edificio1);
-        espacios.Add(edificio1);
-        _logger.LogInformation("  → Edificio Central (ED-001)");
+            var edificio1Request = new CrearEdificioRequest
+            {
+                Nombre = "Edificio Central",
+                Descripcion = "Edificio principal con aulas y laboratorios",
+                Ubicacion = "Campus Principal, Avenida Central 123",
+                Capacidad = 500,
+                NumeroPisos = 5,
+                CodigoEdificio = "ED-001"
+            };
+            edificio1 = await _espacioFactory.CrearEdificioAsync(edificio1Request);
+            edificio1 = await _espacioRepository.GuardarEdificioAsync(edificio1);
+            espacios.Add(edificio1);
+            _logger.LogInformation("  → Edificio Central (ED-001) creado con ID: {Id}", edificio1.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error al crear Edificio Central (ED-001). Intentando obtener existente...");
+            // Intentar obtener el edificio existente
+            try
+            {
+                edificio1 = await _espacioRepository.ObtenerEdificioPorCodigoAsync("ED-001");
+                if (edificio1 is not null)
+                {
+                    espacios.Add(edificio1);
+                    _logger.LogInformation("  → Edificio Central (ED-001) ya existe, usando existente con ID: {Id}", edificio1.Id);
+                }
+            }
+            catch (Exception ex2)
+            {
+                _logger.LogError(ex2, "No se pudo obtener Edificio Central existente");
+            }
+        }
 
         // Salones en Edificio Central
-        for (int piso = 1; piso <= 5; piso++)
+        if (edificio1 is null)
         {
-            for (int num = 1; num <= 3; num++)
-            {
-                var numeroSalon = piso * 100 + num;
-                var salonRequest = new CrearSalonRequest
-                {
-                    Nombre = $"Salón {numeroSalon}",
-                    Descripcion = $"Aula de clase piso {piso}",
-                    Ubicacion = $"Edificio Central, Piso {piso}",
-                    Capacidad = 30 + (num * 5),
-                    EdificioId = edificio1.Id,
-                    NumeroSalon = numeroSalon,
-                    TipoSalon = num == 3 ? "Aula Multimedia" : "Aula Estándar"
-                };
-                var salon = await _espacioFactory.CrearSalonAsync(salonRequest);
-                salon = await _espacioRepository.GuardarSalonAsync(salon);
-                espacios.Add(salon);
-            }
+            edificio1 = espacios.OfType<Edificio>().FirstOrDefault(e => e.CodigoEdificio == "ED-001");
         }
-        _logger.LogInformation("  → 15 Salones creados en Edificio Central");
+        if (edificio1 is not null)
+        {
+            int salonesCreados = 0;
+            for (int piso = 1; piso <= 5; piso++)
+            {
+                for (int num = 1; num <= 3; num++)
+                {
+                    try
+                    {
+                        var numeroSalon = piso * 100 + num;
+                        var salonRequest = new CrearSalonRequest
+                        {
+                            Nombre = $"Salón {numeroSalon}",
+                            Descripcion = $"Aula de clase piso {piso}",
+                            Ubicacion = $"Edificio Central, Piso {piso}",
+                            Capacidad = 30 + (num * 5),
+                            EdificioId = edificio1.Id,
+                            NumeroSalon = numeroSalon,
+                            TipoSalon = num == 3 ? "Aula Multimedia" : "Aula Estándar"
+                        };
+                        var salon = await _espacioFactory.CrearSalonAsync(salonRequest);
+                        salon = await _espacioRepository.GuardarSalonAsync(salon);
+                        espacios.Add(salon);
+                        salonesCreados++;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error al crear Salón {NumeroSalon} en Edificio Central. Continuando...", piso * 100 + num);
+                    }
+                }
+            }
+            _logger.LogInformation("  → {Count} Salones creados en Edificio Central", salonesCreados);
+        }
+        else
+        {
+            _logger.LogWarning("No se pudo crear Edificio Central, saltando creación de salones");
+        }
 
         // Laboratorios en Edificio Central
-        var laboratorios = new[]
+        edificio1 = espacios.OfType<Edificio>().FirstOrDefault(e => e.CodigoEdificio == "ED-001");
+        if (edificio1 is not null)
         {
-            ("Laboratorio de Informática", "Computadoras y software de desarrollo", 301, "Informática", true),
-            ("Laboratorio de Electrónica", "Equipos de medición y prototipado", 302, "Electrónica", true),
-            ("Laboratorio de Química", "Reactivos y equipamiento de laboratorio", 303, "Química", true),
-            ("Laboratorio de Biología", "Microscopios y material de investigación", 304, "Biología", true)
-        };
-
-        foreach (var (nombre, desc, numero, tipo, equipamiento) in laboratorios)
-        {
-            var laboratorioRequest = new CrearLaboratorioRequest
+            var laboratorios = new[]
             {
-                Nombre = nombre,
-                Descripcion = desc,
-                Ubicacion = "Edificio Central, Piso 3",
-                Capacidad = 25,
-                EdificioId = edificio1.Id,
-                NumeroLaboratorio = numero,
-                TipoLaboratorio = tipo,
-                EquipamientoEspecial = equipamiento
+                ("Laboratorio de Informática", "Computadoras y software de desarrollo", 301, "Informática", true),
+                ("Laboratorio de Electrónica", "Equipos de medición y prototipado", 302, "Electrónica", true),
+                ("Laboratorio de Química", "Reactivos y equipamiento de laboratorio", 303, "Química", true),
+                ("Laboratorio de Biología", "Microscopios y material de investigación", 304, "Biología", true)
             };
-            var laboratorio = await _espacioFactory.CrearLaboratorioAsync(laboratorioRequest);
-            laboratorio = await _espacioRepository.GuardarLaboratorioAsync(laboratorio);
-            espacios.Add(laboratorio);
+
+            int laboratoriosCreados = 0;
+            foreach (var (nombre, desc, numero, tipo, equipamiento) in laboratorios)
+            {
+                try
+                {
+                    var laboratorioRequest = new CrearLaboratorioRequest
+                    {
+                        Nombre = nombre,
+                        Descripcion = desc,
+                        Ubicacion = "Edificio Central, Piso 3",
+                        Capacidad = 25,
+                        EdificioId = edificio1.Id,
+                        NumeroLaboratorio = numero,
+                        TipoLaboratorio = tipo,
+                        EquipamientoEspecial = equipamiento
+                    };
+                    var laboratorio = await _espacioFactory.CrearLaboratorioAsync(laboratorioRequest);
+                    laboratorio = await _espacioRepository.GuardarLaboratorioAsync(laboratorio);
+                    espacios.Add(laboratorio);
+                    laboratoriosCreados++;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error al crear {Nombre} (número {Numero}) en Edificio Central. Continuando...", nombre, numero);
+                }
+            }
+            _logger.LogInformation("  → {Count} Laboratorios creados en Edificio Central", laboratoriosCreados);
         }
-        _logger.LogInformation("  → 4 Laboratorios creados en Edificio Central");
 
         // ===== EDIFICIO 2: ANEXO =====
-        var edificio2Request = new CrearEdificioRequest
+        Edificio? edificio2 = null;
+        try
         {
-            Nombre = "Edificio Anexo",
-            Descripcion = "Edificio complementario con aulas y talleres",
-            Ubicacion = "Campus Principal, Avenida Anexo 456",
-            Capacidad = 300,
-            NumeroPisos = 3,
-            CodigoEdificio = "ED-002"
-        };
-        var edificio2 = await _espacioFactory.CrearEdificioAsync(edificio2Request);
-        edificio2 = await _espacioRepository.GuardarEdificioAsync(edificio2);
-        espacios.Add(edificio2);
-        _logger.LogInformation("  → Edificio Anexo (ED-002)");
-
-        // Salones en Edificio Anexo
-        for (int piso = 1; piso <= 3; piso++)
-        {
-            for (int num = 1; num <= 2; num++)
+            var edificio2Request = new CrearEdificioRequest
             {
-                var numeroSalon = 2000 + piso * 100 + num;
-                var salonRequest = new CrearSalonRequest
+                Nombre = "Edificio Anexo",
+                Descripcion = "Edificio complementario con aulas y talleres",
+                Ubicacion = "Campus Principal, Avenida Anexo 456",
+                Capacidad = 300,
+                NumeroPisos = 3,
+                CodigoEdificio = "ED-002"
+            };
+            edificio2 = await _espacioFactory.CrearEdificioAsync(edificio2Request);
+            edificio2 = await _espacioRepository.GuardarEdificioAsync(edificio2);
+            espacios.Add(edificio2);
+            _logger.LogInformation("  → Edificio Anexo (ED-002) creado con ID: {Id}", edificio2.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error al crear Edificio Anexo (ED-002). Intentando obtener existente...");
+            try
+            {
+                edificio2 = await _espacioRepository.ObtenerEdificioPorCodigoAsync("ED-002");
+                if (edificio2 is not null)
                 {
-                    Nombre = $"Salón {numeroSalon}",
-                    Descripcion = $"Aula anexa piso {piso}",
-                    Ubicacion = $"Edificio Anexo, Piso {piso}",
-                    Capacidad = 35 + (num * 5),
-                    EdificioId = edificio2.Id,
-                    NumeroSalon = numeroSalon,
-                    TipoSalon = "Aula de Seminarios"
-                };
-                var salon = await _espacioFactory.CrearSalonAsync(salonRequest);
-                salon = await _espacioRepository.GuardarSalonAsync(salon);
-                espacios.Add(salon);
+                    espacios.Add(edificio2);
+                    _logger.LogInformation("  → Edificio Anexo (ED-002) ya existe, usando existente con ID: {Id}", edificio2.Id);
+                }
+            }
+            catch (Exception ex2)
+            {
+                _logger.LogError(ex2, "No se pudo obtener Edificio Anexo existente");
             }
         }
-        _logger.LogInformation("  → 6 Salones creados en Edificio Anexo");
+
+        // Salones en Edificio Anexo
+        if (edificio2 is not null)
+        {
+            int salonesCreados = 0;
+            for (int piso = 1; piso <= 3; piso++)
+            {
+                for (int num = 1; num <= 2; num++)
+                {
+                    try
+                    {
+                        var numeroSalon = 2000 + piso * 100 + num;
+                        var salonRequest = new CrearSalonRequest
+                        {
+                            Nombre = $"Salón {numeroSalon}",
+                            Descripcion = $"Aula anexa piso {piso}",
+                            Ubicacion = $"Edificio Anexo, Piso {piso}",
+                            Capacidad = 35 + (num * 5),
+                            EdificioId = edificio2.Id,
+                            NumeroSalon = numeroSalon,
+                            TipoSalon = "Aula de Seminarios"
+                        };
+                        var salon = await _espacioFactory.CrearSalonAsync(salonRequest);
+                        salon = await _espacioRepository.GuardarSalonAsync(salon);
+                        espacios.Add(salon);
+                        salonesCreados++;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error al crear Salón {NumeroSalon} en Edificio Anexo. Continuando...", 2000 + piso * 100 + num);
+                    }
+                }
+            }
+            _logger.LogInformation("  → {Count} Salones creados en Edificio Anexo", salonesCreados);
+        }
 
         // Laboratorios en Edificio Anexo
-        var labAnexo = new[]
+        if (edificio2 is not null)
         {
-            ("Taller de Mecánica", "Herramientas y equipos mecánicos", 201, "Mecánica", true),
-            ("Laboratorio de Física", "Equipamiento de física experimental", 202, "Física", true)
-        };
-
-        foreach (var (nombre, desc, numero, tipo, equipamiento) in labAnexo)
-        {
-            var laboratorioRequest = new CrearLaboratorioRequest
+            var labAnexo = new[]
             {
-                Nombre = nombre,
-                Descripcion = desc,
-                Ubicacion = "Edificio Anexo, Piso 2",
-                Capacidad = 20,
-                EdificioId = edificio2.Id,
-                NumeroLaboratorio = numero,
-                TipoLaboratorio = tipo,
-                EquipamientoEspecial = equipamiento
+                ("Taller de Mecánica", "Herramientas y equipos mecánicos", 201, "Mecánica", true),
+                ("Laboratorio de Física", "Equipamiento de física experimental", 202, "Física", true)
             };
-            var laboratorio = await _espacioFactory.CrearLaboratorioAsync(laboratorioRequest);
-            laboratorio = await _espacioRepository.GuardarLaboratorioAsync(laboratorio);
-            espacios.Add(laboratorio);
+
+            int laboratoriosCreados = 0;
+            foreach (var (nombre, desc, numero, tipo, equipamiento) in labAnexo)
+            {
+                try
+                {
+                    var laboratorioRequest = new CrearLaboratorioRequest
+                    {
+                        Nombre = nombre,
+                        Descripcion = desc,
+                        Ubicacion = "Edificio Anexo, Piso 2",
+                        Capacidad = 20,
+                        EdificioId = edificio2.Id,
+                        NumeroLaboratorio = numero,
+                        TipoLaboratorio = tipo,
+                        EquipamientoEspecial = equipamiento
+                    };
+                    var laboratorio = await _espacioFactory.CrearLaboratorioAsync(laboratorioRequest);
+                    laboratorio = await _espacioRepository.GuardarLaboratorioAsync(laboratorio);
+                    espacios.Add(laboratorio);
+                    laboratoriosCreados++;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error al crear {Nombre} (número {Numero}) en Edificio Anexo. Continuando...", nombre, numero);
+                }
+            }
+            _logger.LogInformation("  → {Count} Laboratorios creados en Edificio Anexo", laboratoriosCreados);
         }
-        _logger.LogInformation("  → 2 Laboratorios creados en Edificio Anexo");
 
         // ===== EDIFICIO 3: ADMINISTRATIVO =====
-        var edificio3Request = new CrearEdificioRequest
+        Edificio? edificio3 = null;
+        try
         {
-            Nombre = "Edificio Administrativo",
-            Descripcion = "Oficinas administrativas y sala de reuniones",
-            Ubicacion = "Campus Principal, Avenida Administrativa 789",
-            Capacidad = 200,
-            NumeroPisos = 2,
-            CodigoEdificio = "ED-003"
-        };
-        var edificio3 = await _espacioFactory.CrearEdificioAsync(edificio3Request);
-        edificio3 = await _espacioRepository.GuardarEdificioAsync(edificio3);
-        espacios.Add(edificio3);
-        _logger.LogInformation("  → Edificio Administrativo (ED-003)");
+            var edificio3Request = new CrearEdificioRequest
+            {
+                Nombre = "Edificio Administrativo",
+                Descripcion = "Oficinas administrativas y sala de reuniones",
+                Ubicacion = "Campus Principal, Avenida Administrativa 789",
+                Capacidad = 200,
+                NumeroPisos = 2,
+                CodigoEdificio = "ED-003"
+            };
+            edificio3 = await _espacioFactory.CrearEdificioAsync(edificio3Request);
+            edificio3 = await _espacioRepository.GuardarEdificioAsync(edificio3);
+            espacios.Add(edificio3);
+            _logger.LogInformation("  → Edificio Administrativo (ED-003) creado con ID: {Id}", edificio3.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error al crear Edificio Administrativo (ED-003). Intentando obtener existente...");
+            try
+            {
+                edificio3 = await _espacioRepository.ObtenerEdificioPorCodigoAsync("ED-003");
+                if (edificio3 is not null)
+                {
+                    espacios.Add(edificio3);
+                    _logger.LogInformation("  → Edificio Administrativo (ED-003) ya existe, usando existente con ID: {Id}", edificio3.Id);
+                }
+            }
+            catch (Exception ex2)
+            {
+                _logger.LogError(ex2, "No se pudo obtener Edificio Administrativo existente");
+            }
+        }
 
         // Salones en Edificio Administrativo (Salas de reunión)
-        var salasReunion = new[]
+        if (edificio3 is not null)
         {
-            ("Sala de Reuniones A", "Equipada con video conferencia", 101, 20),
-            ("Sala de Reuniones B", "Sala de capacitación", 102, 25),
-            ("Auditorio Principal", "Para presentaciones y eventos", 201, 100)
-        };
-
-        foreach (var (nombre, desc, numero, capacidad) in salasReunion)
-        {
-            var salonRequest = new CrearSalonRequest
+            var salasReunion = new[]
             {
-                Nombre = nombre,
-                Descripcion = desc,
-                Ubicacion = $"Edificio Administrativo, Piso {numero / 100}",
-                Capacidad = capacidad,
-                EdificioId = edificio3.Id,
-                NumeroSalon = numero,
-                TipoSalon = "Sala de Reuniones"
+                ("Sala de Reuniones A", "Equipada con video conferencia", 101, 20),
+                ("Sala de Reuniones B", "Sala de capacitación", 102, 25),
+                ("Auditorio Principal", "Para presentaciones y eventos", 201, 100)
             };
-            var salon = await _espacioFactory.CrearSalonAsync(salonRequest);
-            salon = await _espacioRepository.GuardarSalonAsync(salon);
-            espacios.Add(salon);
+
+            int salasCreadas = 0;
+            foreach (var (nombre, desc, numero, capacidad) in salasReunion)
+            {
+                try
+                {
+                    var salonRequest = new CrearSalonRequest
+                    {
+                        Nombre = nombre,
+                        Descripcion = desc,
+                        Ubicacion = $"Edificio Administrativo, Piso {numero / 100}",
+                        Capacidad = capacidad,
+                        EdificioId = edificio3.Id,
+                        NumeroSalon = numero,
+                        TipoSalon = "Sala de Reuniones"
+                    };
+                    var salon = await _espacioFactory.CrearSalonAsync(salonRequest);
+                    salon = await _espacioRepository.GuardarSalonAsync(salon);
+                    espacios.Add(salon);
+                    salasCreadas++;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error al crear {Nombre} (número {Numero}) en Edificio Administrativo. Continuando...", nombre, numero);
+                }
+            }
+            _logger.LogInformation("  → {Count} Salas de Reuniones creadas en Edificio Administrativo", salasCreadas);
         }
-        _logger.LogInformation("  → 3 Salas de Reuniones creadas en Edificio Administrativo");
 
         _logger.LogInformation("Total espacios creados: {Count}", espacios.Count);
         return espacios;
@@ -660,6 +793,141 @@ public sealed class DataSeederService : IDataSeederService
         }
 
         _logger.LogInformation($"  → {anunciosData.Length} Anuncios creados");
+    }
+
+    /// <summary>
+    /// Crea solo los recursos que faltan (espacios, beneficios, eventos, etc.) sin verificar usuarios
+    /// Útil cuando ya hay usuarios pero faltan otros recursos
+    /// </summary>
+    public async Task SeedResourcesAsync()
+    {
+        _logger.LogInformation("Iniciando seeding de recursos (sin usuarios)...");
+
+        try
+        {
+            // Obtener usuarios existentes
+            var usuarios = await _usuarioRepository.GetAllAsync();
+            if (!usuarios.Any())
+            {
+                _logger.LogWarning("No hay usuarios en la base de datos. Ejecuta SeedAsync() primero o crea usuarios manualmente.");
+                return;
+            }
+
+            // Verificar y crear espacios si no existen o si hay muy pocos
+            var espaciosExistentes = await _dbContext.Espacios.CountAsync();
+            List<Espacio> espacios;
+            
+            // Si hay menos de 10 espacios, asumimos que el seeding no se completó correctamente
+            if (espaciosExistentes < 10)
+            {
+                _logger.LogInformation("Hay {Count} espacios existentes (menos de 10). Creando espacios completos...", espaciosExistentes);
+                espacios = await SeedEspaciosAsync();
+                // Obtener todos los espacios después del seeding
+                espacios = await _dbContext.Espacios.ToListAsync();
+            }
+            else
+            {
+                _logger.LogInformation("Espacios ya existen ({Count} espacios). Obteniendo espacios existentes...", espaciosExistentes);
+                espacios = await _dbContext.Espacios.ToListAsync();
+            }
+
+            // Verificar y crear beneficios si no existen
+            var beneficiosExistentes = await _dbContext.Beneficios.AnyAsync();
+            List<Beneficio> beneficios;
+            
+            if (!beneficiosExistentes)
+            {
+                _logger.LogInformation("No hay beneficios. Creando beneficios...");
+                beneficios = await SeedBeneficiosAsync();
+            }
+            else
+            {
+                _logger.LogInformation("Beneficios ya existen. Obteniendo beneficios existentes...");
+                beneficios = await _dbContext.Beneficios.ToListAsync();
+            }
+
+            // Crear relaciones Usuario-Espacio si no existen
+            var relacionesUsuarioEspacio = await _dbContext.UsuariosEspacios.AnyAsync();
+            if (!relacionesUsuarioEspacio && espacios.Any())
+            {
+                _logger.LogInformation("Creando relaciones Usuario-Espacio...");
+                await SeedUsuarioEspaciosAsync(usuarios, espacios);
+            }
+            else
+            {
+                _logger.LogInformation("Relaciones Usuario-Espacio ya existen.");
+            }
+
+            // Crear relaciones Beneficio-Usuario si no existen
+            var relacionesBeneficioUsuario = await _dbContext.BeneficiosUsuarios.AnyAsync();
+            if (!relacionesBeneficioUsuario && beneficios.Any())
+            {
+                _logger.LogInformation("Creando relaciones Beneficio-Usuario...");
+                await SeedBeneficioUsuariosAsync(usuarios, beneficios);
+            }
+            else
+            {
+                _logger.LogInformation("Relaciones Beneficio-Usuario ya existen.");
+            }
+
+            // Crear reglas de acceso si no existen
+            var reglasExistentes = await _dbContext.ReglasAcceso.AnyAsync();
+            if (!reglasExistentes && espacios.Any())
+            {
+                _logger.LogInformation("Creando reglas de acceso...");
+                await SeedReglasAccesoAsync(espacios);
+            }
+            else
+            {
+                _logger.LogInformation("Reglas de acceso ya existen.");
+            }
+
+            // Crear eventos si no existen
+            var eventosExistentes = await _dbContext.Eventos.AnyAsync();
+            List<Evento> eventos;
+            
+            if (!eventosExistentes)
+            {
+                _logger.LogInformation("No hay eventos. Creando eventos...");
+                eventos = await SeedEventosAsync();
+            }
+            else
+            {
+                _logger.LogInformation("Eventos ya existen.");
+                eventos = await _dbContext.Eventos.ToListAsync();
+            }
+
+            // Crear eventos de acceso si no existen
+            var eventosAccesoExistentes = await _dbContext.EventosAcceso.AnyAsync();
+            if (!eventosAccesoExistentes && usuarios.Any() && espacios.Any())
+            {
+                _logger.LogInformation("Creando eventos de acceso...");
+                await SeedEventosAccesoAsync(usuarios, espacios);
+            }
+            else
+            {
+                _logger.LogInformation("Eventos de acceso ya existen.");
+            }
+
+            // Crear anuncios si no existen
+            var anunciosExistentes = await _dbContext.Anuncios.AnyAsync();
+            if (!anunciosExistentes)
+            {
+                _logger.LogInformation("No hay anuncios. Creando anuncios...");
+                await SeedAnunciosAsync();
+            }
+            else
+            {
+                _logger.LogInformation("Anuncios ya existen.");
+            }
+
+            _logger.LogInformation("✓ Seeding de recursos completado exitosamente");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error durante el seeding de recursos");
+            throw;
+        }
     }
 }
 
