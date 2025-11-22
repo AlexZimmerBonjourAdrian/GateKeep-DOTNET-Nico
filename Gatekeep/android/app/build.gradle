@@ -11,8 +11,8 @@ android {
         versionCode 1
         versionName "1"
 
-        resValue "string", "launchUrl", "https://fe272d47d0f6.ngrok-free.app/"
-        resValue "string", "hostName", "fe272d47d0f6.ngrok-free.app"
+        resValue "string", "launchUrl", "https://zimmzimmgames.com/"
+        resValue "string", "hostName", "zimmzimmgames.com"
 
         resValue "string", "appName", "GateKeep"
         resValue "string", "launcherName", "GateKeep"
