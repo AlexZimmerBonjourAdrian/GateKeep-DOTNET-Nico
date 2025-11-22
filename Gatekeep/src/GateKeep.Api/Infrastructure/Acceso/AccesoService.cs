@@ -7,7 +7,6 @@ using GateKeep.Api.Domain.Entities;
 using GateKeep.Api.Domain.Enums;
 using GateKeep.Api.Infrastructure.Persistence;
 using GateKeep.Api.Infrastructure.Observability;
-using GateKeep.Api.Infrastructure.Messaging;
 using Microsoft.EntityFrameworkCore;
 
 namespace GateKeep.Api.Infrastructure.Acceso;
@@ -20,7 +19,6 @@ public class AccesoService : IAccesoService
     private readonly GateKeepDbContext _context;
     private readonly IEventoHistoricoService? _eventoHistoricoService;
     private readonly IEventPublisher? _eventPublisher;
-    private readonly IEventBusPublisher? _eventBusPublisher;
     private readonly IObservabilityService _observabilityService;
     private readonly ILogger<AccesoService> _logger;
 
@@ -32,8 +30,7 @@ public class AccesoService : IAccesoService
         IObservabilityService observabilityService,
         ILogger<AccesoService> logger,
         IEventoHistoricoService? eventoHistoricoService = null,
-        IEventPublisher? eventPublisher = null,
-        IEventBusPublisher? eventBusPublisher = null)
+        IEventPublisher? eventPublisher = null)
     {
         _reglaAccesoRepository = reglaAccesoRepository;
         _usuarioRepository = usuarioRepository;
@@ -43,7 +40,6 @@ public class AccesoService : IAccesoService
         _logger = logger;
         _eventoHistoricoService = eventoHistoricoService;
         _eventPublisher = eventPublisher;
-        _eventBusPublisher = eventBusPublisher;
     }
 
     public async Task<ResultadoValidacionAcceso> ValidarAccesoAsync(
@@ -294,39 +290,6 @@ public class AccesoService : IAccesoService
             catch
             {
                 // Log error pero no romper el flujo principal
-            }
-        }
-
-        // Publicar evento a RabbitMQ para procesamiento asíncrono
-        if (_eventBusPublisher != null)
-        {
-            try
-            {
-                var detalles = new Dictionary<string, object>
-                {
-                    { "EspacioId", espacioId },
-                    { "UsuarioId", usuarioId },
-                    { "Timestamp", fecha }
-                };
-
-                await _eventBusPublisher.PublishAccesoRechazadoAsync(
-                    usuarioId,
-                    espacioId,
-                    razon,
-                    puntoControl,
-                    "AccesoRechazado",
-                    detalles);
-
-                _logger.LogInformation(
-                    "Evento AccesoRechazado publicado a RabbitMQ - Usuario: {UsuarioId}, Espacio: {EspacioId}",
-                    usuarioId, espacioId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, 
-                    "Error publicando evento AccesoRechazado a RabbitMQ - Usuario: {UsuarioId}, Espacio: {EspacioId}",
-                    usuarioId, espacioId);
-                // No re-lanzar, el rechazo ya fue registrado en BD
             }
         }
     }
