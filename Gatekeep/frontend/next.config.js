@@ -22,6 +22,9 @@ const withPWA = withPWAInit({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+
+    distDir: 'out',  
+
     images: {
         domains: [],
     },
@@ -36,6 +39,8 @@ const nextConfig = {
     // Deshabilitar generación estática de páginas de error
     // generateStaticParams: false, // Eliminado: opción inválida en next.config.js
     webpack(config, { dir, isServer }) {
+
+        // carpeta de salida (puede ser otra)
         // Configurar alias @/ para apuntar a src/
         config.resolve.alias = {
             ...config.resolve.alias,
