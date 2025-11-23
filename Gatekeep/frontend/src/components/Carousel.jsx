@@ -25,12 +25,18 @@ const Carousel = ({ items, route }) => {
     if (path) router.push(path);
   };
   
-  // Lógica adaptable:
-  // - Si hay <= 8 items: mostrar 3 + "Ver más"
-  // - Si hay > 8 items: mostrar 4 por página, excepto la última que será 3 + "Ver más"
-  const totalItems = items.length;
+
+  // Ordenar los items por fecha descendente (más reciente primero)
+  const sortedItems = [...items].sort((a, b) => {
+    // Buscar el campo de fecha más relevante
+    const fechaA = new Date(a.fecha || a.Fecha || a.date || a.FechaDeVencimiento || a.fechaDeVencimiento || 0);
+    const fechaB = new Date(b.fecha || b.Fecha || b.date || b.FechaDeVencimiento || b.fechaDeVencimiento || 0);
+    return fechaB - fechaA;
+  });
+
+  const totalItems = sortedItems.length;
   const isSmallCollection = totalItems <= 8;
-  
+
   // Determinar cuántos items mostrar en la página actual
   let itemsPerPage;
   let itemsRemaining = totalItems - currentIndex;
@@ -48,8 +54,8 @@ const Carousel = ({ items, route }) => {
   }
   
   // Calcular cuántos items realmente mostrar (sin contar "Ver más")
-  const visibleItems = items.slice(currentIndex, currentIndex + itemsPerPage);
-  
+  const visibleItems = sortedItems.slice(currentIndex, currentIndex + itemsPerPage);
+
   // Calcular si hay más items después de los visibles
   const hasMoreItems = (currentIndex + itemsPerPage) < totalItems;
   
