@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react';
 import { SyncProvider } from '@/lib/SyncProvider';
-import InstallPWA from '@/components/InstallPWA';
 
 function PWARegister() {
   useEffect(() => {
@@ -76,7 +75,6 @@ export default function Providers({ children }) {
     <SyncProvider>
       {children}
       <PWARegister />
-      <InstallPWA />
     </SyncProvider>
   );
 }
