@@ -165,6 +165,43 @@ export class UsuarioService {
     const blob = await this.getAuthQrBlob(params);
     return URL.createObjectURL(blob);
   }
+
+  /**
+   * Obtiene todos los usuarios (solo para administradores).
+   */
+  static getUsuarios() {
+    return api.get(USUARIOS_URL);
+  }
+
+  /**
+   * Crea un nuevo usuario (solo para administradores).
+   */
+  static createUsuario(payload: {
+    email: string;
+    password: string;
+    nombre: string;
+    apellido: string;
+    telefono?: string | null;
+    rol: string;
+  }) {
+    // Transformar el payload al formato esperado por el backend
+    const backendPayload = {
+      email: payload.email,
+      contrasenia: payload.password,
+      nombre: payload.nombre,
+      apellido: payload.apellido,
+      telefono: payload.telefono,
+      rol: payload.rol
+    };
+    return api.post(USUARIOS_URL, backendPayload);
+  }
+
+  /**
+   * Elimina un usuario (solo para administradores).
+   */
+  static deleteUsuario(id: number) {
+    return api.delete(USUARIOS_URL + id);
+  }
 }
 
 export default UsuarioService;

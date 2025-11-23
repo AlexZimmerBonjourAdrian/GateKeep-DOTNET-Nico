@@ -7,6 +7,7 @@ import { EdificioService } from '../../../services/EdificioService'
 import { ReglaAccesoService } from '../../../services/ReglaAccesoService'
 import { SecurityService } from '../../../services/securityService'
 import { AccesoService } from '../../../services/AccesoService'
+import TokenUtils from '../../../utils/tokenUtils'
 
 export default function EdificioDetalle() {
   const params = useParams()
@@ -132,44 +133,59 @@ export default function EdificioDetalle() {
   const validateAccess = async (token) => {
     try {
       setValidationError(null)
-      
-      // Extraer el userId del token (decodificación simple del JWT)
-      const tokenParts = token.split('.')
-      if (tokenParts.length !== 3) {
-        setValidationError('QR inválido')
-        return
-      }
-      
-      const payload = JSON.parse(atob(tokenParts[1]))
-      const usuarioId = parseInt(payload.nameid || payload.sub || payload.nameidentifier || payload.Id || payload.id)
-      
-      if (!usuarioId || isNaN(usuarioId)) {
+      console.log('[QR] validateAccess: token recibido', token)
+      // Extraer el userId del token usando TokenUtils
+      const decoded = TokenUtils.decodeToken(token)
+      console.log('[QR] validateAccess: token decodificado', decoded)
+      const usuarioId =
+        decoded?.sub ||
+        decoded?.userId ||
+        decoded?.nameid ||
+        decoded?.id ||
+        decoded?.Id ||
+        decoded?.["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"]
+      console.log('[QR] validateAccess: usuarioId extraído', usuarioId)
+      if (!usuarioId) {
         setValidationError('No se pudo obtener el ID de usuario del QR')
+        console.warn('[QR] validateAccess: No se pudo extraer el ID de usuario del token')
         return
       }
-
       // Obtener el punto de control del edificio (usamos el código o nombre del edificio)
       const puntoControl = edificio.CodigoEdificio || edificio.codigoEdificio || edificio.Nombre || edificio.nombre || `Edificio-${id}`
-      
+      console.log('[QR] validateAccess: puntoControl', puntoControl)
       // Validar acceso
-      const response = await AccesoService.validarAcceso({
-        usuarioId: usuarioId,
+      console.log('[QR] validateAccess: Enviando POST a AccesoService.validarAcceso', {
+        usuarioId,
         espacioId: id,
-        puntoControl: puntoControl
+        puntoControl
       })
-      
-      if (response.data.permitido) {
+      let response = null
+      try {
+        response = await AccesoService.validarAcceso({
+          usuarioId: usuarioId,
+          espacioId: id,
+          puntoControl: puntoControl
+        })
+        console.log('[QR] validateAccess: respuesta del backend', response)
+      } catch (err) {
+        console.error('[QR] validateAccess: error en AccesoService.validarAcceso', err)
+        setValidationError('Error de red o CORS al validar acceso')
+        return
+      }
+      if (response?.data?.permitido) {
         setValidationResult({
           permitido: true,
           mensaje: 'Acceso Permitido',
           usuarioId: usuarioId,
           fecha: response.data.fecha
         })
+        console.info('[QR] validateAccess: Acceso permitido', response.data)
       } else {
-        setValidationError(response.data.razon || 'Acceso denegado')
+        setValidationError(response?.data?.razon || 'Acceso denegado')
+        console.warn('[QR] validateAccess: Acceso denegado', response?.data)
       }
     } catch (err) {
-      console.error('Error validando acceso:', err)
+      console.error('[QR] Error validando acceso:', err)
       const errorMsg = err.response?.data?.mensaje || err.response?.data?.Mensaje || 'Error al validar el acceso'
       setValidationError(errorMsg)
     }
@@ -271,9 +287,9 @@ export default function EdificioDetalle() {
                         <i className="pi pi-clock" style={{color: '#231F20', marginRight: '6px'}}></i>
                         <span className="regla-label">Horario:</span>
                         <span className="regla-value">
-                          {new Date(reglaAcceso.HorarioApertura || reglaAcceso.horarioApertura).toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'})}
+                          {new Date(reglaAcceso.HorarioApertura || reglaAcceso.horarioApertura).toISOString().slice(11,16)}
                           {' - '}
-                          {new Date(reglaAcceso.HorarioCierre || reglaAcceso.horarioCierre).toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'})}
+                          {new Date(reglaAcceso.HorarioCierre || reglaAcceso.horarioCierre).toISOString().slice(11,16)}
                         </span>
                       </div>
                       
@@ -316,71 +332,61 @@ export default function EdificioDetalle() {
                     Validar Acceso
                   </h2>
                 </header>
-
                 <div className="scanner-content">
-                  {!isScanning && !scanResult && !cameraError && (
-                    <div className="scanner-idle">
-                      <p className="hint">
-                        <i className="pi pi-info-circle" style={{marginRight: '6px'}}></i>
-                        Escanea el código QR del usuario para validar su acceso a este edificio.
-                      </p>
-                      <button className="btn-start-scan" onClick={startScanner}>
-                        <i className="pi pi-camera" style={{marginRight: '8px'}}></i>
-                        Iniciar Escáner
-                      </button>
-                    </div>
-                  )}
-
-                  {isScanning && (
-                    <div className="scanner-active">
-                      <div id="qr-reader" style={{ width: '100%', border: 'none' }}></div>
-                      <p className="scan-instruction">📷 Apunta la cámara al código QR del usuario</p>
-                    </div>
-                  )}
-
-                  {cameraError && (
-                    <div className="result-box error-box">
-                      <div className="result-icon error-icon">✗</div>
-                      <h3>Error de Cámara</h3>
-                      <p>{cameraError}</p>
-                      <button className="btn-retry" onClick={startScanner}>
-                        Reintentar
-                      </button>
-                    </div>
-                  )}
-
-                  {validationResult && validationResult.permitido && (
-                    <div className="result-box success-box">
-                      <div className="result-icon success-icon">✓</div>
-                      <h3>Acceso Permitido</h3>
-                      <p className="result-message">El usuario tiene acceso autorizado a este edificio.</p>
-                      <div className="result-details">
-                        <div className="detail-item">
-                          <span className="detail-label">Usuario ID:</span>
-                          <span className="detail-value">{validationResult.usuarioId}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="detail-label">Fecha:</span>
-                          <span className="detail-value">{new Date(validationResult.fecha).toLocaleString('es-ES')}</span>
-                        </div>
-                      </div>
-                      <button className="btn-scan-again" onClick={resetScanner}>
-                        Escanear Otro QR
-                      </button>
-                    </div>
-                  )}
-
-                  {validationError && (
-                    <div className="result-box error-box">
-                      <div className="result-icon error-icon">✗</div>
-                      <h3>Acceso Denegado</h3>
-                      <p className="result-message">{validationError}</p>
-                      <button className="btn-scan-again" onClick={resetScanner}>
-                        Escanear Otro QR
-                      </button>
-                    </div>
-                  )}
+                  <button className="btn-start-scan" onClick={() => setShowScanner(true)}>
+                    <i className="pi pi-camera" style={{marginRight: '8px'}}></i>
+                    Escanear QR
+                  </button>
                 </div>
+                {showScanner && (
+                  <div className="modal-overlay">
+                    <div className="modal-content">
+                      <button className="modal-close" onClick={async () => { setShowScanner(false); setIsScanning(false); setScanResult(null); setValidationResult(null); setValidationError(null); setCameraError(null); if (html5QrCodeRef.current) { await html5QrCodeRef.current.stop(); } }}>×</button>
+                      <h3>Escanear QR de Usuario</h3>
+                      <div id="qr-reader" style={{ width: '100%', minHeight: '260px', border: 'none', marginBottom: 12 }}></div>
+                      {!isScanning && !scanResult && !cameraError && (
+                        <button className="btn-start-scan" onClick={startScanner} style={{marginTop:8}}>Iniciar Escáner</button>
+                      )}
+                      {isScanning && (
+                        <p className="scan-instruction">📷 Apunta la cámara al código QR del usuario</p>
+                      )}
+                      {cameraError && (
+                        <div className="result-box error-box">
+                          <div className="result-icon error-icon">✗</div>
+                          <h3>Error de Cámara</h3>
+                          <p>{cameraError}</p>
+                          <button className="btn-retry" onClick={startScanner}>Reintentar</button>
+                        </div>
+                      )}
+                      {validationResult && validationResult.permitido && (
+                        <div className="result-box success-box">
+                          <div className="result-icon success-icon">✓</div>
+                          <h3>Acceso Permitido</h3>
+                          <p className="result-message">El usuario tiene acceso autorizado a este edificio.</p>
+                          <div className="result-details">
+                            <div className="detail-item">
+                              <span className="detail-label">Usuario ID:</span>
+                              <span className="detail-value">{validationResult.usuarioId}</span>
+                            </div>
+                            <div className="detail-item">
+                              <span className="detail-label">Fecha:</span>
+                              <span className="detail-value">{new Date(validationResult.fecha).toLocaleString('es-ES')}</span>
+                            </div>
+                          </div>
+                          <button className="btn-scan-again" onClick={resetScanner}>Escanear Otro QR</button>
+                        </div>
+                      )}
+                      {validationError && (
+                        <div className="result-box error-box">
+                          <div className="result-icon error-icon">✗</div>
+                          <h3>Acceso Denegado</h3>
+                          <p className="result-message">{validationError}</p>
+                          <button className="btn-scan-again" onClick={resetScanner}>Escanear Otro QR</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </article>
             )}
           </div>

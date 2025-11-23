@@ -67,21 +67,14 @@ public static class AnuncioEndpoints
             ClaimsPrincipal user,
             IAnuncioService service) =>
         {
-            var userId = long.Parse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            var userRole = user.FindFirst(ClaimTypes.Role)?.Value;
-            
-            var anuncio = await service.ObtenerPorIdAsync(id);
-            if (anuncio == null)
-                return Results.NotFound();
-            
             try
             {
                 var anuncioActualizado = await service.ActualizarAsync(id, request);
                 return Results.Ok(anuncioActualizado);
             }
-            catch (InvalidOperationException)
+            catch (InvalidOperationException ex)
             {
-                return Results.NotFound();
+                return Results.NotFound(new { error = ex.Message });
             }
             catch (Exception ex)
             {
@@ -97,22 +90,22 @@ public static class AnuncioEndpoints
         .Produces(401)
         .Produces(403);
 
-        // DELETE /api/anuncios/{id} - Solo administradores pueden eliminar anuncios
+        // DELETE /api/anuncios/{id} - Solo administradores pueden eliminar anuncios (soft delete)
         group.MapDelete("/{id:long}", async (long id, IAnuncioService service) =>
         {
             try
             {
                 await service.EliminarAsync(id);
-                return Results.Ok(new { message = $"Anuncio {id} eliminado correctamente" });
+                return Results.Ok(new { message = $"Anuncio {id} desactivado correctamente" });
             }
             catch (Exception ex)
             {
-                return Results.BadRequest(new { error = $"Error al eliminar el anuncio: {ex.Message}" });
+                return Results.BadRequest(new { error = $"Error al desactivar el anuncio: {ex.Message}" });
             }
         })
         .RequireAuthorization("AdminOnly")
         .WithName("DeleteAnuncio")
-        .WithSummary("Eliminar anuncio")
+        .WithSummary("Desactivar anuncio (soft delete)")
         .Produces<string>(200)
         .Produces(404)
         .Produces(401)

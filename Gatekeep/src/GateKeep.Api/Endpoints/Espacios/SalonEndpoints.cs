@@ -154,7 +154,7 @@ public static class SalonEndpoints
             
             return Results.Ok(new
             {
-                message = $"Salón {id} marcado como eliminado (borrado lógico)",
+                message = $"Salón {id} desactivado correctamente",
                 id = salon.Id,
                 nombre = salon.Nombre
             });

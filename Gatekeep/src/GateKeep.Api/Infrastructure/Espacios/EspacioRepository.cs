@@ -133,11 +133,22 @@ public sealed class EspacioRepository : IEspacioRepository
 
     public async Task<bool> EliminarAsync(long id)
     {
-        // TPT: Buscar y eliminar usando Set<Espacio>()
+        // TPT: Buscar y marcar como inactivo (soft delete)
         var espacio = await _context.Set<Espacio>().FindAsync(id);
         if (espacio is not null)
         {
-            _context.Set<Espacio>().Remove(espacio);
+            // Cascade manual: desactivar todas las reglas de acceso asociadas
+            var reglasAsociadas = await _context.ReglasAcceso
+                .Where(r => r.EspacioId == id && r.Activo)
+                .ToListAsync();
+            
+            foreach (var regla in reglasAsociadas)
+            {
+                _context.Entry(regla).Property(r => r.Activo).CurrentValue = false;
+            }
+            
+            // Soft delete del espacio
+            _context.Entry(espacio).Property(e => e.Activo).CurrentValue = false;
             await _context.SaveChangesAsync();
             return true;
         }
