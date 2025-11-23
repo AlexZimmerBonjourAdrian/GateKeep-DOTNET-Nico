@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useParams } from 'next/navigation'
@@ -10,12 +11,17 @@ import { SecurityService } from '../../../../services/securityService'
 import { ReglaAccesoService } from '../../../../services/ReglaAccesoService'
 
 export default function editarReglaAcceso() {
+  const router = useRouter();
 
   const pathname = usePathname();
   const params = useParams();
   SecurityService.checkAuthAndRedirect(pathname);
 
   const reglaId = params.id;
+  // Debug: Verificar el id recibido
+  useEffect(() => {
+    console.log('ID de regla recibido:', reglaId);
+  }, [reglaId]);
 
   // Estados
   const [horarioApertura, setHorarioApertura] = useState('');
@@ -40,19 +46,27 @@ export default function editarReglaAcceso() {
       try {
         const response = await ReglaAccesoService.getReglaAccesoById(Number(reglaId));
         const regla = response.data;
-        setHorarioApertura(regla.HorarioApertura || '');
-        setHorarioCierre(regla.HorarioCierre || '');
-        setVigenciaApertura(regla.VigenciaApertura ? regla.VigenciaApertura.slice(0, 10) : '');
-        setVigenciaCierre(regla.VigenciaCierre ? regla.VigenciaCierre.slice(0, 10) : '');
-        setEspacioId(regla.EspacioId ? String(regla.EspacioId) : '');
-        // rolesPermitidos es un array de strings
+        console.log('Objeto recibido de la API para precarga:', regla);
+        if (!regla) {
+          setError('No se encontró la regla de acceso.');
+          return;
+        }
+        // Mapeo robusto: soporta mayúsculas/minúsculas y variantes
+        setHorarioApertura(regla.HorarioApertura || regla.horarioApertura || '');
+        setHorarioCierre(regla.HorarioCierre || regla.horarioCierre || '');
+        setVigenciaApertura((regla.VigenciaApertura || regla.vigenciaApertura || '').slice(0, 10));
+        setVigenciaCierre((regla.VigenciaCierre || regla.vigenciaCierre || '').slice(0, 10));
+        setEspacioId(String(regla.EspacioId || regla.espacioId || ''));
+        // rolesPermitidos puede venir en mayúscula o minúscula
+        const roles = regla.RolesPermitidos || regla.rolesPermitidos || [];
         setRolesPermitidos({
-          Estudiante: Array.isArray(regla.RolesPermitidos) && regla.RolesPermitidos.includes('Estudiante'),
-          Funcionario: Array.isArray(regla.RolesPermitidos) && regla.RolesPermitidos.includes('Funcionario'),
-          Admin: Array.isArray(regla.RolesPermitidos) && regla.RolesPermitidos.includes('Admin'),
+          Estudiante: Array.isArray(roles) && roles.includes('Estudiante'),
+          Funcionario: Array.isArray(roles) && roles.includes('Funcionario'),
+          Admin: Array.isArray(roles) && roles.includes('Admin'),
         });
       } catch (e) {
-        setError('No se pudo cargar la regla de acceso');
+        setError('No se pudo cargar la regla de acceso: ' + (e?.response?.data?.error || e?.message || 'Error desconocido'));
+        console.error('Error al cargar la regla de acceso:', e);
       } finally {
         setLoading(false);
       }
@@ -99,6 +113,10 @@ export default function editarReglaAcceso() {
       console.log('Payload enviado a actualizarReglaAcceso:', payload);
       await ReglaAccesoService.actualizarReglaAcceso(Number(reglaId), payload);
       setSuccess(true);
+      // Redirigir al listado después de un breve delay
+      setTimeout(() => {
+        router.push('/reglas-acceso/listadoReglasAcceso');
+      }, 1200);
     } catch (e) {
       setError(e?.response?.data?.error || e?.response?.data?.message || 'Error al actualizar la regla');
     } finally {
@@ -117,7 +135,10 @@ export default function editarReglaAcceso() {
           <Link href="/">
             <Image src={logo} alt="Logo GateKeep" width={160} priority className="logo-image" />
           </Link>
-        </div>      
+        </div>
+        {/* Mostrar loading o error arriba */}
+        {loading && <div style={{ color: '#fff', background:'#333', borderRadius:8, padding:'6px 12px', margin:'10px 0', fontSize:'0.9rem' }}>Cargando datos de la regla...</div>}
+        {error && <div style={{ color: '#fff', background:'#a00', borderRadius:8, padding:'6px 12px', margin:'10px 0', fontSize:'0.9rem' }}>{error}</div>}
       </div>
             
       <div className="header-middle-bar">
