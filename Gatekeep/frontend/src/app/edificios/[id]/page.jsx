@@ -1,11 +1,12 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useParams, usePathname, useRouter } from 'next/navigation'
 import Header from '../../../components/Header'
 import { EdificioService } from '../../../services/EdificioService'
 import { ReglaAccesoService } from '../../../services/ReglaAccesoService'
 import { SecurityService } from '../../../services/securityService'
+import { AccesoService } from '../../../services/AccesoService'
 
 export default function EdificioDetalle() {
   const params = useParams()
@@ -19,6 +20,15 @@ export default function EdificioDetalle() {
   const [loading, setLoading] = useState(true)
   const [loadingRegla, setLoadingRegla] = useState(false)
   const [error, setError] = useState(null)
+
+  // Estados para el escáner QR
+  const [showScanner, setShowScanner] = useState(false)
+  const [isScanning, setIsScanning] = useState(false)
+  const [scanResult, setScanResult] = useState(null)
+  const [validationResult, setValidationResult] = useState(null)
+  const [validationError, setValidationError] = useState(null)
+  const [cameraError, setCameraError] = useState(null)
+  const html5QrCodeRef = useRef(null)
 
   useEffect(() => {
     SecurityService.checkAuthAndRedirect(pathname)
@@ -57,6 +67,133 @@ export default function EdificioDetalle() {
     }
     fetchEdificio()
   }, [id])
+
+  // Función para iniciar el escáner
+  const startScanner = async () => {
+    if (typeof window === 'undefined') return
+    
+    try {
+      const { Html5Qrcode } = await import('html5-qrcode')
+      
+      if (html5QrCodeRef.current) {
+        await html5QrCodeRef.current.stop()
+      }
+      
+      const html5QrCode = new Html5Qrcode("qr-reader")
+      html5QrCodeRef.current = html5QrCode
+      
+      const config = { 
+        fps: 10,
+        qrbox: function(viewfinderWidth, viewfinderHeight) {
+          let minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+          let qrboxSize = Math.floor(minEdge * 0.7);
+          return {
+            width: qrboxSize,
+            height: qrboxSize
+          };
+        },
+        aspectRatio: 1.0
+      }
+      
+      await html5QrCode.start(
+        { facingMode: "environment" },
+        config,
+        async (decodedText) => {
+          console.log('QR detectado:', decodedText)
+          
+          if (html5QrCodeRef.current) {
+            await html5QrCodeRef.current.stop()
+          }
+          
+          setIsScanning(false)
+          setScanResult(decodedText)
+          await validateAccess(decodedText)
+        },
+        () => {}
+      )
+      
+      setIsScanning(true)
+      setCameraError(null)
+      setValidationResult(null)
+      setValidationError(null)
+    } catch (err) {
+      console.error('Error inicializando escáner:', err)
+      if (err.name === 'NotAllowedError') {
+        setCameraError('Permisos de cámara denegados. Por favor, permite el acceso a la cámara.')
+      } else if (err.name === 'NotFoundError') {
+        setCameraError('No se encontró ninguna cámara en el dispositivo.')
+      } else {
+        setCameraError('Error al inicializar la cámara: ' + err.message)
+      }
+    }
+  }
+
+  // Función para validar el acceso del usuario
+  const validateAccess = async (token) => {
+    try {
+      setValidationError(null)
+      
+      // Extraer el userId del token (decodificación simple del JWT)
+      const tokenParts = token.split('.')
+      if (tokenParts.length !== 3) {
+        setValidationError('QR inválido')
+        return
+      }
+      
+      const payload = JSON.parse(atob(tokenParts[1]))
+      const usuarioId = parseInt(payload.nameid || payload.sub || payload.nameidentifier || payload.Id || payload.id)
+      
+      if (!usuarioId || isNaN(usuarioId)) {
+        setValidationError('No se pudo obtener el ID de usuario del QR')
+        return
+      }
+
+      // Obtener el punto de control del edificio (usamos el código o nombre del edificio)
+      const puntoControl = edificio.CodigoEdificio || edificio.codigoEdificio || edificio.Nombre || edificio.nombre || `Edificio-${id}`
+      
+      // Validar acceso
+      const response = await AccesoService.validarAcceso({
+        usuarioId: usuarioId,
+        espacioId: id,
+        puntoControl: puntoControl
+      })
+      
+      if (response.data.permitido) {
+        setValidationResult({
+          permitido: true,
+          mensaje: 'Acceso Permitido',
+          usuarioId: usuarioId,
+          fecha: response.data.fecha
+        })
+      } else {
+        setValidationError(response.data.razon || 'Acceso denegado')
+      }
+    } catch (err) {
+      console.error('Error validando acceso:', err)
+      const errorMsg = err.response?.data?.mensaje || err.response?.data?.Mensaje || 'Error al validar el acceso'
+      setValidationError(errorMsg)
+    }
+  }
+
+  // Función para reiniciar el escáner
+  const resetScanner = () => {
+    setScanResult(null)
+    setValidationResult(null)
+    setValidationError(null)
+    setCameraError(null)
+    startScanner()
+  }
+
+  // Limpiar escáner al desmontar
+  useEffect(() => {
+    return () => {
+      if (html5QrCodeRef.current) {
+        html5QrCodeRef.current.stop().catch(err => {
+          console.error('Error al detener escáner:', err)
+        })
+      }
+    }
+  }, [])
 
   return (
     <div className="page-root">
@@ -167,6 +304,83 @@ export default function EdificioDetalle() {
                     No hay regla de acceso configurada para este edificio.
                   </p>
                 )}
+              </article>
+            )}
+
+            {/* Escáner QR para validar acceso */}
+            {!loading && edificio && reglaAcceso && (
+              <article className="card scanner-card">
+                <header className="card-header">
+                  <h2 className="subtitle">
+                    <i className="pi pi-qrcode" style={{marginRight: '8px'}}></i>
+                    Validar Acceso
+                  </h2>
+                </header>
+
+                <div className="scanner-content">
+                  {!isScanning && !scanResult && !cameraError && (
+                    <div className="scanner-idle">
+                      <p className="hint">
+                        <i className="pi pi-info-circle" style={{marginRight: '6px'}}></i>
+                        Escanea el código QR del usuario para validar su acceso a este edificio.
+                      </p>
+                      <button className="btn-start-scan" onClick={startScanner}>
+                        <i className="pi pi-camera" style={{marginRight: '8px'}}></i>
+                        Iniciar Escáner
+                      </button>
+                    </div>
+                  )}
+
+                  {isScanning && (
+                    <div className="scanner-active">
+                      <div id="qr-reader" style={{ width: '100%', border: 'none' }}></div>
+                      <p className="scan-instruction">📷 Apunta la cámara al código QR del usuario</p>
+                    </div>
+                  )}
+
+                  {cameraError && (
+                    <div className="result-box error-box">
+                      <div className="result-icon error-icon">✗</div>
+                      <h3>Error de Cámara</h3>
+                      <p>{cameraError}</p>
+                      <button className="btn-retry" onClick={startScanner}>
+                        Reintentar
+                      </button>
+                    </div>
+                  )}
+
+                  {validationResult && validationResult.permitido && (
+                    <div className="result-box success-box">
+                      <div className="result-icon success-icon">✓</div>
+                      <h3>Acceso Permitido</h3>
+                      <p className="result-message">El usuario tiene acceso autorizado a este edificio.</p>
+                      <div className="result-details">
+                        <div className="detail-item">
+                          <span className="detail-label">Usuario ID:</span>
+                          <span className="detail-value">{validationResult.usuarioId}</span>
+                        </div>
+                        <div className="detail-item">
+                          <span className="detail-label">Fecha:</span>
+                          <span className="detail-value">{new Date(validationResult.fecha).toLocaleString('es-ES')}</span>
+                        </div>
+                      </div>
+                      <button className="btn-scan-again" onClick={resetScanner}>
+                        Escanear Otro QR
+                      </button>
+                    </div>
+                  )}
+
+                  {validationError && (
+                    <div className="result-box error-box">
+                      <div className="result-icon error-icon">✗</div>
+                      <h3>Acceso Denegado</h3>
+                      <p className="result-message">{validationError}</p>
+                      <button className="btn-scan-again" onClick={resetScanner}>
+                        Escanear Otro QR
+                      </button>
+                    </div>
+                  )}
+                </div>
               </article>
             )}
           </div>
@@ -348,6 +562,170 @@ export default function EdificioDetalle() {
 
         /* Error state */
         .card.error { background: #fee2e2; color: #991b1b; border: 2px solid rgba(153,27,27,0.3); }
+
+        /* Escáner QR */
+        .scanner-card {
+          margin-top: 16px;
+          background: linear-gradient(135deg, rgba(243,116,38,0.95) 0%, rgba(243,116,38,0.85) 100%);
+        }
+
+        .scanner-content {
+          margin-top: 12px;
+        }
+
+        .scanner-idle {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .btn-start-scan {
+          background: rgba(255,255,255,0.9);
+          color: #F37426;
+          border: 2px solid rgba(35,31,32,0.15);
+          border-radius: 12px;
+          padding: 12px 24px;
+          font-size: 1rem;
+          font-weight: 700;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          transition: all 0.2s ease;
+        }
+
+        .btn-start-scan:hover {
+          background: white;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn-start-scan:active {
+          transform: translateY(0);
+        }
+
+        .scanner-active {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .scan-instruction {
+          text-align: center;
+          font-size: 0.9rem;
+          font-weight: 600;
+          margin: 0;
+          padding: 8px;
+          background: rgba(255,255,255,0.9);
+          border-radius: 8px;
+          color: #231F20;
+        }
+
+        .result-box {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
+          padding: 16px;
+          border-radius: 12px;
+          text-align: center;
+        }
+
+        .success-box {
+          background: rgba(209,250,229,0.95);
+          border: 2px solid rgba(6,95,70,0.3);
+        }
+
+        .error-box {
+          background: rgba(254,226,226,0.95);
+          border: 2px solid rgba(153,27,27,0.3);
+        }
+
+        .result-icon {
+          width: 60px;
+          height: 60px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 2rem;
+          font-weight: 800;
+        }
+
+        .success-icon {
+          background: #065f46;
+          color: white;
+        }
+
+        .error-icon {
+          background: #991b1b;
+          color: white;
+        }
+
+        .result-box h3 {
+          margin: 0;
+          font-size: 1.2rem;
+          color: #231F20;
+        }
+
+        .result-message {
+          margin: 0;
+          font-size: 0.9rem;
+          color: rgba(35,31,32,0.9);
+        }
+
+        .result-details {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          width: 100%;
+          padding: 12px;
+          background: rgba(255,255,255,0.5);
+          border-radius: 8px;
+        }
+
+        .detail-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .detail-label {
+          font-weight: 700;
+          font-size: 0.85rem;
+          color: rgba(35,31,32,0.8);
+        }
+
+        .detail-value {
+          font-weight: 600;
+          font-size: 0.9rem;
+          color: #231F20;
+        }
+
+        .btn-scan-again,
+        .btn-retry {
+          background: #F37426;
+          color: white;
+          border: 2px solid rgba(35,31,32,0.15);
+          border-radius: 12px;
+          padding: 10px 20px;
+          font-size: 0.95rem;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .btn-scan-again:hover,
+        .btn-retry:hover {
+          background: #ff8d45;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn-scan-again:active,
+        .btn-retry:active {
+          transform: translateY(0);
+        }
 
         @media (max-width: 768px) {
           .hero { padding: 16px; min-height: 60vh; }

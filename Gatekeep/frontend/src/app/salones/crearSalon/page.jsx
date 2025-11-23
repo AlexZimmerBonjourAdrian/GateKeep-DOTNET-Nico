@@ -57,7 +57,6 @@ export default function CrearSalonPage() {
 	const [capacidad, setCapacidad] = useState('');
 	const [numeroSalon, setNumeroSalon] = useState('');
 	const [edificioId, setEdificioId] = useState('');
-	const [activo, setActivo] = useState(true);
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState(null);
 	const [success, setSuccess] = useState(false);
@@ -81,7 +80,7 @@ export default function CrearSalonPage() {
 			capacidad: Number(capacidad),
 			numeroSalon: Number(numeroSalon),
 			edificioId: Number(edificioId),
-			activo
+			activo: true
 		};
 		setSubmitting(true);
 		try {
@@ -168,22 +167,18 @@ export default function CrearSalonPage() {
 										width:'calc(100% - 2vw)', 
 										marginLeft:'1vw', 
 										marginRight:'1vw', 
-										padding:'8px', 
-										minHeight:'80px'
-									}} 
-									value={descripcion} 
-									onChange={(e) => setDescripcion(e.target.value)} 
-									placeholder="Descripción del salón" 
-								/>
-							</div>
-							<div className='w-full' style={{display:'flex', alignItems:'center', gap:'8px', marginLeft:'1vw', marginRight:'1vw'}}>
-								<input id="activo-salon" type="checkbox" checked={activo} onChange={(e) => setActivo(e.target.checked)} />
-								<label htmlFor="activo-salon" style={{margin:0, fontSize:'0.8rem'}}>Activo</label>
-							</div>
+									padding:'8px', 
+									minHeight:'80px'
+								}} 
+								value={descripcion} 
+								onChange={(e) => setDescripcion(e.target.value)} 
+								placeholder="Descripción del salón" 
+							/>
 						</div>
-						{error && (
-							<div style={{ color: '#ffdddd', background:'#7e1e1e', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>{error}</div>
-						)}
+					</div>
+					{error && (
+						<div style={{ color: '#ffdddd', background:'#7e1e1e', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>{error}</div>
+					)}
 						{success && (
 							<div style={{ color: '#e9ffe9', background:'#1e7e3a', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>Salón creado. Redirigiendo...</div>
 						)}

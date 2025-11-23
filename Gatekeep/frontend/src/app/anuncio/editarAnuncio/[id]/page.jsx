@@ -3,89 +3,100 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useParams } from 'next/navigation';
 import logo from '/public/assets/LogoGateKeep.webp';
 import harvard from '/public/assets/Harvard.webp';
-import { SecurityService } from '../../../services/securityService';
-import { EdificioService } from '../../../services/EdificioService';
+import { SecurityService } from '../../../../services/securityService';
+import { AnuncioService } from '../../../../services/AnuncioService';
 
-export default function CrearEdificioPage() {
+export default function EditarAnuncioPage() {
 	const pathname = usePathname();
 	const router = useRouter();
+	const params = useParams();
+	const anuncioId = parseInt(params.id, 10);
+
 	SecurityService.checkAuthAndRedirect(pathname);
 
-	const [isAdmin, setIsAdmin] = useState(false);
-	useEffect(() => {
-		try {
-			const tipo = SecurityService.getTipoUsuario?.() || null;
-			let admin = false;
-			if (tipo) {
-				admin = /admin|administrador/i.test(String(tipo));
-			} else if (typeof window !== 'undefined') {
-				const raw = localStorage.getItem('user');
-				if (raw) {
-					const user = JSON.parse(raw);
-					const role = user?.TipoUsuario || user?.tipoUsuario || user?.Rol || user?.rol;
-					if (role) admin = /admin|administrador/i.test(String(role));
-				}
-			}
-			setIsAdmin(admin);
-			if (!admin) router.replace('/');
-		} catch {
-			setIsAdmin(false);
-			router.replace('/');
-		}
-	}, [router]);
-
+	const [loading, setLoading] = useState(true);
 	const [nombre, setNombre] = useState('');
+	const [fecha, setFecha] = useState('');
 	const [descripcion, setDescripcion] = useState('');
-	const [ubicacion, setUbicacion] = useState('');
-	const [capacidad, setCapacidad] = useState('');
-	const [numeroPisos, setNumeroPisos] = useState('');
-	const [codigoEdificio, setCodigoEdificio] = useState('');
+	const [puntoControl, setPuntoControl] = useState('');
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState(null);
 	const [success, setSuccess] = useState(false);
 
+	// Cargar datos del anuncio
+	useEffect(() => {
+		if (!anuncioId || isNaN(anuncioId)) return;
+		const fetchAnuncio = async () => {
+			try {
+				const response = await AnuncioService.getAnuncio(anuncioId);
+				const anuncio = response.data;
+				setNombre(anuncio.Nombre || anuncio.nombre || '');
+				const fechaValue = anuncio.Fecha || anuncio.fecha;
+				if (fechaValue) {
+					const fechaObj = new Date(fechaValue);
+					const fechaLocal = new Date(fechaObj.getTime() - fechaObj.getTimezoneOffset() * 60000);
+					setFecha(fechaLocal.toISOString().slice(0, 10));
+				}
+				setDescripcion(anuncio.Descripcion || anuncio.descripcion || '');
+				setPuntoControl(anuncio.PuntoControl || anuncio.puntoControl || '');
+			} catch (e) {
+				console.error('Error cargando anuncio:', e);
+				setError('No se pudo cargar el anuncio');
+			} finally {
+				setLoading(false);
+			}
+		};
+		fetchAnuncio();
+	}, [anuncioId]);
+
 	const validate = () => {
-		if (!nombre || !ubicacion || !capacidad || !numeroPisos) return 'Completa los campos obligatorios.';
-		if (Number(capacidad) < 0) return 'Capacidad debe ser >= 0.';
-		if (Number(numeroPisos) < 1) return 'Número de pisos debe ser >= 1.';
+		if (!nombre || !fecha) return 'Nombre y Fecha son obligatorios';
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+		const selected = new Date(fecha);
+		selected.setHours(0, 0, 0, 0);
+		if (selected < today) return 'La fecha del anuncio no puede ser anterior a hoy';
 		return null;
 	};
 
-	const handleSubmit = async () => {
+	const handleSubmit = async (e) => {
+		e.preventDefault();
 		setError(null);
 		setSuccess(false);
 		const v = validate();
 		if (v) { setError(v); return; }
+		const fechaIso = new Date(fecha).toISOString();
 		const payload = {
 			nombre,
+			fecha: fechaIso,
 			descripcion: descripcion || undefined,
-			ubicacion,
-			capacidad: Number(capacidad),
-			activo: true,
-			numeroPisos: Number(numeroPisos),
-			codigoEdificio: codigoEdificio || undefined
+			puntoControl: puntoControl || undefined
 		};
+		console.log('Enviando PUT a anuncio ID:', anuncioId);
+		console.log('Payload:', payload);
 		setSubmitting(true);
 		try {
-			const response = await EdificioService.crearEdificio(payload);
+			const response = await AnuncioService.updateAnuncio(anuncioId, payload);
+			console.log('Respuesta recibida:', response);
 			if (response.status >= 200 && response.status < 300) {
 				setSuccess(true);
-				setTimeout(() => router.push('/edificios/listadoEdificios'), 900);
+				setTimeout(() => router.push('/anuncio/listadoAnuncios'), 900);
 			} else {
-				setError('No se pudo crear el edificio.');
+				setError('No se pudo actualizar el anuncio.');
 			}
 		} catch (e) {
-			console.error('Error creando edificio:', e);
-			setError(e.response?.data?.error || e.response?.data?.message || 'Error al crear el edificio');
+			console.error('Error actualizando anuncio:', e);
+			console.error('Error completo:', JSON.stringify(e, null, 2));
+			setError(e.response?.data?.error || e.response?.data?.message || e.message || 'Error al actualizar el anuncio');
 		} finally {
 			setSubmitting(false);
 		}
 	};
 
-	if (!isAdmin) return null;
+	if (loading) return <div style={{color:'white', padding:'2rem'}}>Cargando...</div>;
 
 	return (
 		<div className="header-root">
@@ -100,47 +111,39 @@ export default function CrearEdificioPage() {
 					</div>
 				</div>
 				<div className="header-middle-bar">
-					<form className="text-card" onSubmit={(e) => { e.preventDefault(); if (!submitting) handleSubmit(); }} aria-label="Formulario crear edificio">
-					<div style={{alignItems: 'center', width: '100%'}}>
-						<button type="button" onClick={() => router.back()} style={{ background: 'transparent', border: '2px solid #F37426', color: '#F37426', padding: '6px 16px', borderRadius: '20px', cursor: 'pointer', marginBottom: '12px', fontSize: '0.9rem', fontWeight: '500', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.background = '#F37426'; e.target.style.color = 'white'; }} onMouseLeave={(e) => { e.target.style.background = 'transparent'; e.target.style.color = '#F37426'; }}>← Regresar</button>
-						<h1 className="text-3xl font-bold text-white">Crear Edificio</h1>
-						<hr />
-					</div>
+					<form className="text-card" onSubmit={handleSubmit} aria-label="Formulario editar anuncio">
+						<div style={{alignItems: 'center', width: '100%'}}>
+							<button type="button" onClick={() => router.back()} style={{ background: 'transparent', border: '2px solid #F37426', color: '#F37426', padding: '6px 16px', borderRadius: '20px', cursor: 'pointer', marginBottom: '12px', fontSize: '0.9rem', fontWeight: '500', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.background = '#F37426'; e.target.style.color = 'white'; }} onMouseLeave={(e) => { e.target.style.background = 'transparent'; e.target.style.color = '#F37426'; }}>← Regresar</button>
+							<h1 className="text-3xl font-bold text-white">Editar Anuncio</h1>
+							<hr />
+						</div>
 						<div className='input-container'>
 							<div className='w-full'>
 								<span>Nombre *</span>
-								<input type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre" />
+								<input type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre del Anuncio" />
 							</div>
 							<div className='w-full'>
-								<span>Ubicación *</span>
-								<input type="text" value={ubicacion} onChange={(e) => setUbicacion(e.target.value)} placeholder="Ubicación" />
+								<span>Fecha *</span>
+								<input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} placeholder="Fecha del Anuncio" />
 							</div>
 							<div className='w-full'>
-								<span>Capacidad *</span>
-								<input type="number" value={capacidad} onChange={(e) => setCapacidad(e.target.value)} placeholder="Capacidad" />
-							</div>
-							<div className='w-full'>
-								<span>Número de pisos *</span>
-								<input type="number" value={numeroPisos} onChange={(e) => setNumeroPisos(e.target.value)} placeholder="Pisos" />
-							</div>
-							<div className='w-full'>
-								<span>Código (opcional)</span>
-								<input type="text" value={codigoEdificio} onChange={(e) => setCodigoEdificio(e.target.value)} placeholder="Código único" />
+								<span>Descripción</span>
+								<input type="text" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción del Anuncio" />
 							</div>
 						<div className='w-full'>
-							<span>Descripción (opcional)</span>
-							<textarea style={{borderRadius:'20px', width:'calc(100% - 2vw)', marginLeft:'1vw', marginRight:'1vw', padding:'8px', minHeight:'80px'}} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción" />
+							<span>Punto de Control</span>
+							<input type="text" value={puntoControl} onChange={(e) => setPuntoControl(e.target.value)} placeholder="Punto de Control del Anuncio" />
 						</div>
 					</div>
 						{error && (
 							<div style={{ color: '#ffdddd', background:'#7e1e1e', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>{error}</div>
 						)}
 						{success && (
-							<div style={{ color: '#e9ffe9', background:'#1e7e3a', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>Edificio creado. Redirigiendo...</div>
+							<div style={{ color: '#e9ffe9', background:'#1e7e3a', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>Anuncio actualizado. Redirigiendo...</div>
 						)}
 						<div className='button-container'>
 							<button type="submit" disabled={submitting} style={{ opacity: submitting ? 0.6 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }}>
-								{submitting ? 'Creando...' : 'Crear Edificio'}
+								{submitting ? 'Actualizando...' : 'Actualizar Anuncio'}
 							</button>
 						</div>
 					</form>

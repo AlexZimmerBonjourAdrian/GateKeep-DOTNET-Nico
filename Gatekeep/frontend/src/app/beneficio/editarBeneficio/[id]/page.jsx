@@ -7,37 +7,32 @@ import { usePathname, useRouter, useParams } from 'next/navigation';
 import logo from '/public/assets/LogoGateKeep.webp';
 import harvard from '/public/assets/Harvard.webp';
 import { SecurityService } from '../../../../services/securityService';
-import { SalonService } from '../../../../services/SalonService';
-import { EdificioService } from '../../../../services/EdificioService';
+import { BeneficioService } from '../../../../services/BeneficioService';
 
-export default function EditarSalonPage() {
+export default function EditarBeneficioPage() {
 	const pathname = usePathname();
 	const router = useRouter();
 	const params = useParams();
-	const salonId = parseInt(params.id, 10);
+	const beneficioId = parseInt(params.id, 10);
 
 	SecurityService.checkAuthAndRedirect(pathname);
 
 	const [isAdmin, setIsAdmin] = useState(false);
 	const [loading, setLoading] = useState(true);
-	const [edificios, setEdificios] = useState([]);
-	const [nombre, setNombre] = useState('');
-	const [descripcion, setDescripcion] = useState('');
-	const [ubicacion, setUbicacion] = useState('');
-	const [capacidad, setCapacidad] = useState('');
-	const [numeroSalon, setNumeroSalon] = useState('');
-	const [edificioId, setEdificioId] = useState('');
-	const [activo, setActivo] = useState(true);
+	const [tipo, setTipo] = useState(0);
+	const [vigencia, setVigencia] = useState(true);
+	const [fechaDeVencimiento, setFechaDeVencimiento] = useState('');
+	const [cupos, setCupos] = useState(1);
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState(null);
 	const [success, setSuccess] = useState(false);
 
 	useEffect(() => {
 		try {
-			const tipo = SecurityService.getTipoUsuario?.() || null;
+			const tipoUsuario = SecurityService.getTipoUsuario?.() || null;
 			let admin = false;
-			if (tipo) {
-				admin = /admin|administrador/i.test(String(tipo));
+			if (tipoUsuario) {
+				admin = /admin|administrador/i.test(String(tipoUsuario));
 			} else if (typeof window !== 'undefined') {
 				const raw = localStorage.getItem('user');
 				if (raw) {
@@ -54,75 +49,69 @@ export default function EditarSalonPage() {
 		}
 	}, [router]);
 
-	// Cargar edificios
+	// Cargar datos del beneficio
 	useEffect(() => {
-		const fetchEdificios = async () => {
+		if (!beneficioId || isNaN(beneficioId)) return;
+		const fetchBeneficio = async () => {
 			try {
-				const response = await EdificioService.getEdificios();
-				setEdificios(Array.isArray(response.data) ? response.data : []);
+				const response = await BeneficioService.getBeneficioById(beneficioId);
+				const beneficio = response.data;
+				setTipo(beneficio.Tipo ?? beneficio.tipo ?? 0);
+				setVigencia(beneficio.Vigencia ?? beneficio.vigencia ?? true);
+				const fechaValue = beneficio.FechaDeVencimiento || beneficio.fechaDeVencimiento;
+				if (fechaValue) {
+					const fechaObj = new Date(fechaValue);
+					const fechaLocal = new Date(fechaObj.getTime() - fechaObj.getTimezoneOffset() * 60000);
+					setFechaDeVencimiento(fechaLocal.toISOString().slice(0, 16));
+				}
+				setCupos(beneficio.Cupos ?? beneficio.cupos ?? 1);
 			} catch (e) {
-				console.error('Error al cargar edificios:', e);
-			}
-		};
-		fetchEdificios();
-	}, []);
-
-	// Cargar datos del salón
-	useEffect(() => {
-		if (!salonId || isNaN(salonId)) return;
-		const fetchSalon = async () => {
-			try {
-				const response = await SalonService.getSalonById(salonId);
-				const salon = response.data;
-				setNombre(salon.Nombre || salon.nombre || '');
-				setDescripcion(salon.Descripcion || salon.descripcion || '');
-				setUbicacion(salon.Ubicacion || salon.ubicacion || '');
-			setCapacidad(String(salon.Capacidad ?? salon.capacidad ?? ''));
-			setNumeroSalon(String(salon.NumeroSalon ?? salon.numeroSalon ?? ''));
-			setEdificioId(String(salon.EdificioId ?? salon.edificioId ?? ''));
-		} catch (e) {
-			console.error('Error cargando salón:', e);
-			setError('No se pudo cargar el salón');
+				console.error('Error cargando beneficio:', e);
+				setError('No se pudo cargar el beneficio');
 			} finally {
 				setLoading(false);
 			}
 		};
-		fetchSalon();
-	}, [salonId]);
+		fetchBeneficio();
+	}, [beneficioId]);
 
 	const validate = () => {
-		if (!nombre || !ubicacion || !capacidad || !numeroSalon || !edificioId) return 'Completa los campos obligatorios.';
-		if (Number(capacidad) < 0) return 'Capacidad debe ser >= 0.';
-		if (Number(numeroSalon) < 0) return 'Número de salón debe ser >= 0.';
+		if (!fechaDeVencimiento || cupos < 1) return 'Fecha de vencimiento y cupos (mínimo 1) son obligatorios';
+		const vencimiento = new Date(fechaDeVencimiento);
+		const hoy = new Date();
+		if (vencimiento <= hoy) return 'La fecha de vencimiento debe ser posterior a la fecha actual';
 		return null;
 	};
 
-	const handleSubmit = async () => {
+	const handleSubmit = async (e) => {
+		e.preventDefault();
 		setError(null);
 		setSuccess(false);
 		const v = validate();
 		if (v) { setError(v); return; }
+		const fechaVencimientoIso = new Date(fechaDeVencimiento).toISOString();
 		const payload = {
-			nombre,
-			descripcion: descripcion || undefined,
-			ubicacion,
-			capacidad: Number(capacidad),
-			numeroSalon: Number(numeroSalon),
-			edificioId: Number(edificioId),
-			activo: true
+			tipo,
+			vigencia,
+			fechaDeVencimiento: fechaVencimientoIso,
+			cupos
 		};
+		console.log('Enviando PUT a beneficio ID:', beneficioId);
+		console.log('Payload:', payload);
 		setSubmitting(true);
 		try {
-			const response = await SalonService.updateSalon(salonId, payload);
+			const response = await BeneficioService.actualizarBeneficio(beneficioId, payload);
+			console.log('Respuesta recibida:', response);
 			if (response.status >= 200 && response.status < 300) {
 				setSuccess(true);
-				setTimeout(() => router.push('/salones/listadoSalones'), 900);
+				setTimeout(() => router.push('/beneficio/listadoBeneficios'), 900);
 			} else {
-				setError('No se pudo actualizar el salón.');
+				setError('No se pudo actualizar el beneficio.');
 			}
 		} catch (e) {
-			console.error('Error actualizando salón:', e);
-			setError(e.response?.data?.error || e.response?.data?.message || 'Error al actualizar el salón');
+			console.error('Error actualizando beneficio:', e);
+			console.error('Error completo:', JSON.stringify(e, null, 2));
+			setError(e.response?.data?.error || e.response?.data?.message || e.message || 'Error al actualizar el beneficio');
 		} finally {
 			setSubmitting(false);
 		}
@@ -143,52 +132,62 @@ export default function EditarSalonPage() {
 					</div>
 				</div>
 				<div className="header-middle-bar">
-					<form className="text-card" onSubmit={(e) => { e.preventDefault(); if (!submitting) handleSubmit(); }} aria-label="Formulario editar salón">
-					<div style={{alignItems: 'center', width: '100%'}}>
-						<button type="button" onClick={() => router.back()} style={{ background: 'transparent', border: '2px solid #F37426', color: '#F37426', padding: '6px 16px', borderRadius: '20px', cursor: 'pointer', marginBottom: '12px', fontSize: '0.9rem', fontWeight: '500', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.background = '#F37426'; e.target.style.color = 'white'; }} onMouseLeave={(e) => { e.target.style.background = 'transparent'; e.target.style.color = '#F37426'; }}>← Regresar</button>
-						<h1 className="text-3xl font-bold text-white">Editar Salón</h1>
-						<hr />
-					</div>
+					<form className="text-card" onSubmit={handleSubmit} aria-label="Formulario editar beneficio">
+						<div style={{alignItems: 'center', width: '100%'}}>
+							<button type="button" onClick={() => router.back()} style={{ background: 'transparent', border: '2px solid #F37426', color: '#F37426', padding: '6px 16px', borderRadius: '20px', cursor: 'pointer', marginBottom: '12px', fontSize: '0.9rem', fontWeight: '500', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.background = '#F37426'; e.target.style.color = 'white'; }} onMouseLeave={(e) => { e.target.style.background = 'transparent'; e.target.style.color = '#F37426'; }}>← Regresar</button>
+							<h1 className="text-3xl font-bold text-white">Editar Beneficio</h1>
+							<hr />
+						</div>
 						<div className='input-container'>
 							<div className='w-full'>
-								<span>Nombre *</span>
-								<input type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre" />
-							</div>
-							<div className='w-full'>
-								<span>Ubicación *</span>
-								<input type="text" value={ubicacion} onChange={(e) => setUbicacion(e.target.value)} placeholder="Ubicación" />
-							</div>
-							<div className='w-full'>
-								<span>Capacidad *</span>
-								<input type="number" value={capacidad} onChange={(e) => setCapacidad(e.target.value)} placeholder="Capacidad" />
-							</div>
-							<div className='w-full'>
-								<span>Número de salón *</span>
-								<input type="number" value={numeroSalon} onChange={(e) => setNumeroSalon(e.target.value)} placeholder="Número" />
-							</div>
-							<div className='w-full'>
-								<span>Edificio *</span>
-								<select value={edificioId} onChange={(e) => setEdificioId(e.target.value)} style={{width:'100%', padding:'8px', borderRadius:'20px', border:'1px solid #ccc'}}>
-									<option value="">Selecciona edificio</option>
-									{edificios.map(e => (
-										<option key={e.Id || e.id} value={e.Id || e.id}>{e.Nombre || e.nombre}</option>
-									))}
+								<span>Tipo de Beneficio *</span>
+								<select 
+									value={tipo} 
+									onChange={(e) => setTipo(parseInt(e.target.value))}
+									style={{borderRadius:'20px', width:'calc(100% - 2vw)', marginLeft:'1vw', marginRight:'1vw', padding:'8px'}}
+								>
+									<option value={0}>Canje</option>
+									<option value={1}>Consumo</option>
 								</select>
 							</div>
-						<div className='w-full'>
-							<span>Descripción (opcional)</span>
-							<textarea style={{borderRadius:'20px', width:'calc(100% - 2vw)', marginLeft:'1vw', marginRight:'1vw', padding:'8px', minHeight:'80px'}} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción del salón" />
+							<div className='w-full'>
+								<span>Fecha de Vencimiento *</span>
+								<input 
+									type="datetime-local" 
+									value={fechaDeVencimiento} 
+									onChange={(e) => setFechaDeVencimiento(e.target.value)}
+									style={{borderRadius:'20px', width:'calc(100% - 2vw)', marginLeft:'1vw', marginRight:'1vw', padding:'8px'}}
+								/>
+							</div>
+							<div className='w-full'>
+								<span>Cupos Disponibles *</span>
+								<input 
+									type="number" 
+									min="1" 
+									placeholder="Cantidad de cupos" 
+									value={cupos} 
+									onChange={(e) => setCupos(parseInt(e.target.value) || 1)} 
+								/>
+							</div>
+							<div className='w-full' style={{display:'flex', alignItems:'center', gap:'8px', marginLeft:'1vw', marginRight:'1vw'}}>
+								<input 
+									id="vigencia-beneficio" 
+									type="checkbox" 
+									checked={vigencia} 
+									onChange={(e) => setVigencia(e.target.checked)} 
+								/>
+								<label htmlFor="vigencia-beneficio" style={{margin:0, fontSize:'0.8rem'}}>Vigente</label>
+							</div>
 						</div>
-					</div>
 						{error && (
 							<div style={{ color: '#ffdddd', background:'#7e1e1e', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>{error}</div>
 						)}
 						{success && (
-							<div style={{ color: '#e9ffe9', background:'#1e7e3a', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>Salón actualizado. Redirigiendo...</div>
+							<div style={{ color: '#e9ffe9', background:'#1e7e3a', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>Beneficio actualizado. Redirigiendo...</div>
 						)}
 						<div className='button-container'>
 							<button type="submit" disabled={submitting} style={{ opacity: submitting ? 0.6 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }}>
-								{submitting ? 'Actualizando...' : 'Actualizar Salón'}
+								{submitting ? 'Actualizando...' : 'Actualizar Beneficio'}
 							</button>
 						</div>
 					</form>

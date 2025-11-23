@@ -25,7 +25,6 @@ export default function EditarEdificioPage() {
 	const [capacidad, setCapacidad] = useState('');
 	const [numeroPisos, setNumeroPisos] = useState('');
 	const [codigoEdificio, setCodigoEdificio] = useState('');
-	const [activo, setActivo] = useState(true);
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState(null);
 	const [success, setSuccess] = useState(false);
@@ -65,7 +64,6 @@ export default function EditarEdificioPage() {
 				setCapacidad(String(edificio.Capacidad ?? edificio.capacidad ?? ''));
 				setNumeroPisos(String(edificio.NumeroPisos ?? edificio.numeroPisos ?? ''));
 				setCodigoEdificio(edificio.CodigoEdificio || edificio.codigoEdificio || '');
-				setActivo(edificio.Activo ?? edificio.activo ?? true);
 			} catch (e) {
 				console.error('Error cargando edificio:', e);
 				setError('No se pudo cargar el edificio');
@@ -93,7 +91,7 @@ export default function EditarEdificioPage() {
 			descripcion: descripcion || undefined,
 			ubicacion,
 			capacidad: Number(capacidad),
-			activo,
+			activo: true,
 			numeroPisos: Number(numeroPisos),
 			codigoEdificio: codigoEdificio || undefined
 		};
@@ -160,15 +158,11 @@ export default function EditarEdificioPage() {
 								<span>Código (opcional)</span>
 								<input type="text" value={codigoEdificio} onChange={(e) => setCodigoEdificio(e.target.value)} placeholder="Código único" />
 							</div>
-							<div className='w-full'>
-								<span>Descripción (opcional)</span>
-								<textarea style={{borderRadius:'20px', width:'calc(100% - 2vw)', marginLeft:'1vw', marginRight:'1vw', padding:'8px', minHeight:'80px'}} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción" />
-							</div>
-							<div className='w-full' style={{display:'flex', alignItems:'center', gap:'8px', marginLeft:'1vw', marginRight:'1vw'}}>
-								<input id="activo-edificio" type="checkbox" checked={activo} onChange={(e) => setActivo(e.target.checked)} />
-								<label htmlFor="activo-edificio" style={{margin:0, fontSize:'0.8rem'}}>Activo</label>
-							</div>
+						<div className='w-full'>
+							<span>Descripción (opcional)</span>
+							<textarea style={{borderRadius:'20px', width:'calc(100% - 2vw)', marginLeft:'1vw', marginRight:'1vw', padding:'8px', minHeight:'80px'}} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción" />
 						</div>
+					</div>
 						{error && (
 							<div style={{ color: '#ffdddd', background:'#7e1e1e', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>{error}</div>
 						)}
