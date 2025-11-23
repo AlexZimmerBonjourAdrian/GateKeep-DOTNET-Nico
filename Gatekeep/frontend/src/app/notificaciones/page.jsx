@@ -116,31 +116,39 @@ export default function ListadoNotificaciones() {
                     const mensaje = n.Mensaje || n.mensaje || '';
                     const tipo = n.Tipo || n.tipo || 'General';
                     const fechaCreacion = n.FechaCreacion || n.fechaCreacion;
-                    const leida = n.Leida ?? n.leida ?? false;
+                    // Asegurarse de que el valor sea booleano
+                    const leida = Boolean(n.Leida ?? n.leida);
                     const isOpen = openId === notifId;
-                    
-                    const fechaFormateada = fechaCreacion 
-                      ? new Date(fechaCreacion).toLocaleDateString('es-ES', { 
-                          year: 'numeric', 
-                          month: 'short', 
+
+                    let fechaFormateada = '';
+                    if (fechaCreacion) {
+                      try {
+                        fechaFormateada = new Date(fechaCreacion).toLocaleDateString('es-ES', {
+                          year: 'numeric',
+                          month: 'short',
                           day: 'numeric',
                           hour: '2-digit',
                           minute: '2-digit'
-                        })
-                      : 'Fecha desconocida';
-                    
+                        });
+                      } catch {}
+                    }
+
                     return (
                       <div className={`notification ${isOpen ? 'open' : ''}`} key={notifId}>
                         <button className="content-btn" onClick={() => toggleOpen(n)} aria-expanded={isOpen}>
                           <div className="left">
-                              <span className={`new-badge ${leida ? 'seen' : 'unseen'}`} aria-hidden="true">Nuevo</span>
+                            {/* Solo mostrar el badge si NO está leída */}
+                            {!leida && (
+                              <span className="new-badge unseen" aria-hidden="true">Nuevo</span>
+                            )}
                             <div className="text">
                               <div className="subject">{tipo}</div>
                               <div className={`mensaje ${isOpen ? 'visible' : ''}`}>{mensaje}</div>
                             </div>
                           </div>
                           <div className="right">
-                            <div className="date">{fechaFormateada}</div>
+                            {/* Solo mostrar la fecha si existe */}
+                            {fechaFormateada && <div className="date">{fechaFormateada}</div>}
                           </div>
                         </button>
                       </div>
