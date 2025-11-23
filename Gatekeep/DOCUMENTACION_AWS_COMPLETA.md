@@ -197,29 +197,87 @@ aws elbv2 describe-target-health --target-group-arn $tgArn --region sa-east-1
 - **Nombre**: `gatekeep-api-service`
 - **Cluster**: `gatekeep-cluster`
 - **Task Definition**: `gatekeep-api:8` (revisión 8)
+- **Versión de Imagen**: `latest` (tag actual en ECR)
+- **Imagen ECR**: `126588786097.dkr.ecr.sa-east-1.amazonaws.com/gatekeep-api:latest`
 - **Launch Type**: FARGATE
 - **Desired Count**: 1
 - **Running Count**: 1
 - **Estado**: ACTIVE
 - **Target Group**: `gatekeep-tg`
 - **Container Port**: 5011
+- **Última Actualización**: Verificar en ECR para fecha exacta
 
 #### Servicio Frontend
 - **Nombre**: `gatekeep-frontend-service`
 - **Cluster**: `gatekeep-cluster`
 - **Task Definition**: `gatekeep-frontend:7` (revisión 7)
+- **Versión de Imagen**: `latest` (tag actual en ECR)
+- **Imagen ECR**: `126588786097.dkr.ecr.sa-east-1.amazonaws.com/gatekeep-frontend:latest`
 - **Launch Type**: FARGATE
 - **Desired Count**: 1
 - **Running Count**: 1
 - **Estado**: ACTIVE
 - **Target Group**: `gatekeep-frontend-tg`
 - **Container Port**: 3000
+- **Última Actualización**: Verificar en ECR para fecha exacta
+
+### Versiones Actuales en Producción
+
+#### Backend (gatekeep-api)
+- **Task Definition**: `gatekeep-api:8`
+- **Revisión**: 8
+- **Estado**: ACTIVE
+- **Imagen ECR**: `126588786097.dkr.ecr.sa-east-1.amazonaws.com/gatekeep-api:latest`
+- **Tag de Imagen**: `latest`
+- **Última Actualización de Imagen**: 2025-11-22T21:25:08 (UTC-3)
+- **Tamaño de Imagen**: 111.82 MB
+- **CPU**: 512 (0.5 vCPU)
+- **Memoria**: 1024 MB (1 GB)
+- **Desired Count**: 1
+- **Running Count**: 1
+
+**Comando para verificar versión actual**:
+```powershell
+aws ecs describe-services --cluster gatekeep-cluster --services gatekeep-api-service --region sa-east-1 --query "services[0].taskDefinition"
+```
+
+**Comando para ver fecha exacta de la imagen**:
+```powershell
+aws ecr describe-images --repository-name gatekeep-api --region sa-east-1 --query "imageDetails[?imageTags[?contains(@, 'latest')]].[imagePushedAt,imageTags,imageSizeInBytes]" --output table
+```
+
+#### Frontend (gatekeep-frontend)
+- **Task Definition**: `gatekeep-frontend:7`
+- **Revisión**: 7
+- **Estado**: ACTIVE
+- **Imagen ECR**: `126588786097.dkr.ecr.sa-east-1.amazonaws.com/gatekeep-frontend:latest`
+- **Tag de Imagen**: `latest`
+- **Última Actualización de Imagen**: 2025-11-21T19:08:18 (UTC-3)
+- **Tamaño de Imagen**: 449.61 MB
+- **CPU**: 256 (0.25 vCPU)
+- **Memoria**: 512 MB (0.5 GB)
+- **Desired Count**: 1
+- **Running Count**: 1
+
+**Comando para verificar versión actual**:
+```powershell
+aws ecs describe-services --cluster gatekeep-cluster --services gatekeep-frontend-service --region sa-east-1 --query "services[0].taskDefinition"
+```
+
+**Comando para ver fecha exacta de la imagen**:
+```powershell
+aws ecr describe-images --repository-name gatekeep-frontend --region sa-east-1 --query "imageDetails[?imageTags[?contains(@, 'latest')]].[imagePushedAt,imageTags,imageSizeInBytes]" --output table
+```
+
+**Nota Importante**: Ambas aplicaciones utilizan el tag `latest` en ECR. Para un mejor control de versiones en producción, se recomienda usar tags semánticos (ej: `v1.0.0`, `v1.0.1`) en lugar de `latest`.
 
 ### Task Definitions
 
 #### Task Definition Backend (gatekeep-api:8)
 - **Family**: `gatekeep-api`
-- **Revisión**: 8
+- **Revisión**: 8 (ACTIVE)
+- **Versión de Imagen**: `latest`
+- **Imagen Completa**: `126588786097.dkr.ecr.sa-east-1.amazonaws.com/gatekeep-api:latest`
 - **CPU**: 512 (0.5 vCPU)
 - **Memoria**: 1024 MB (1 GB)
 - **Network Mode**: `awsvpc`
@@ -230,6 +288,7 @@ aws elbv2 describe-target-health --target-group-arn $tgArn --region sa-east-1
   - **Imagen**: `126588786097.dkr.ecr.sa-east-1.amazonaws.com/gatekeep-api:latest`
   - **Puerto**: 5011
   - **Health Check**: `curl -f http://localhost:5011/health || exit 1`
+- **Nota**: Esta es la revisión actualmente en producción. Para verificar la fecha exacta de la imagen, consultar ECR.
 
 **Variables de Entorno**:
 - `ASPNETCORE_ENVIRONMENT`: `dev`
@@ -252,7 +311,9 @@ aws elbv2 describe-target-health --target-group-arn $tgArn --region sa-east-1
 
 #### Task Definition Frontend (gatekeep-frontend:7)
 - **Family**: `gatekeep-frontend`
-- **Revisión**: 7
+- **Revisión**: 7 (ACTIVE)
+- **Versión de Imagen**: `latest`
+- **Imagen Completa**: `126588786097.dkr.ecr.sa-east-1.amazonaws.com/gatekeep-frontend:latest`
 - **CPU**: 256 (0.25 vCPU)
 - **Memoria**: 512 MB (0.5 GB)
 - **Network Mode**: `awsvpc`
@@ -262,6 +323,7 @@ aws elbv2 describe-target-health --target-group-arn $tgArn --region sa-east-1
   - **Nombre**: `gatekeep-frontend`
   - **Imagen**: `126588786097.dkr.ecr.sa-east-1.amazonaws.com/gatekeep-frontend:latest`
   - **Puerto**: 3000
+- **Nota**: Esta es la revisión actualmente en producción. Para verificar la fecha exacta de la imagen, consultar ECR.
 
 **Variables de Entorno**:
 - `NODE_ENV`: `production`
@@ -290,6 +352,24 @@ aws ecs describe-services --cluster gatekeep-cluster --services gatekeep-api-ser
 
 # Describir Task Definition
 aws ecs describe-task-definition --task-definition gatekeep-api:8 --region sa-east-1
+
+# Verificar versión actual del backend
+aws ecs describe-services --cluster gatekeep-cluster --services gatekeep-api-service --region sa-east-1 --query "services[0].taskDefinition"
+
+# Verificar versión actual del frontend
+aws ecs describe-services --cluster gatekeep-cluster --services gatekeep-frontend-service --region sa-east-1 --query "services[0].taskDefinition"
+
+# Ver imágenes disponibles en ECR (Backend)
+aws ecr describe-images --repository-name gatekeep-api --region sa-east-1 --output table
+
+# Ver imágenes disponibles en ECR (Frontend)
+aws ecr describe-images --repository-name gatekeep-frontend --region sa-east-1 --output table
+
+# Ver fecha exacta de la imagen latest (Backend)
+aws ecr describe-images --repository-name gatekeep-api --region sa-east-1 --query "imageDetails[?imageTags[?contains(@, 'latest')]].[imagePushedAt,imageTags,imageSizeInBytes]" --output table
+
+# Ver fecha exacta de la imagen latest (Frontend)
+aws ecr describe-images --repository-name gatekeep-frontend --region sa-east-1 --query "imageDetails[?imageTags[?contains(@, 'latest')]].[imagePushedAt,imageTags,imageSizeInBytes]" --output table
 
 # Listar Tasks
 aws ecs list-tasks --cluster gatekeep-cluster --service-name gatekeep-api-service --region sa-east-1
