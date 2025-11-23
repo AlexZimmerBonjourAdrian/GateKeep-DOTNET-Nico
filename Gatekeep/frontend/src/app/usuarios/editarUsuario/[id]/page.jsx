@@ -1,0 +1,203 @@
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { usePathname, useRouter, useParams } from 'next/navigation';
+import logo from '/public/assets/LogoGateKeep.webp';
+import harvard from '/public/assets/Harvard.webp';
+import { SecurityService } from '../../../../services/securityService';
+import { UsuarioService } from '../../../../services/UsuarioService';
+
+export default function EditarUsuarioPage() {
+	const pathname = usePathname();
+	const router = useRouter();
+	const params = useParams();
+	const usuarioId = parseInt(params.id, 10);
+
+	SecurityService.checkAuthAndRedirect(pathname);
+
+	const [isAdmin, setIsAdmin] = useState(false);
+	const [isOwnProfile, setIsOwnProfile] = useState(false);
+	const [loading, setLoading] = useState(true);
+	const [nombre, setNombre] = useState('');
+	const [apellido, setApellido] = useState('');
+	const [telefono, setTelefono] = useState('');
+	const [submitting, setSubmitting] = useState(false);
+	const [error, setError] = useState(null);
+	const [success, setSuccess] = useState(false);
+
+	useEffect(() => {
+		try {
+			const tipo = SecurityService.getTipoUsuario?.() || null;
+			let admin = false;
+			let ownProfile = false;
+			
+			if (tipo) {
+				admin = /admin|administrador/i.test(String(tipo));
+			} else if (typeof window !== 'undefined') {
+				const raw = localStorage.getItem('user');
+				if (raw) {
+					const user = JSON.parse(raw);
+					const role = user?.TipoUsuario || user?.tipoUsuario || user?.Rol || user?.rol;
+					if (role) admin = /admin|administrador/i.test(String(role));
+					
+							// Verificar si es el propio perfil
+					const currentUserId = SecurityService.getUserId() || user?.Id || user?.id || user?.IdUsuario || user?.idUsuario;
+					if (currentUserId && Number(currentUserId) === usuarioId) {
+						ownProfile = true;
+					}
+				}
+			}
+			
+			setIsAdmin(admin);
+			setIsOwnProfile(ownProfile);
+
+			// Solo admin o el propio usuario pueden editar
+			if (!admin && !ownProfile) {
+				router.replace('/');
+			}
+		} catch {
+			setIsAdmin(false);
+			setIsOwnProfile(false);
+			router.replace('/');
+		}
+	}, [router, usuarioId]);
+
+	// Cargar datos del usuario
+	useEffect(() => {
+		if (!usuarioId || isNaN(usuarioId)) return;
+		const fetchUsuario = async () => {
+			try {
+				const response = await UsuarioService.getUsuario(usuarioId);
+				const usuario = response.data;
+				setNombre(usuario.Nombre || usuario.nombre || '');
+				setApellido(usuario.Apellido || usuario.apellido || '');
+				setTelefono(usuario.Telefono || usuario.telefono || '');
+			} catch (e) {
+				console.error('Error cargando usuario:', e);
+				setError('No se pudo cargar el usuario');
+			} finally {
+				setLoading(false);
+			}
+		};
+		fetchUsuario();
+	}, [usuarioId]);
+
+	const validate = () => {
+		if (!nombre || !apellido) return 'Nombre y Apellido son obligatorios.';
+		if (nombre.trim().length < 2) return 'El nombre debe tener al menos 2 caracteres.';
+		if (apellido.trim().length < 2) return 'El apellido debe tener al menos 2 caracteres.';
+		return null;
+	};
+
+	const handleSubmit = async () => {
+		setError(null);
+		setSuccess(false);
+		const v = validate();
+		if (v) { setError(v); return; }
+		const payload = {
+			nombre: nombre.trim(),
+			apellido: apellido.trim(),
+			telefono: telefono.trim() || null
+		};
+		console.log('Enviando PUT a usuario ID:', usuarioId);
+		console.log('Payload:', payload);
+		setSubmitting(true);
+		try {
+			const response = await UsuarioService.updateUsuario(usuarioId, payload);
+			console.log('Respuesta recibida:', response);
+			if (response.status >= 200 && response.status < 300) {
+				setSuccess(true);
+				setTimeout(() => router.push('/usuarios/listadoUsuarios'), 900);
+			} else {
+				setError('No se pudo actualizar el usuario.');
+			}
+		} catch (e) {
+			console.error('Error actualizando usuario:', e);
+			console.error('Error completo:', JSON.stringify(e, null, 2));
+			setError(e.response?.data?.error || e.response?.data?.message || e.message || 'Error al actualizar el usuario');
+		} finally {
+			setSubmitting(false);
+		}
+	};
+
+	if ((!isAdmin && !isOwnProfile) || loading) return <div style={{color:'white', padding:'2rem'}}>Cargando...</div>;
+
+	return (
+		<div className="header-root">
+			<div className="header-hero">
+				<Image src={harvard} alt="Harvard" fill className="harvard-image" priority />
+				<div className="header-overlay" />
+				<div className="header-topbar">
+					<div className="icon-group">
+						<Link href="/">
+							<Image src={logo} alt="Logo GateKeep" width={160} priority className="logo-image" />
+						</Link>
+					</div>
+				</div>
+				<div className="header-middle-bar">
+					<form className="text-card" onSubmit={(e) => { e.preventDefault(); if (!submitting) handleSubmit(); }} aria-label="Formulario editar usuario">
+					<div style={{alignItems: 'center', width: '100%'}}>
+						<button type="button" onClick={() => router.back()} style={{ background: 'transparent', border: '2px solid #F37426', color: '#F37426', padding: '6px 16px', borderRadius: '20px', cursor: 'pointer', marginBottom: '12px', fontSize: '0.9rem', fontWeight: '500', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.background = '#F37426'; e.target.style.color = 'white'; }} onMouseLeave={(e) => { e.target.style.background = 'transparent'; e.target.style.color = '#F37426'; }}>← Regresar</button>
+						<h1 className="text-3xl font-bold text-white">Editar Usuario</h1>
+						<hr />
+					</div>
+						<div className='input-container'>
+							<div className='w-full'>
+								<span>Nombre *</span>
+								<input type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre" />
+							</div>
+							<div className='w-full'>
+								<span>Apellido *</span>
+								<input type="text" value={apellido} onChange={(e) => setApellido(e.target.value)} placeholder="Apellido" />
+							</div>
+							<div className='w-full'>
+								<span>Teléfono (opcional)</span>
+								<input type="text" value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="Teléfono" />
+							</div>
+						</div>
+						{error && (
+							<div style={{ color: '#ffdddd', background:'#7e1e1e', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>{error}</div>
+						)}
+						{success && (
+							<div style={{ color: '#e9ffe9', background:'#1e7e3a', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>Usuario actualizado. Redirigiendo...</div>
+						)}
+						<div className='button-container'>
+							<button type="submit" disabled={submitting} style={{ opacity: submitting ? 0.6 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }}>
+								{submitting ? 'Actualizando...' : 'Actualizar Usuario'}
+							</button>
+						</div>
+					</form>
+			</div>
+		</div>
+		<style jsx>{`
+			.header-root { width: 100%; display: block; }
+			.header-hero { width: 100%; height: 768px; position: relative; display: flex; flex-direction: column; gap: 5px; padding: 24px; box-sizing: border-box; }
+			@media (max-width: 768px) { .header-hero { padding: 16px; height: 600px; } }
+			@media (max-width: 425px) { .header-hero { padding: 12px; height: auto; } }
+			.harvard-image { object-fit: cover; position: absolute; inset: 0; z-index: 0; }
+			@media (max-width: 425px) { .harvard-image { display: none; } }
+			.header-overlay { position: absolute; inset: 0; z-index: 1; pointer-events: none; box-shadow: inset 0 80px 120px rgba(0, 0, 0, 0.6), inset 0 -80px 120px rgba(0, 0, 0, 0.6); }
+			.header-topbar { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 72px; }
+			.logo-image { width: 160px; height: auto; cursor: pointer; opacity: 0.9; }
+			@media (max-width: 425px) { .logo-image { width: 120px; } }
+			.icon-group { display: inline-flex; align-items: center; gap: 10px; }
+			span { font-size: 0.8rem; margin-left: 1vw; margin-right: 1vw; margin-bottom: 0; }
+			h1 { color: #F37426; margin-left: 1vw; margin-right: 1vw; text-align: center; }
+			input { border-radius: 20px; width: calc(100% - 2vw); margin-left: 1vw; margin-right: 1vw; margin-top: 0; padding: 8px; }
+			@media (max-width: 425px) { input { padding: 6px; } }
+			hr { width: 100%; border: 1.5px solid #F37426; }
+			.input-container { display: flex; flex-direction: column; gap: 16px; width: 100%; }
+			.button-container { width: 100%; display: flex; justify-content: center; align-items: center; }
+			button { margin-top: 30px; border-radius: 20px; width: calc(80% - 2vw); padding: 8px; background: #F37426; margin-bottom: 20px; }
+			@media (max-width: 425px) { button { width: 100%; padding: 10px; } }
+			.text-card { display: flex; flex-direction: column; align-items: flex-start; width: 42.97vw; height: auto; background-color: #231F20; opacity: 0.75; padding: 0vw; border-radius: 20px; border: 3px solid #F37426; }
+			@media (max-width: 768px) { .text-card { width: 90%; } }
+			@media (max-width: 425px) { .text-card { width: 100%; } }
+			.header-middle-bar { position: relative; z-index: 2; display: flex; justify-content: center; width: 100%; }
+		`}</style>
+		</div>
+	);
+}
+

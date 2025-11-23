@@ -188,7 +188,7 @@ export default function EscanerQR() {
       <Header />
       
       <div className="scanner-container">
-        <h1>Escáner de Credenciales</h1>
+        <h1 style={{color: '#F37426'}}>Escáner de Credenciales</h1>
         
         <div className="scanner-wrapper">
           {isScanning && !cameraError && (
@@ -269,7 +269,8 @@ export default function EscanerQR() {
       <style jsx>{`
         .container {
           min-height: 100vh;
-          background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+          background: #0f0f10;
+          color: #231F20;
         }
 
         .scanner-container {
@@ -279,21 +280,22 @@ export default function EscanerQR() {
         }
 
         h1 {
-          color: white;
+          color: #F37426;
           text-align: center;
           margin-bottom: 30px;
           font-size: 2rem;
         }
 
         .scanner-wrapper {
-          background: white;
-          border-radius: 12px;
-          padding: 20px;
-          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          background: #1c1a1b;
+          border-radius: 20px;
+          padding: 30px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.25);
           min-height: 400px;
           display: flex;
           align-items: center;
           justify-content: center;
+          border: 2px solid rgba(243,116,38,0.2);
         }
 
         .camera-container {
@@ -304,15 +306,18 @@ export default function EscanerQR() {
 
         .scan-instruction {
           text-align: center;
-          color: #666;
+          color: rgba(255,255,255,0.9);
           margin-top: 15px;
-          font-size: 1rem;
+          font-size: 0.9rem;
           font-weight: 600;
+          padding: 8px;
+          background: rgba(255,255,255,0.1);
+          border-radius: 8px;
         }
 
         .scan-tip {
           text-align: center;
-          color: #999;
+          color: rgba(255,255,255,0.7);
           margin-top: 8px;
           font-size: 0.85rem;
         }
@@ -329,51 +334,58 @@ export default function EscanerQR() {
         }
 
         .success-icon {
-          width: 80px;
-          height: 80px;
-          background: #4caf50;
+          width: 60px;
+          height: 60px;
+          background: #065f46;
           color: white;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 3rem;
+          font-size: 2rem;
+          font-weight: 800;
           margin: 0 auto 20px;
         }
 
         .error-icon {
-          width: 80px;
-          height: 80px;
-          background: #f44336;
+          width: 60px;
+          height: 60px;
+          background: #991b1b;
           color: white;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 3rem;
+          font-size: 2rem;
+          font-weight: 800;
           margin: 0 auto 20px;
         }
 
         .success-card h2 {
-          color: #4caf50;
+          color: #065f46;
           margin-bottom: 20px;
+          font-size: 1.2rem;
         }
 
         .error-card h2 {
-          color: #f44336;
+          color: #991b1b;
           margin-bottom: 20px;
+          font-size: 1.2rem;
         }
 
         .user-info {
           margin: 20px 0;
           text-align: left;
+          background: rgba(255,255,255,0.1);
+          border-radius: 12px;
+          padding: 16px;
         }
 
         .info-row {
           display: flex;
           justify-content: space-between;
           padding: 12px;
-          border-bottom: 1px solid #eee;
+          border-bottom: 1px solid rgba(255,255,255,0.1);
         }
 
         .info-row:last-child {
@@ -381,52 +393,66 @@ export default function EscanerQR() {
         }
 
         .label {
-          font-weight: 600;
-          color: #555;
+          font-weight: 700;
+          color: rgba(255,255,255,0.8);
+          font-size: 0.85rem;
         }
 
         .value {
-          color: #333;
+          color: #fff;
+          font-weight: 600;
+          font-size: 0.9rem;
         }
 
         .error-message {
-          color: #666;
+          color: rgba(255,255,255,0.9);
           margin: 20px 0;
-          font-size: 1.1rem;
+          font-size: 0.9rem;
         }
 
         .btn-scan-again {
-          background: #2196f3;
+          background: #F37426;
           color: white;
-          border: none;
-          padding: 12px 30px;
-          border-radius: 6px;
-          font-size: 1rem;
+          border: 2px solid rgba(35,31,32,0.15);
+          padding: 10px 20px;
+          border-radius: 12px;
+          font-size: 0.95rem;
+          font-weight: 700;
           cursor: pointer;
           margin-top: 20px;
-          transition: background 0.3s;
+          transition: all 0.2s ease;
         }
 
         .btn-scan-again:hover {
-          background: #1976d2;
+          background: #ff8d45;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn-scan-again:active {
+          transform: translateY(0);
         }
 
         .btn-back {
           width: 100%;
-          background: white;
-          color: #2196f3;
-          border: 2px solid white;
+          background: transparent;
+          color: #F37426;
+          border: 1px solid rgba(243,116,38,0.35);
           padding: 12px 30px;
-          border-radius: 6px;
+          border-radius: 9999px;
           font-size: 1rem;
+          font-weight: 700;
           cursor: pointer;
           margin-top: 20px;
-          transition: all 0.3s;
+          transition: all 0.2s ease;
         }
 
         .btn-back:hover {
-          background: transparent;
-          color: white;
+          background: rgba(243,116,38,0.08);
+        }
+
+        .btn-back:active {
+          transform: translateY(1px);
         }
 
         .loading-card {
@@ -439,8 +465,8 @@ export default function EscanerQR() {
         .spinner {
           width: 50px;
           height: 50px;
-          border: 4px solid #f3f3f3;
-          border-top: 4px solid #2196f3;
+          border: 4px solid rgba(255,255,255,0.1);
+          border-top: 4px solid #F37426;
           border-radius: 50%;
           animation: spin 1s linear infinite;
         }
@@ -456,7 +482,11 @@ export default function EscanerQR() {
           }
 
           .scanner-wrapper {
-            padding: 10px;
+            padding: 20px;
+          }
+
+          .scanner-container {
+            padding: 20px 16px;
           }
         }
       `}</style>
