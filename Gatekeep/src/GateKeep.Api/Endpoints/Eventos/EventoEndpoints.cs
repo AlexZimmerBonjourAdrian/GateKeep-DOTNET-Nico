@@ -67,21 +67,14 @@ public static class EventoEndpoints
             ClaimsPrincipal user,
             IEventoService service) =>
         {
-            var userId = long.Parse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            var userRole = user.FindFirst(ClaimTypes.Role)?.Value;
-            
-            var evento = await service.ObtenerPorIdAsync(id);
-            if (evento == null)
-                return Results.NotFound();
-            
             try
             {
                 var eventoActualizado = await service.ActualizarAsync(id, request);
                 return Results.Ok(eventoActualizado);
             }
-            catch (InvalidOperationException)
+            catch (InvalidOperationException ex)
             {
-                return Results.NotFound();
+                return Results.NotFound(new { error = ex.Message });
             }
             catch (Exception ex)
             {
@@ -97,22 +90,22 @@ public static class EventoEndpoints
         .Produces(401)
         .Produces(403);
 
-        // DELETE /api/eventos/{id} - Solo administradores pueden eliminar eventos
+        // DELETE /api/eventos/{id} - Solo administradores pueden eliminar eventos (soft delete)
         group.MapDelete("/{id:long}", async (long id, IEventoService service) =>
         {
             try
             {
                 await service.EliminarAsync(id);
-                return Results.Ok(new { message = $"Evento {id} eliminado correctamente" });
+                return Results.Ok(new { message = $"Evento {id} desactivado correctamente" });
             }
             catch (Exception ex)
             {
-                return Results.BadRequest(new { error = $"Error al eliminar el evento: {ex.Message}" });
+                return Results.BadRequest(new { error = $"Error al desactivar el evento: {ex.Message}" });
             }
         })
         .RequireAuthorization("AdminOnly")
         .WithName("DeleteEvento")
-        .WithSummary("Eliminar evento")
+        .WithSummary("Desactivar evento (soft delete)")
         .Produces<string>(200)
         .Produces(404)
         .Produces(401)

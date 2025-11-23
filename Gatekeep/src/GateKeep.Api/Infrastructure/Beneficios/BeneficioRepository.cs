@@ -33,6 +33,14 @@ public sealed class BeneficioRepository : IBeneficioRepository
 
     public async Task<Beneficio> ActualizarAsync(Beneficio beneficio)
     {
+        var existing = await _context.Beneficios.FindAsync(beneficio.Id);
+        if (existing is not null)
+        {
+            _context.Entry(existing).CurrentValues.SetValues(beneficio);
+            await _context.SaveChangesAsync();
+            return existing;
+        }
+        
         _context.Beneficios.Update(beneficio);
         await _context.SaveChangesAsync();
         return beneficio;

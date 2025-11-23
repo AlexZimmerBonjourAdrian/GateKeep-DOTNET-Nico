@@ -10,7 +10,8 @@ public sealed record ReglaAcceso
     DateTime VigenciaApertura,
     DateTime VigenciaCierre,
     IReadOnlyList<Rol> RolesPermitidos,
-    long EspacioId
+    long EspacioId,
+    bool Activo = true
 );
 
 

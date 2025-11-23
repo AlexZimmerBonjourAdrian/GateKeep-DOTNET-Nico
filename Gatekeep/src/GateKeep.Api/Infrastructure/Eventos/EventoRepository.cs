@@ -16,7 +16,9 @@ public sealed class EventoRepository : IEventoRepository
 
     public async Task<IEnumerable<Evento>> ObtenerTodosAsync()
     {
-        return await _context.Eventos.ToListAsync();
+        return await _context.Eventos
+            .Where(e => e.Activo)
+            .ToListAsync();
     }
 
     public async Task<Evento?> ObtenerPorIdAsync(long id)
@@ -33,6 +35,14 @@ public sealed class EventoRepository : IEventoRepository
 
     public async Task<Evento> ActualizarAsync(Evento evento)
     {
+        var existing = await _context.Eventos.FindAsync(evento.Id);
+        if (existing is not null)
+        {
+            _context.Entry(existing).CurrentValues.SetValues(evento);
+            await _context.SaveChangesAsync();
+            return existing;
+        }
+        
         _context.Eventos.Update(evento);
         await _context.SaveChangesAsync();
         return evento;
@@ -43,7 +53,8 @@ public sealed class EventoRepository : IEventoRepository
         var evento = await _context.Eventos.FindAsync(id);
         if (evento is not null)
         {
-            _context.Eventos.Remove(evento);
+            // Soft delete: marcar como inactivo en lugar de eliminar
+            _context.Entry(evento).Property(e => e.Activo).CurrentValue = false;
             await _context.SaveChangesAsync();
         }
     }

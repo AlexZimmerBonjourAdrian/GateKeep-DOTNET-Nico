@@ -525,43 +525,67 @@ builder.Services.AddScoped<ICacheService, RedisCacheService>();
 // Servicios de Beneficios con Caching
 builder.Services.AddScoped<ICachedBeneficioService, CachedBeneficioService>();
 
-// Configuración de AWS SDK
-var awsRegion = Environment.GetEnvironmentVariable("AWS_REGION") ?? "sa-east-1";
-var regionEndpoint = RegionEndpoint.GetBySystemName(awsRegion);
-
-Log.Information("Configurando AWS SDK - Región: {Region}", awsRegion);
-
-// AWS Secrets Manager
-builder.Services.AddSingleton<IAmazonSecretsManager>(sp =>
+// Configuración de AWS SDK - Solo en Producción
+// En Development, AWS es opcional y no se requiere
+if (!builder.Environment.IsDevelopment())
 {
-    var config = new AmazonSecretsManagerConfig
+    try
     {
-        RegionEndpoint = regionEndpoint
-    };
-    // Las credenciales se leen automáticamente de las variables de entorno:
-    // AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
-    return new AmazonSecretsManagerClient(config);
-});
+        var awsRegion = Environment.GetEnvironmentVariable("AWS_REGION") ?? "sa-east-1";
+        var regionEndpoint = RegionEndpoint.GetBySystemName(awsRegion);
 
-// AWS Parameter Store (Systems Manager)
-builder.Services.AddSingleton<IAmazonSimpleSystemsManagement>(sp =>
-{
-    var config = new AmazonSimpleSystemsManagementConfig
-    {
-        RegionEndpoint = regionEndpoint
-    };
-    return new AmazonSimpleSystemsManagementClient(config);
-});
+        Log.Information("Configurando AWS SDK - Región: {Region}", awsRegion);
 
-// AWS CloudWatch (para exportar métricas de cache)
-builder.Services.AddSingleton<IAmazonCloudWatch>(sp =>
-{
-    var config = new AmazonCloudWatchConfig
+        // AWS Secrets Manager
+        builder.Services.AddSingleton<IAmazonSecretsManager>(sp =>
+        {
+            var config = new AmazonSecretsManagerConfig
+            {
+                RegionEndpoint = regionEndpoint
+            };
+            // Las credenciales se leen automáticamente de las variables de entorno:
+            // AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
+            return new AmazonSecretsManagerClient(config);
+        });
+
+        // AWS Parameter Store (Systems Manager)
+        builder.Services.AddSingleton<IAmazonSimpleSystemsManagement>(sp =>
+        {
+            var config = new AmazonSimpleSystemsManagementConfig
+            {
+                RegionEndpoint = regionEndpoint
+            };
+            return new AmazonSimpleSystemsManagementClient(config);
+        });
+
+        // AWS CloudWatch (para exportar métricas de cache)
+        builder.Services.AddSingleton<IAmazonCloudWatch>(sp =>
+        {
+            var config = new AmazonCloudWatchConfig
+            {
+                RegionEndpoint = regionEndpoint
+            };
+            return new AmazonCloudWatchClient(config);
+        });
+
+        // Servicios AWS
+        builder.Services.AddScoped<IAwsSecretsService, AwsSecretsService>();
+        builder.Services.AddScoped<IAwsParameterService, AwsParameterService>();
+        builder.Services.AddSingleton<ICloudWatchMetricsExporter, CloudWatchMetricsExporter>();
+    }
+    catch (Exception ex)
     {
-        RegionEndpoint = regionEndpoint
-    };
-    return new AmazonCloudWatchClient(config);
-});
+        Log.Warning(ex, "Error configurando AWS SDK. Continuando sin servicios AWS.");
+        // En caso de error, registrar servicios mock o null para evitar fallos
+        // Los servicios que dependan de AWS deberán manejar la ausencia de estos servicios
+    }
+}
+else
+{
+    Log.Information("Modo Development: AWS SDK deshabilitado (opcional en desarrollo local)");
+    // En desarrollo, no registramos servicios AWS
+    // Los servicios que dependan de AWS deberán manejar su ausencia
+}
 
 // Servicios AWS
 builder.Services.AddScoped<IAwsSecretsService, AwsSecretsService>();

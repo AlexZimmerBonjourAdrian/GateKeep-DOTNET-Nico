@@ -73,27 +73,18 @@ public static class BeneficioEndpoints
         // PUT /beneficios/{id} - Solo funcionarios y administradores pueden actualizar beneficios
         group.MapPut("/{id:long}", async (long id, ActualizarBeneficioRequest request, ClaimsPrincipal user, ICachedBeneficioService service) =>
         {
-            var userId = long.Parse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            var userRole = user.FindFirst(ClaimTypes.Role)?.Value;
-            
-            // Verificar si el usuario puede editar este beneficio
-            var beneficio = await service.ObtenerPorIdAsync(id);
-            if (beneficio == null)
-                return Results.NotFound();
-                
-            // Solo administradores pueden editar cualquier beneficio
-            // Si quieres que el creador también pueda editar, descomenta la siguiente línea:
-            // if (beneficio.CreadoPor != userId && userRole != "Admin")
-            //     return Results.Forbid("No tienes permisos para editar este beneficio");
-            
             try
             {
                 var beneficioActualizado = await service.ActualizarAsync(id, request);
                 return Results.Ok(beneficioActualizado);
             }
-            catch (InvalidOperationException)
+            catch (InvalidOperationException ex)
             {
-                return Results.NotFound();
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = $"Error al actualizar el beneficio: {ex.Message}" });
             }
         })
         .RequireAuthorization("FuncionarioOrAdmin")

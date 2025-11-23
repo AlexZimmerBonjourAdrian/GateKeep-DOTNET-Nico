@@ -29,7 +29,7 @@ export default function ReglaAccesoDetalle() {
     }
     const fetchRegla = async () => {
       try {
-        const resp = await ReglaAccesoService.getReglaById(id)
+        const resp = await ReglaAccesoService.getReglaAccesoById(id)
         setRegla(resp.data)
       } catch (e) {
         console.error('Error cargando regla de acceso', e)
@@ -96,31 +96,33 @@ export default function ReglaAccesoDetalle() {
                     <span className="meta-value">{regla.EspacioId ?? regla.espacioId ?? 'N/A'}</span>
                   </div>
                   <div className="meta-item">
-                    <span className="meta-label">Usuario ID</span>
-                    <span className="meta-value">{regla.UsuarioId ?? regla.usuarioId ?? 'N/A'}</span>
-                  </div>
-                  <div className="meta-item">
-                    <span className="meta-label">Fecha de inicio</span>
+                    <span className="meta-label">Horario Apertura</span>
                     <span className="meta-value">
-                      {formatearFecha(regla.FechaInicio ?? regla.fechaInicio)}
+                      {formatearFecha(regla.HorarioApertura ?? regla.horarioApertura)} {formatearHora(regla.HorarioApertura ?? regla.horarioApertura)}
                     </span>
                   </div>
                   <div className="meta-item">
-                    <span className="meta-label">Fecha de fin</span>
+                    <span className="meta-label">Horario Cierre</span>
                     <span className="meta-value">
-                      {formatearFecha(regla.FechaFin ?? regla.fechaFin)}
+                      {formatearFecha(regla.HorarioCierre ?? regla.horarioCierre)} {formatearHora(regla.HorarioCierre ?? regla.horarioCierre)}
                     </span>
                   </div>
                   <div className="meta-item">
-                    <span className="meta-label">Hora de inicio</span>
+                    <span className="meta-label">Vigencia Apertura</span>
                     <span className="meta-value">
-                      {formatearHora(regla.HoraInicio ?? regla.horaInicio)}
+                      {formatearFecha(regla.VigenciaApertura ?? regla.vigenciaApertura)}
                     </span>
                   </div>
                   <div className="meta-item">
-                    <span className="meta-label">Hora de fin</span>
+                    <span className="meta-label">Vigencia Cierre</span>
                     <span className="meta-value">
-                      {formatearHora(regla.HoraFin ?? regla.horaFin)}
+                      {formatearFecha(regla.VigenciaCierre ?? regla.vigenciaCierre)}
+                    </span>
+                  </div>
+                  <div className="meta-item">
+                    <span className="meta-label">Roles Permitidos</span>
+                    <span className="meta-value">
+                      {(regla.RolesPermitidos ?? regla.rolesPermitidos ?? []).join(', ') || 'N/A'}
                     </span>
                   </div>
                 </div>

@@ -200,15 +200,20 @@ export default function ListadoSalones() {
 									const numero = salon.NumeroSalon || salon.numeroSalon || 'N/A';
 									const capacidad = salon.Capacidad ?? salon.capacidad ?? 'N/A';
 									const edificioId = salon.EdificioId || salon.edificioId;
-									
-									return (
-										<div key={id} className="event-card" tabIndex={0}>
+								
+								return (
+									<div key={id} className="event-card" tabIndex={0}>
+										<div 
+											onClick={() => router.push(`/salones/${id}`)}
+											style={{ cursor: 'pointer', flex: 1 }}
+										>
 											<h3>{nombre}</h3>
 											<p><strong>Número:</strong> {numero}</p>
 											<p><strong>Capacidad:</strong> {capacidad}</p>
 											<p><strong>Edificio:</strong> {getEdificioNombre(edificioId)}</p>
-											<div className="card-actions">
-												<button
+										</div>
+										<div className="card-actions">
+											<button
 													className="card-action-btn edit-btn"
 													onClick={() => router.push(`/salones/editarSalon/${id}`)}
 													aria-label={`Editar ${nombre}`}

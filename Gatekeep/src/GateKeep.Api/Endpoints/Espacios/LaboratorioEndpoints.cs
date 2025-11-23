@@ -165,7 +165,7 @@ public static class LaboratorioEndpoints
             
             return Results.Ok(new
             {
-                message = $"Laboratorio {id} marcado como eliminado (borrado lógico)",
+                message = $"Laboratorio {id} desactivado correctamente",
                 id = laboratorio.Id,
                 nombre = laboratorio.Nombre
             });

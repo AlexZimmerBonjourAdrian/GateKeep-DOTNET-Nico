@@ -23,6 +23,10 @@ export class SalonService {
     return axios.get(`${API_URL}/${id}`, this.getAuthHeaders());
   }
 
+  static async getSalonById(id: number) {
+    return this.getSalon(id);
+  }
+
   static async createSalon(data: { 
     nombre: string; 
     capacidad: number; 

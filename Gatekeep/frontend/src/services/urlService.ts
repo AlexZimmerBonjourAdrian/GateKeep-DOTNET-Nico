@@ -24,9 +24,9 @@ const getApiBaseUrl = () => {
       console.debug('[URLService] Detected AWS production domain:', apiUrl);
       return apiUrl;
     }
-    // En desarrollo local, usar el mismo origin (nginx enruta /api/)
-    console.debug('[URLService] Using localhost origin:', origin);
-    return origin;
+    // En desarrollo local, usar puerto 5011 del backend
+    console.debug('[URLService] Using localhost backend:', 'http://localhost:5011');
+    return 'http://localhost:5011';
   }
   
   // Prioridad 3: Fallback según NODE_ENV (solo en servidor)

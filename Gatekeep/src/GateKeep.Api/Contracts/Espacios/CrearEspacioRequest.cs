@@ -9,5 +9,4 @@ public record CrearEspacioRequest
     public string? Descripcion { get; init; }
     public required string Ubicacion { get; init; }
     public int Capacidad { get; init; }
-    public bool Activo { get; init; } = true;
 }
