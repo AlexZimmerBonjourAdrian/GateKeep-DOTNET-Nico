@@ -88,8 +88,7 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
         Resource = [
           aws_secretsmanager_secret.db_password.arn,
           aws_secretsmanager_secret.jwt_key.arn,
-          aws_secretsmanager_secret.mongodb_connection.arn,
-          data.aws_secretsmanager_secret.rabbitmq_password.arn
+          aws_secretsmanager_secret.mongodb_connection.arn
         ]
       },
       {
@@ -154,8 +153,7 @@ resource "aws_iam_role_policy" "ecs_task_cloudwatch" {
           StringEquals = {
             "cloudwatch:namespace" = [
               "GateKeep/Redis",
-              "GateKeep/Redis/Logs",
-              "GateKeep/RabbitMQ"
+              "GateKeep/Redis/Logs"
             ]
           }
         }
@@ -237,35 +235,6 @@ resource "aws_ecs_task_definition" "main" {
         {
           name  = "REDIS_INSTANCE"
           value = "GateKeep:"
-        },
-        # RabbitMQ
-        {
-          name  = "RABBITMQ__HOST"
-          value = "${aws_mq_broker.main.id}.mq.${var.aws_region}.amazonaws.com"
-        },
-        {
-          name  = "RABBITMQ__PORT"
-          value = "5671"
-        },
-        {
-          name  = "RABBITMQ__USE_SSL"
-          value = "true"
-        },
-        {
-          name  = "RABBITMQ__USERNAME"
-          value = "admin"
-        },
-        {
-          name  = "RABBITMQ__VIRTUALHOST"
-          value = "/"
-        },
-        {
-          name  = "RABBITMQ__MANAGEMENT_PORT"
-          value = "443"
-        },
-        {
-          name  = "RABBITMQ__USE_HTTPS"
-          value = "true"
         }
       ]
 
@@ -284,11 +253,6 @@ resource "aws_ecs_task_definition" "main" {
         {
           name      = "MONGODB_CONNECTION"
           valueFrom = aws_secretsmanager_secret.mongodb_connection.arn
-        },
-        # RabbitMQ - desde Secrets Manager
-        {
-          name      = "RABBITMQ__PASSWORD"
-          valueFrom = data.aws_secretsmanager_secret.rabbitmq_password.arn
         }
       ]
 

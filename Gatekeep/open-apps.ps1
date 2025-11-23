@@ -31,7 +31,6 @@ function Test-DockerContainers {
         "gatekeep-seq" = "Seq"
         "gatekeep-prometheus" = "Prometheus"
         "gatekeep-grafana" = "Grafana"
-        "gatekeep-rabbitmq" = "RabbitMQ"
     }
     
     $allRunning = $true
@@ -103,7 +102,7 @@ function Show-Menu {
     Write-Host "  2. Docker - Swagger y Frontend en Docker" -ForegroundColor White
     Write-Host "  3. AWS - Swagger y Frontend en AWS" -ForegroundColor White
     Write-Host "  4. Solo Monitoreo - Herramientas de observabilidad" -ForegroundColor White
-    Write-Host "  5. Solo Testing - Swagger y RabbitMQ" -ForegroundColor White
+    Write-Host "  5. Solo Testing - Swagger" -ForegroundColor White
     Write-Host "  6. Todo (Local + Monitoreo)" -ForegroundColor White
     Write-Host "  0. Salir" -ForegroundColor White
     Write-Host ""
@@ -126,13 +125,11 @@ $monitoringUrls = @{
     "Seq (Logs)" = "http://localhost:5341"
     "Prometheus (Métricas)" = "http://localhost:9090"
     "Grafana (Dashboards)" = "http://localhost:3001"
-    "RabbitMQ Management" = "http://localhost:15672"
 }
 
 # URLs de testing
 $testingUrls = @{
     "Swagger" = "http://localhost:5011/swagger"
-    "RabbitMQ Management" = "http://localhost:15672"
     "Health Check" = "http://localhost:5011/health"
 }
 
@@ -211,15 +208,11 @@ switch ($selectedOption) {
         Write-ColorOutput "  - Seq: admin / admin" "White"
         Write-ColorOutput "  - Grafana: admin / admin123" "White"
         Write-ColorOutput "  - Prometheus: Sin autenticación" "White"
-        Write-ColorOutput "  - RabbitMQ: guest / guest" "White"
     }
     
     "5" {
         # Solo Testing
         Open-Urls -Urls $testingUrls -Environment "Testing"
-        Write-Host ""
-        Write-ColorOutput "Credenciales:" "Yellow"
-        Write-ColorOutput "  - RabbitMQ: guest / guest" "White"
     }
     
     "6" {

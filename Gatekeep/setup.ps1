@@ -166,7 +166,6 @@ function Test-Ports {
         "5341" = "Seq"
         "9090" = "Prometheus"
         "3001" = "Grafana"
-        "15672" = "RabbitMQ Management"
     }
     
     $allAvailable = $true

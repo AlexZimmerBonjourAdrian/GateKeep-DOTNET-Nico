@@ -107,57 +107,11 @@ resource "aws_secretsmanager_secret" "mongodb_connection" {
 #   secret_id = aws_secretsmanager_secret.mongodb_connection.id
 # }
 
-# Secret para RabbitMQ Password - Usar data source porque ya existe
-data "aws_secretsmanager_secret" "rabbitmq_password" {
-  name = "${var.project_name}/rabbitmq/password"
-}
-
-# Resource comentado porque el secret ya existe en AWS
-# resource "aws_secretsmanager_secret" "rabbitmq_password" {
-#   name        = "${var.project_name}/rabbitmq/password"
-#   description = "Password para Amazon MQ RabbitMQ"
-#
-#   recovery_window_in_days = 7
-#
-#   tags = {
-#     Name        = "${var.project_name}-rabbitmq-password"
-#     Environment = var.environment
-#     ManagedBy   = "Terraform"
-#   }
-#
-#   lifecycle {
-#     ignore_changes = all
-#   }
-# }
-
-# Generar password aleatorio para RabbitMQ - COMENTADO (secret ya existe)
-# resource "random_password" "rabbitmq_password" {
-#   count = var.manage_secret_versions ? 1 : 0
-#
-#   length           = 32
-#   special          = true
-#   override_special = "!#$%&*()-_=+[]{}<>:?"
-# }
-
-# Versión del secret con RabbitMQ password - COMENTADO (secret ya existe)
-# resource "aws_secretsmanager_secret_version" "rabbitmq_password" {
-#   count = var.manage_secret_versions ? 1 : 0
-#
-#   secret_id     = aws_secretsmanager_secret.rabbitmq_password.id
-#   secret_string = random_password.rabbitmq_password[0].result
-# }
-
-data "aws_secretsmanager_secret_version" "rabbitmq_password" {
-  secret_id = data.aws_secretsmanager_secret.rabbitmq_password.id
-}
-
 locals {
   db_password_secret_string = var.manage_secret_versions ? aws_secretsmanager_secret_version.db_password[0].secret_string : data.aws_secretsmanager_secret_version.db_password[0].secret_string
 
   jwt_key_secret_string = var.manage_secret_versions ? aws_secretsmanager_secret_version.jwt_key[0].secret_string : data.aws_secretsmanager_secret_version.jwt_key[0].secret_string
 
   mongodb_connection_secret_string = ""  # Se debe crear manualmente la versión del secret en AWS Console
-
-  rabbitmq_password_secret_string = try(data.aws_secretsmanager_secret_version.rabbitmq_password.secret_string, "")
 }
 
