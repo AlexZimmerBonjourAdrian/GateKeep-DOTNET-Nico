@@ -106,11 +106,19 @@ try
     var builder = WebApplication.CreateBuilder(args);
 
     // Configurar Serilog desde appsettings.json
-    builder.Host.UseSerilog((context, services, configuration) => configuration
-        .ReadFrom.Configuration(context.Configuration)
-        .ReadFrom.Services(services)
-        .Enrich.FromLogContext()
-        .Enrich.WithProperty("Application", "GateKeep.Api"));
+    builder.Host.UseSerilog((context, services, configuration) =>
+    {
+        configuration
+            .ReadFrom.Configuration(context.Configuration)
+            .ReadFrom.Services(services)
+            .Enrich.FromLogContext()
+            .Enrich.WithProperty("Application", "GateKeep.Api");
+        
+        // En producción, no usar Seq (solo disponible en desarrollo local)
+        // Si appsettings.json tiene Seq configurado, Serilog intentará conectarse
+        // pero fallará silenciosamente si no está disponible (solo genera warnings en logs)
+        // Para evitar warnings, podríamos filtrar Seq en producción, pero no es crítico
+    });
 
 // Cargar config.json: hacerlo opcional para entornos Docker donde montamos config.Production.json
 builder.Configuration.AddJsonFile("config.json", optional: true, reloadOnChange: true);
@@ -135,11 +143,13 @@ if (port.Contains("://"))
     port = port.Split(':').LastOrDefault() ?? "5011";
 }
 
-// En Docker, ASPNETCORE_URLS contiene "+" (ej: "http://+:5011"), usar 0.0.0.0 para escuchar en todas las interfaces
-// En local, usar localhost
+// En Docker/Producción, ASPNETCORE_URLS contiene "+" (ej: "http://+:5011"), usar 0.0.0.0 para escuchar en todas las interfaces
+// En producción siempre usar 0.0.0.0, en desarrollo local usar localhost
 var listenAddress = Environment.GetEnvironmentVariable("ASPNETCORE_URLS")?.Contains("+") == true 
     ? "0.0.0.0" 
-    : "localhost";
+    : (builder.Environment.IsProduction() 
+        ? "0.0.0.0"  // En producción siempre escuchar en todas las interfaces
+        : "localhost");  // En desarrollo local usar localhost
 builder.WebHost.UseUrls($"http://{listenAddress}:{port}");
 Log.Information("GateKeep.Api configurado para ejecutarse en puerto: {Port}", port);
 
@@ -332,11 +342,14 @@ builder.Services.AddDbContext<GateKeepDbContext>(options =>
     // Permitir override con variables de entorno (prioridad: ENV > config.json)
     // Docker Compose pasa DATABASE__HOST (formato .NET Configuration), también soportamos DB_HOST para compatibilidad
     // .NET Configuration mapea DATABASE__HOST a Configuration["DATABASE:HOST"]
+    // En producción, las variables de entorno son REQUERIDAS (no usar localhost)
     var host = builder.Configuration["DATABASE:HOST"]
         ?? Environment.GetEnvironmentVariable("DATABASE__HOST")
         ?? Environment.GetEnvironmentVariable("DB_HOST")
         ?? config["host"]
-        ?? "localhost";
+        ?? (builder.Environment.IsProduction() 
+            ? throw new InvalidOperationException("DATABASE__HOST debe estar configurado en producción. Variable de entorno no encontrada.")
+            : "localhost");
     var port = builder.Configuration["DATABASE:PORT"]
         ?? Environment.GetEnvironmentVariable("DATABASE__PORT")
         ?? Environment.GetEnvironmentVariable("DB_PORT")
@@ -356,7 +369,9 @@ builder.Services.AddDbContext<GateKeepDbContext>(options =>
         ?? Environment.GetEnvironmentVariable("DATABASE__PASSWORD")
         ?? Environment.GetEnvironmentVariable("DB_PASSWORD")
         ?? config["password"]
-        ?? "dev_password";
+        ?? (builder.Environment.IsProduction()
+            ? throw new InvalidOperationException("DATABASE__PASSWORD debe estar configurado en producción. Variable de entorno o secret no encontrado.")
+            : "dev_password");
     
     Log.Information("Configurando PostgreSQL - Host: {Host}, Puerto: {Port}, Base de datos: {Database}, Usuario: {User}", 
         host, port, database, username);
@@ -429,9 +444,12 @@ builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
     var mongoConfig = builder.Configuration.GetSection("mongodb");
     
     // Permitir override con variables de entorno
+    // En producción, la variable de entorno es REQUERIDA (no usar localhost)
     var connectionString = Environment.GetEnvironmentVariable("MONGODB_CONNECTION") 
         ?? mongoConfig["connectionString"] 
-        ?? "mongodb://localhost:27017";
+        ?? (builder.Environment.IsProduction()
+            ? throw new InvalidOperationException("MONGODB_CONNECTION debe estar configurado en producción. Variable de entorno o secret no encontrado.")
+            : "mongodb://localhost:27017");
     
     var useStableApi = Environment.GetEnvironmentVariable("MONGODB_USE_STABLE_API")?.ToLower() == "true"
         || mongoConfig.GetValue<bool>("useStableApi", false);
@@ -479,7 +497,12 @@ builder.Services.AddStackExchangeRedisCache(options =>
 {
     var redisConfig = builder.Configuration.GetSection("redis");
     // Permitir override con variables de entorno
-    var connectionString = Environment.GetEnvironmentVariable("REDIS_CONNECTION") ?? redisConfig["connectionString"] ?? "localhost:6379";
+    // En producción, la variable de entorno es REQUERIDA (no usar localhost)
+    var connectionString = Environment.GetEnvironmentVariable("REDIS_CONNECTION") 
+        ?? redisConfig["connectionString"] 
+        ?? (builder.Environment.IsProduction()
+            ? throw new InvalidOperationException("REDIS_CONNECTION debe estar configurado en producción. Variable de entorno no encontrada.")
+            : "localhost:6379");
     var instanceName = Environment.GetEnvironmentVariable("REDIS_INSTANCE") ?? redisConfig["instanceName"] ?? "GateKeepRedis:";
     
     options.Configuration = connectionString;
@@ -493,7 +516,12 @@ builder.Services.AddStackExchangeRedisCache(options =>
 builder.Services.AddSingleton<IConnectionMultiplexer>(serviceProvider =>
 {
     var redisConfig = builder.Configuration.GetSection("redis");
-    var connectionString = Environment.GetEnvironmentVariable("REDIS_CONNECTION") ?? redisConfig["connectionString"] ?? "localhost:6379";
+    // En producción, la variable de entorno es REQUERIDA (no usar localhost)
+    var connectionString = Environment.GetEnvironmentVariable("REDIS_CONNECTION") 
+        ?? redisConfig["connectionString"] 
+        ?? (builder.Environment.IsProduction()
+            ? throw new InvalidOperationException("REDIS_CONNECTION debe estar configurado en producción. Variable de entorno no encontrada.")
+            : "localhost:6379");
     
     Log.Information("Conectando a Redis: {Connection}", connectionString);
     
