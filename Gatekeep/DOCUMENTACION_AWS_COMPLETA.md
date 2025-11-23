@@ -14,6 +14,7 @@
 11. [Security Groups](#security-groups)
 12. [IAM Roles y Políticas](#iam-roles-y-políticas)
 13. [Comandos AWS CLI](#comandos-aws-cli)
+14. [Cambios y Configuración del Load Balancer](#cambios-y-configuración-del-load-balancer)
 
 ---
 
@@ -107,22 +108,25 @@ aws ec2 describe-route-tables --filters "Name=vpc-id,Values=vpc-020bbcab6b221869
 |-----------|-----------|--------|--------------|
 | 90 | Path: `/api/auth/*` | Forward | `gatekeep-tg` |
 | 100 | Path: `/api/*` | Forward | `gatekeep-tg` |
-| 110 | Path: `/auth/*` | Forward | `gatekeep-tg` |
 | 120 | Path: `/usuarios/*` | Forward | `gatekeep-tg` |
 | 130 | Path: `/swagger*`, `/swagger/*` | Forward | `gatekeep-tg` |
 | 140 | Path: `/health` | Forward | `gatekeep-tg` |
 | Default | - | Redirect a HTTPS | - |
 
+**Nota**: La regla `/auth/*` fue eliminada porque la aplicación solo expone endpoints bajo `/api/auth/*`. Ver sección [Cambios y Configuración del Load Balancer](#cambios-y-configuración-del-load-balancer) para más detalles.
+
 ### Reglas de Enrutamiento (Listener HTTPS - Puerto 443)
 
 | Prioridad | Condición | Acción | Target Group |
 |-----------|-----------|--------|--------------|
+| 90 | Path: `/api/auth/*` | Forward | `gatekeep-tg` |
 | 100 | Path: `/api/*` | Forward | `gatekeep-tg` |
-| 110 | Path: `/auth/*` | Forward | `gatekeep-tg` |
 | 120 | Path: `/usuarios/*` | Forward | `gatekeep-tg` |
 | 130 | Path: `/swagger*`, `/swagger/*` | Forward | `gatekeep-tg` |
-| 140 | Path: `/health` | Forward | `gatekeep-tg` |
+| 140 | Path: `/health*` | Forward | `gatekeep-tg` |
 | Default | - | Forward | `gatekeep-frontend-tg` |
+
+**Nota**: La regla `/auth/*` fue eliminada porque la aplicación solo expone endpoints bajo `/api/auth/*`. Ver sección [Cambios y Configuración del Load Balancer](#cambios-y-configuración-del-load-balancer) para más detalles.
 
 ### Target Groups
 
@@ -855,6 +859,182 @@ aws cloudwatch describe-alarms --alarm-name-prefix gatekeep --region sa-east-1 -
 
 ---
 
+## Cambios y Configuración del Load Balancer
+
+### Resumen de Cambios Realizados
+
+Esta sección documenta los cambios realizados en el Load Balancer para asegurar que funcione correctamente con la aplicación GateKeep.
+
+#### Fecha de Cambios: 2025-11-23
+
+### Problema Identificado
+
+1. **Desajuste entre rutas del Load Balancer y la aplicación**:
+   - El Load Balancer tenía reglas para `/auth/*` (sin prefijo `/api/`)
+   - La aplicación solo expone endpoints bajo `/api/auth/*`
+   - Esto causaba que las peticiones a `/auth/login` devolvieran 404
+
+2. **Orden de prioridades incorrecto**:
+   - Inicialmente `/auth/*` tenía prioridad 90 (mayor que `/api/auth/*`)
+   - Esto causaba que las peticiones se enrutaran incorrectamente
+
+### Cambios Implementados
+
+#### 1. Reorganización de Prioridades
+
+**Antes:**
+- Priority 90: `/auth/*` → Backend
+- Priority 100: `/api/auth/*` → Backend
+- Priority 110: `/api/*` → Backend
+
+**Después:**
+- Priority 90: `/api/auth/*` → Backend (máxima prioridad)
+- Priority 100: `/api/*` → Backend
+- `/auth/*` → Eliminada
+
+**Razón**: La aplicación solo tiene endpoints bajo `/api/auth/*`, por lo que `/api/auth/*` debe tener la máxima prioridad para que coincida antes que la regla genérica `/api/*`.
+
+#### 2. Eliminación de Regla `/auth/*`
+
+**Acción**: Se eliminó la regla `/auth/*` de ambos listeners (HTTP y HTTPS).
+
+**Razón**: 
+- La aplicación no tiene endpoints bajo `/auth/*` (sin prefijo `/api/`)
+- Todos los endpoints de autenticación están bajo `/api/auth/*`
+- Mantener la regla `/auth/*` causaba confusión y peticiones 404
+
+**Comando utilizado**:
+```powershell
+# Eliminar regla /auth/* del listener HTTP
+aws elbv2 delete-rule --rule-arn <rule-arn> --region sa-east-1
+
+# Eliminar regla /auth/* del listener HTTPS
+aws elbv2 delete-rule --rule-arn <rule-arn> --region sa-east-1
+```
+
+### Configuración Final del Load Balancer
+
+#### Listener HTTP (Puerto 80)
+
+| Prioridad | Condición | Acción | Target Group | Estado |
+|-----------|-----------|--------|--------------|--------|
+| 90 | Path: `/api/auth/*` | Forward | `gatekeep-tg` | ✅ Activa |
+| 100 | Path: `/api/*` | Forward | `gatekeep-tg` | ✅ Activa |
+| 120 | Path: `/usuarios/*` | Forward | `gatekeep-tg` | ✅ Activa |
+| 130 | Path: `/swagger*` | Forward | `gatekeep-tg` | ✅ Activa |
+| 140 | Path: `/health` | Forward | `gatekeep-tg` | ✅ Activa |
+| Default | - | Redirect a HTTPS | - | ✅ Activa |
+
+#### Listener HTTPS (Puerto 443)
+
+| Prioridad | Condición | Acción | Target Group | Estado |
+|-----------|-----------|--------|--------------|--------|
+| 90 | Path: `/api/auth/*` | Forward | `gatekeep-tg` | ✅ Activa |
+| 100 | Path: `/api/*` | Forward | `gatekeep-tg` | ✅ Activa |
+| 120 | Path: `/usuarios/*` | Forward | `gatekeep-tg` | ✅ Activa |
+| 130 | Path: `/swagger*` | Forward | `gatekeep-tg` | ✅ Activa |
+| 140 | Path: `/health*` | Forward | `gatekeep-tg` | ✅ Activa |
+| Default | - | Forward | `gatekeep-frontend-tg` | ✅ Activa |
+
+### Endpoints que Funcionan Correctamente
+
+Después de los cambios, los siguientes endpoints funcionan correctamente:
+
+- ✅ `POST /api/auth/login` - Login de usuarios
+- ✅ `POST /api/auth/register` - Registro de usuarios (requiere Admin)
+- ✅ `GET /api/auth/qr` - Generar código QR del JWT
+- ✅ `GET /api/auth/validate` - Validar token JWT
+- ✅ `POST /api/auth/create-test-users` - Crear usuarios de prueba
+- ✅ `GET /api/auth/list-users` - Listar usuarios (testing)
+
+### Endpoints que NO Funcionan
+
+Los siguientes endpoints no funcionan porque la aplicación no los expone:
+
+- ❌ `POST /auth/login` - No existe (la aplicación solo tiene `/api/auth/login`)
+- ❌ `POST /auth/register` - No existe (la aplicación solo tiene `/api/auth/register`)
+- ❌ Cualquier ruta bajo `/auth/*` sin el prefijo `/api/`
+
+### Verificación de Funcionamiento
+
+#### Prueba de Login Exitoso
+
+**Endpoint**: `POST https://api.zimmzimmgames.com/api/auth/login`
+
+**Credenciales de prueba**:
+- Email: `admin1@gatekeep.com`
+- Password: `admin123`
+
+**Resultado esperado**:
+- Status: `200 OK`
+- Respuesta: Token JWT válido y datos del usuario
+- Logs: `HTTP POST /api/auth/login responded 200`
+
+**Comando de prueba**:
+```powershell
+$body = @{
+    email = "admin1@gatekeep.com"
+    password = "admin123"
+} | ConvertTo-Json
+
+Invoke-WebRequest -Uri "https://api.zimmzimmgames.com/api/auth/login" `
+    -Method POST `
+    -Body $body `
+    -ContentType "application/json"
+```
+
+### Comandos Útiles para Verificar Configuración
+
+#### Ver todas las reglas de un listener
+
+```powershell
+# HTTP (Puerto 80)
+$httpListenerArn = "arn:aws:elasticloadbalancing:sa-east-1:126588786097:listener/app/gatekeep-alb/ff82ae699b9862d2/d15f140471f37a0d"
+aws elbv2 describe-rules --listener-arn $httpListenerArn --region sa-east-1
+
+# HTTPS (Puerto 443)
+$httpsListenerArn = "arn:aws:elasticloadbalancing:sa-east-1:126588786097:listener/app/gatekeep-alb/ff82ae699b9862d2/d277ff2b7c7f46a8"
+aws elbv2 describe-rules --listener-arn $httpsListenerArn --region sa-east-1
+```
+
+#### Verificar que no hay reglas `/auth/*` (sin `/api/`)
+
+```powershell
+$rules = aws elbv2 describe-rules --listener-arn $listenerArn --region sa-east-1 --output json | ConvertFrom-Json
+$rules.Rules | Where-Object { 
+    $_.Priority -ne "default" -and 
+    $_.Conditions[0].Values[0] -eq "/auth/*" 
+}
+# No debe devolver ningún resultado
+```
+
+#### Ver estado de los targets
+
+```powershell
+$tgArn = "arn:aws:elasticloadbalancing:sa-east-1:126588786097:targetgroup/gatekeep-tg/27437174e066b9ee"
+aws elbv2 describe-target-health --target-group-arn $tgArn --region sa-east-1
+```
+
+### Notas Importantes
+
+1. **Coherencia con el código**: La configuración del Load Balancer ahora coincide exactamente con los endpoints definidos en el código de la aplicación (`AuthEndpoints.cs`).
+
+2. **Prioridad de reglas**: El orden de prioridades es crítico. `/api/auth/*` debe tener prioridad 90 (mayor que `/api/*` con prioridad 100) para que las peticiones de autenticación se enruten correctamente.
+
+3. **Eliminación de reglas innecesarias**: Eliminar la regla `/auth/*` evita confusión y asegura que solo funcionen los endpoints que realmente existen en la aplicación.
+
+4. **Testing**: Siempre verificar que los endpoints funcionen después de hacer cambios en el Load Balancer usando las credenciales válidas.
+
+### Próximos Pasos Recomendados
+
+1. **Sincronizar con Terraform**: Si se realizan cambios manuales, considerar actualizar los archivos de Terraform para mantener la consistencia.
+
+2. **Documentar cambios futuros**: Cualquier cambio en las reglas del Load Balancer debe documentarse en esta sección.
+
+3. **Monitoreo**: Configurar alertas en CloudWatch para detectar errores 404 o problemas de enrutamiento.
+
+---
+
 ## Troubleshooting
 
 ### Problema: 404 en `/api/auth/login`
@@ -877,6 +1057,11 @@ aws cloudwatch describe-alarms --alarm-name-prefix gatekeep --region sa-east-1 -
 
 ---
 
-**Última Actualización**: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
-**Versión de Documentación**: 1.0
+**Última Actualización**: 2025-11-23
+**Versión de Documentación**: 1.1
+**Cambios en esta versión**: 
+- Actualizada configuración de reglas del Load Balancer
+- Eliminada regla `/auth/*` (la aplicación solo expone `/api/auth/*`)
+- Reorganizadas prioridades: `/api/auth/*` ahora tiene prioridad 90 (máxima)
+- Agregada sección "Cambios y Configuración del Load Balancer"
 
