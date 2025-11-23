@@ -24,6 +24,28 @@ export class EventoService {
   }
 
   static createEvento(data: { nombre: string; fecha: string; resultado?: string; puntoControl?: string }) {
-    return axios.post(API_URL, data, this.getAuthHeaders());
+    const payload = {
+      Nombre: data.nombre,
+      Fecha: data.fecha,
+      Resultado: data.resultado || '',
+      PuntoControl: data.puntoControl || '',
+      Activo: true
+    };
+    return axios.post(API_URL, payload, this.getAuthHeaders());
+  }
+
+  static updateEvento(id: number, data: { nombre: string; fecha: string; resultado?: string; puntoControl?: string }) {
+    const payload = {
+      Nombre: data.nombre,
+      Fecha: data.fecha,
+      Resultado: data.resultado || '',
+      PuntoControl: data.puntoControl || '',
+      Activo: true
+    };
+    return axios.put(`${API_URL}/${id}`, payload, this.getAuthHeaders());
+  }
+
+  static deleteEvento(id: number) {
+    return axios.delete(`${API_URL}/${id}`, this.getAuthHeaders());
   }
 }

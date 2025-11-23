@@ -1,9 +1,9 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import logo from '/public/assets/LogoGateKeep.webp'
 import harvard from '/public/assets/Harvard.webp'
 import BasketballIcon from '/public/assets/basketball-icon.svg'
@@ -12,20 +12,80 @@ import { SecurityService } from '../../services/securityService'
 
 export default function Perfil() {
   const pathname = usePathname();
+  const router = useRouter();
+  const adminMenuRef = useRef(null);
+  
   // Verificación de autenticación en cliente
   useEffect(() => {
     SecurityService.checkAuthAndRedirect(pathname);
   }, [pathname]);
 
+   
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [role, setRole] = useState('Usuario')
-    const [userId, setUserId] = useState(null)
-    const [editMode, setEditMode] = useState(false)
+  const [userId, setUserId] = useState(null)
+  const [editMode, setEditMode] = useState(false)
+  const [notificaciones, setNotificaciones] = useState(0);
   const [profileImage, setProfileImage] = useState(null)
   const [preview, setPreview] = useState(null)
   const [qrUrl, setQrUrl] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false)
+
+  useEffect(() => {
+      const fetchNotifications = async () => {
+        SecurityService.checkAuthAndRedirect(pathname);
+  
+        // Si está autenticado, obtener datos del usuario y notificaciones
+          const storedUserId = SecurityService.getUserId();
+          const tipo = SecurityService.getTipoUsuario?.() || null;
+          try {
+            let admin = false;
+            if (tipo) {
+              admin = /admin|administrador/i.test(String(tipo));
+            } else {
+              // fallback: intentar con el objeto user del localStorage
+              const rawUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+              if (rawUser) {
+                const user = JSON.parse(rawUser);
+                const role = user?.TipoUsuario || user?.tipoUsuario || user?.Rol || user?.rol;
+                if (role) admin = /admin|administrador/i.test(String(role));
+              }
+            }
+            setIsAdmin(admin);
+          } catch {
+            setIsAdmin(false);
+          }
+          
+          if (storedUserId) {
+            const userId = parseInt(storedUserId, 10);
+            if (!isNaN(userId)) {
+              // Función para obtener notificaciones con reintentos
+              const fetchNotifications = async (retryCount = 0) => {
+                try {
+                  const count = await NotificacionService.getNoLeidasCount(userId);
+                  setNotificaciones(count || 0);
+                } catch (error) {
+                  console.error('Error al cargar notificaciones:', error);
+                  if (retryCount < 2) {
+                    // Reintentar después de 500ms
+                    setTimeout(() => fetchNotifications(retryCount + 1), 500);
+                  } else {
+                    setNotificaciones(0);
+                  }
+                }
+              };
+              
+              fetchNotifications();
+            }
+          }
+        
+      };
+  
+      fetchNotifications();
+    }, [pathname, router]);
 
   useEffect(() => {
     if (!profileImage) {
@@ -49,7 +109,12 @@ export default function Perfil() {
          setUserId(usuario.id ?? null)
           setName(`${usuario.nombre ?? ''} ${usuario.apellido ?? ''}`.trim())
           // rol viene como string por JsonStringEnumConverter
-          if (usuario.rol) setRole(usuario.rol)
+          if (usuario.rol) {
+            setRole(usuario.rol)
+            // Verificar si es admin
+            const admin = /admin|administrador/i.test(String(usuario.rol));
+            setIsAdmin(admin);
+          }
           if (usuario.telefono) setPhone(usuario.telefono)
         }
 
@@ -68,6 +133,19 @@ export default function Perfil() {
       if (revokedUrl) URL.revokeObjectURL(revokedUrl)
     }
   }, [])
+
+  // Cierre por click fuera del menú admin
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (adminMenuRef.current && !adminMenuRef.current.contains(e.target)) {
+        setAdminMenuOpen(false);
+      }
+    };
+    if (adminMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [adminMenuOpen]);
 
   const handleImageChange = (e) => {
     const file = e.target.files && e.target.files[0]
@@ -106,13 +184,26 @@ export default function Perfil() {
       <div className="header-hero">
         <Image src={harvard} alt="Harvard" fill className="harvard-image" priority />
         <div className="header-overlay" />
+        <div className="harvard-placeholder" />
 
       <div className="header-topbar">
         <div className="icon-group">
           <Link href="/">
             <Image src={logo} alt="Logo GateKeep" width={160} priority className="logo-image" />
           </Link>
+          
+          <Link href="/notificaciones" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Notificaciones" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
+            <div className="item-card notification-card">
+              <i className="pi pi-bell item-icon" aria-hidden={true}></i>
+                {notificaciones > 0 && (
+                  <div className="notification-badge">
+                    {notificaciones}
+                  </div>
+                )}
+            </div>
+          </Link>
         </div>
+        
         <Link href="/" className="btn-volver">
           ← Volver al Inicio
         </Link>
@@ -188,6 +279,96 @@ export default function Perfil() {
       </div>
     </div>
 
+      {/* Barra de navegación inferior solo en móvil */}
+      <div className="header-bottom-bar">
+        <Link href="/" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Home" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
+          <div className="item-card">
+            <i className="pi pi-home item-icon" aria-hidden={true}></i>
+            <p className="item-text">Home</p>
+          </div>
+        </Link>
+
+        <Link href="/evento/listadoEventos" style={{ textDecoration: 'none', outline: 'none'}} aria-label="Eventos" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
+          <div className="item-card">
+            <BasketballIcon style={{ color: '#231F20', width: 30, height: 30 }} />
+            <p className="item-text">Eventos</p>
+          </div>
+        </Link>
+
+        <Link href="/anuncio/listadoAnuncios" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Anuncios" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
+          <div className="item-card">
+            <i className="pi pi-megaphone item-icon" aria-hidden={true}></i>
+            <p className="item-text">Anuncios</p>
+          </div>
+        </Link>
+
+        {isAdmin && (
+          <div className="admin-menu-wrapper" ref={adminMenuRef}>
+            <button
+              type="button"
+              className="item-card admin-trigger"
+              aria-haspopup="true"
+              aria-expanded={adminMenuOpen}
+              aria-label="Recursos administrativos"
+              onClick={() => setAdminMenuOpen(o => !o)}
+            >
+              <i className="pi pi-sliders-h item-icon" aria-hidden={true}></i>
+              <p className="item-text">Admin</p>
+            </button>
+            {adminMenuOpen && (
+              <div className="admin-dropdown-mobile" role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  tabIndex={0}
+                  className="admin-dropdown-item"
+                  onClick={() => {
+                    router.push('/reglas-acceso/listadoReglasAcceso');
+                    setAdminMenuOpen(false);
+                  }}
+                >
+                  <i className="pi pi-sliders-h" aria-hidden={true}></i>
+                  <span>Reglas</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  tabIndex={0}
+                  className="admin-dropdown-item"
+                  onClick={() => {
+                    router.push('/edificios/listadoEdificios');
+                    setAdminMenuOpen(false);
+                  }}
+                >
+                  <i className="pi pi-building" aria-hidden={true}></i>
+                  <span>Edificios</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  tabIndex={0}
+                  className="admin-dropdown-item"
+                  onClick={() => {
+                    router.push('/salones/listadoSalones');
+                    setAdminMenuOpen(false);
+                  }}
+                >
+                  <i className="pi pi-th-large" aria-hidden={true}></i>
+                  <span>Salones</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        <Link href="/perfil" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Perfil" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
+          <div className="item-card">
+            <i className="pi pi-user item-icon" aria-hidden={true}></i>
+            <p className="item-text">Perfil</p>
+          </div>
+        </Link>
+      </div>
+
       <style jsx>{`
         .header-root {
           width: 100%;
@@ -201,35 +382,72 @@ export default function Perfil() {
           display: flex;
           flex-direction: column;
           gap: 5px;
-          padding: 24px; /* Valor por defecto para pantallas grandes */
+          padding: 24px;
           box-sizing: border-box;
         }
 
         @media (max-width: 768px) {
           .header-hero {
-            padding: 16px; /* Reduce el padding en pantallas medianas */
-            height: 600px; /* Ajusta la altura en pantallas medianas */
+            padding: 16px;
+            height: 600px;
           }
         }
 
-        @media (max-width: 425px) {
+        @media (max-width: 430px) {
+          .header-root {
+            padding-bottom: 90px;
+          }
+
           .header-hero {
-            padding: 12px; /* Reduce aún más el padding en pantallas pequeñas */
-            height: auto; /* Permite que la altura sea dinámica */
+            padding: 12px;
+            height: auto;
+            min-height: 200px;
+            gap: 8px;
+            padding-top: 8px;
+            padding-bottom: 8px;
           }
         }
 
-        .harvard-image {
+        :global(.harvard-image) {
           object-fit: cover;
           position: absolute;
           inset: 0;
           z-index: 0;
         }
 
-        @media (max-width: 425px) {
-          .harvard-image {
-            display: none; /* Oculta la imagen en pantallas pequeñas */
-            box-shadow: none;
+        .harvard-placeholder {
+          display: none;
+          box-shadow: none;
+        }
+
+        @media (max-width: 768px) {
+          :global(.harvard-image) {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+          }
+        }
+
+        @media (max-width: 430px) {
+          :global(.harvard-image) {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            box-shadow: none !important;
+          }
+
+          .harvard-placeholder {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 160px;
+            max-height: 45vh;
+            width: 100%;
+            background-color: #f37426;
+            opacity: 0.4;
+            z-index: 0;
           }
         }
 
@@ -239,6 +457,12 @@ export default function Perfil() {
           z-index: 1;
           pointer-events: none;
           box-shadow: inset 0 80px 120px rgba(0, 0, 0, 0.6), inset 0 -80px 120px rgba(0, 0, 0, 0.6);
+        }
+
+        @media (max-width: 430px) {
+          .header-overlay {
+            box-shadow: none;
+          }
         }
 
         .header-topbar {
@@ -258,7 +482,63 @@ export default function Perfil() {
           opacity: 0.9;
         }
 
-        @media (max-width: 425px) {
+        .item-card {
+          height: 56px;
+          min-width: 56px; /* ensure tappable size */
+          padding: 0 12px; /* allow some horizontal breathing room for icons/text */
+          background-color: #F37426;
+          border-radius: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          opacity: 0.9;
+          transition: transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
+          z-index: 2; /* Ensure item cards are above the bottom bar */
+          box-sizing: border-box;
+        }
+        .item-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+        
+        .item-card:active {
+          transform: translateY(-1px);
+        }
+        .item-card:focus-visible {
+          outline: none;
+          box-shadow: 0 0 0 4px rgba(243,116,38,0.16);
+        }
+
+        .item-icon {
+          display: block;
+          font-size: 1.875rem; /* default 30px */
+          color: #231F20;
+          line-height: 1;
+        }
+
+        .notification-card {
+          position: relative;
+        }
+
+        .notification-badge {
+          position: absolute;
+          top: -8px;
+          right: -8px;
+          background-color: #F62D2D;
+          color: white;
+          border-radius: 50%;
+          width: 28px;
+          height: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.875rem; /* 14px */
+          font-weight: bold;
+          box-sizing: border-box;
+        }
+
+        @media (max-width: 430px) {
           .logo-image {
             width: 120px; /* Ajusta el tamaño del logo en pantallas pequeñas */
           }
@@ -344,7 +624,7 @@ export default function Perfil() {
           }
         }
 
-        @media (max-width: 425px) {
+        @media (max-width: 430px) {
           .text-card {
             width: 100%; /* Ocupa todo el ancho en pantallas pequeñas */
           }
@@ -358,7 +638,14 @@ export default function Perfil() {
           width: 100%;
         }
 
-        @media (max-width: 425px) {
+        @media (max-width: 430px) {
+          .header-middle-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+          }
+
           .header-bottom-bar {
             width: 100%;
             height: 80px;
@@ -574,6 +861,152 @@ export default function Perfil() {
 
         .scanner-btn:hover {
           background: #1976d2;
+        }
+
+        /* Barra de navegación inferior solo en móvil */
+        .header-bottom-bar {
+          display: none;
+        }
+
+        @media (max-width: 430px) {
+          .header-bottom-bar {
+            width: 100%;
+            height: 80px;
+            background-color: #7e4928;
+            display: flex;
+            justify-content: space-evenly;
+            align-items: center;
+            position: fixed;
+            bottom: 0;
+            z-index: 4;
+            padding: 7px;
+          }
+
+          .header-bottom-bar .item-icon {
+            font-size: 1.8rem;
+            margin: 0;
+            color: #231F20;
+          }
+
+          .header-bottom-bar .item-text {
+            font-size: 0.7rem;
+            font-weight: 250;
+            margin: 0;
+            color: #231F20;
+          }
+
+          .header-bottom-bar .item-card {
+            width: 18vw;
+            height: 70px;
+            background-color: #F37426;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0.9;
+            transition: transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
+          }
+
+          .header-bottom-bar .item-card:hover {
+            transform: none;
+            box-shadow: none;
+          }
+
+          .admin-menu-wrapper {
+            position: relative;
+          }
+
+          .admin-trigger {
+            border: none;
+            background-color: #F37426;
+          }
+
+          .admin-dropdown-mobile {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.98);
+            padding: 8px;
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 200px;
+            max-width: 280px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
+            z-index: 9999;
+            border: 1px solid rgba(243, 116, 38, 0.2);
+            animation: adminMenuFade 200ms ease;
+            backdrop-filter: blur(10px);
+          }
+
+          .admin-dropdown-item {
+            background: #FFFFFF;
+            color: #231F20;
+            text-decoration: none;
+            padding: 12px 16px;
+            font-size: 0.95rem;
+            outline: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            position: relative;
+            border-radius: 12px;
+            transition: all 180ms ease;
+            border: 1.5px solid transparent;
+            box-sizing: border-box;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+          }
+
+          .admin-dropdown-item i {
+            font-size: 1.15rem;
+            color: #F37426;
+            transition: transform 180ms ease;
+          }
+
+          .admin-dropdown-item:hover,
+          .admin-dropdown-item:focus-visible {
+            background: #F37426;
+            color: #FFFFFF;
+            border-color: #F37426;
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(243, 116, 38, 0.25);
+          }
+
+          .admin-dropdown-item:hover i,
+          .admin-dropdown-item:focus-visible i {
+            color: #FFFFFF;
+            transform: scale(1.1);
+          }
+
+          .admin-dropdown-item:active {
+            transform: translateX(2px) scale(0.98);
+            box-shadow: 0 2px 6px rgba(243, 116, 38, 0.2);
+          }
+
+          .admin-dropdown-item span {
+            flex: 1;
+            text-align: left;
+            font-weight: 600;
+          }
+
+          @keyframes adminMenuFade {
+            from {
+              opacity: 0;
+              transform: translateX(-50%) translateY(-10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateX(-50%) translateY(0);
+            }
+          }
         }
       `}</style>
     </div>

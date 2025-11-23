@@ -8,7 +8,6 @@
 import { useEffect } from 'react';
 import { setupConnectivityListeners, startPeriodicSync, getDeviceId } from '@/lib/sync';
 import { initializeDatabase } from '@/lib/sqlite-db';
-import SyncStatus from '@/components/SyncStatus';
 
 export function SyncProvider({ children }) {
   useEffect(() => {
@@ -46,7 +45,6 @@ export function SyncProvider({ children }) {
   return (
     <>
       {children}
-      <SyncStatus />
     </>
   );
 }

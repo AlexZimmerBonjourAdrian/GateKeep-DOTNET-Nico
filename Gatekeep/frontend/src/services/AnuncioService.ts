@@ -26,4 +26,12 @@ export class AnuncioService {
   static createAnuncio(data: { nombre: string; fecha: string; descripcion?: string; puntoControl?: string }) {
     return axios.post(API_URL, data, this.getAuthHeaders());
   }
+
+  static updateAnuncio(id: number, data: { nombre: string; fecha: string; descripcion?: string; puntoControl?: string }) {
+    return axios.put(`${API_URL}/${id}`, data, this.getAuthHeaders());
+  }
+
+  static deleteAnuncio(id: number) {
+    return axios.delete(`${API_URL}/${id}`, this.getAuthHeaders());
+  }
 }

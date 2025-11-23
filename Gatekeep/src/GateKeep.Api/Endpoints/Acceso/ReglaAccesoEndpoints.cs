@@ -87,25 +87,24 @@ public static class ReglaAccesoEndpoints
             ClaimsPrincipal user,
             IReglaAccesoService service) =>
         {
-            var userId = long.Parse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            var userRole = user.FindFirst(ClaimTypes.Role)?.Value;
-            
-            var regla = await service.ObtenerPorIdAsync(id);
-            if (regla == null)
-                return Results.NotFound();
-            
             try
             {
                 var reglaActualizada = await service.ActualizarAsync(id, request);
                 return Results.Ok(reglaActualizada);
             }
-            catch (InvalidOperationException)
+            catch (InvalidOperationException ex)
             {
-                return Results.NotFound();
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                var innerMessage = ex.InnerException?.Message ?? ex.Message;
+                return Results.BadRequest(new { error = $"Error de base de datos: {innerMessage}" });
             }
             catch (Exception ex)
             {
-                return Results.BadRequest(new { error = $"Error al actualizar la regla de acceso: {ex.Message}" });
+                var innerMessage = ex.InnerException?.Message ?? ex.Message;
+                return Results.BadRequest(new { error = $"Error al actualizar la regla de acceso: {innerMessage}" });
             }
         })
         .RequireAuthorization("AdminOnly")
@@ -123,7 +122,7 @@ public static class ReglaAccesoEndpoints
             try
             {
                 await service.EliminarAsync(id);
-                return Results.Ok(new { message = $"ReglaAcceso {id} eliminada correctamente" });
+                return Results.Ok(new { message = $"ReglaAcceso {id} desactivada correctamente" });
             }
             catch (InvalidOperationException)
             {

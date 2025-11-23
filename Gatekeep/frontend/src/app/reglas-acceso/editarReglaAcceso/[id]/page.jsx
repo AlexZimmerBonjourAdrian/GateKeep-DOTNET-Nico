@@ -1,12 +1,13 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useParams } from 'next/navigation'
 import logo from '/public/assets/LogoGateKeep.webp'
 import harvard from '/public/assets/Harvard.webp'
 import { SecurityService } from '../../../../services/securityService'
+import { ReglaAccesoService } from '../../../../services/ReglaAccesoService'
 
 export default function editarReglaAcceso() {
 
@@ -16,7 +17,7 @@ export default function editarReglaAcceso() {
 
   const reglaId = params.id;
 
-  // Estados iniciales - en producción cargar desde el servicio
+  // Estados
   const [horarioApertura, setHorarioApertura] = useState('');
   const [horarioCierre, setHorarioCierre] = useState('');
   const [vigenciaApertura, setVigenciaApertura] = useState('');
@@ -27,12 +28,82 @@ export default function editarReglaAcceso() {
     Funcionario: false,
     Admin: false
   });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  // Cargar datos de la regla al montar
+  useEffect(() => {
+    const fetchRegla = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await ReglaAccesoService.getReglaAccesoById(Number(reglaId));
+        const regla = response.data;
+        setHorarioApertura(regla.HorarioApertura || '');
+        setHorarioCierre(regla.HorarioCierre || '');
+        setVigenciaApertura(regla.VigenciaApertura ? regla.VigenciaApertura.slice(0, 10) : '');
+        setVigenciaCierre(regla.VigenciaCierre ? regla.VigenciaCierre.slice(0, 10) : '');
+        setEspacioId(regla.EspacioId ? String(regla.EspacioId) : '');
+        // rolesPermitidos es un array de strings
+        setRolesPermitidos({
+          Estudiante: Array.isArray(regla.RolesPermitidos) && regla.RolesPermitidos.includes('Estudiante'),
+          Funcionario: Array.isArray(regla.RolesPermitidos) && regla.RolesPermitidos.includes('Funcionario'),
+          Admin: Array.isArray(regla.RolesPermitidos) && regla.RolesPermitidos.includes('Admin'),
+        });
+      } catch (e) {
+        setError('No se pudo cargar la regla de acceso');
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (reglaId) fetchRegla();
+  }, [reglaId]);
 
   const handleRoleChange = (role) => {
     setRolesPermitidos(prev => ({
       ...prev,
       [role]: !prev[role]
     }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(false);
+    setSubmitting(true);
+    try {
+      // .NET espera DateTime ISO, no solo hora. Usamos la fecha de vigenciaApertura para armar el DateTime.
+      const makeDateTimeUTC = (date, time) => {
+        if (!date || !time) return null;
+        // Construir Date en local y convertir a UTC ISO string
+        const [year, month, day] = date.split('-').map(Number);
+        const [hour, minute] = time.split(':').map(Number);
+        const dt = new Date(Date.UTC(year, month - 1, day, hour, minute, 0));
+        return dt.toISOString();
+      };
+      const makeDateOnlyUTC = (date) => {
+        if (!date) return null;
+        const [year, month, day] = date.split('-').map(Number);
+        const dt = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
+        return dt.toISOString();
+      };
+      const payload = {
+        horarioApertura: makeDateTimeUTC(vigenciaApertura, horarioApertura),
+        horarioCierre: makeDateTimeUTC(vigenciaApertura, horarioCierre),
+        vigenciaApertura: makeDateOnlyUTC(vigenciaApertura),
+        vigenciaCierre: makeDateOnlyUTC(vigenciaCierre),
+        espacioId: Number(espacioId),
+        rolesPermitidos: Object.entries(rolesPermitidos).filter(([k, v]) => v).map(([k]) => k)
+      };
+      console.log('Payload enviado a actualizarReglaAcceso:', payload);
+      await ReglaAccesoService.actualizarReglaAcceso(Number(reglaId), payload);
+      setSuccess(true);
+    } catch (e) {
+      setError(e?.response?.data?.error || e?.response?.data?.message || 'Error al actualizar la regla');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -50,8 +121,9 @@ export default function editarReglaAcceso() {
       </div>
             
       <div className="header-middle-bar">
-        <form className="text-card">
+        <form className="text-card" onSubmit={handleSubmit}>
           <div style={{alignItems: 'center', width: '100%'}}>
+            <button type="button" onClick={() => window.history.back()} style={{ background: 'transparent', border: '2px solid #F37426', color: '#F37426', padding: '6px 16px', borderRadius: '20px', cursor: 'pointer', marginBottom: '12px', fontSize: '0.9rem', fontWeight: '500', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.background = '#F37426'; e.target.style.color = 'white'; }} onMouseLeave={(e) => { e.target.style.background = 'transparent'; e.target.style.color = '#F37426'; }}>← Regresar</button>
             <h1 className="text-3xl font-bold text-white">Editar Regla de Acceso</h1>
             <hr />
           </div>
@@ -140,8 +212,14 @@ export default function editarReglaAcceso() {
           </div>
          
           <div className='button-container'>
-            <button type="button">Actualizar Regla de Acceso</button>
+            <button type="submit" disabled={submitting}>{submitting ? 'Actualizando...' : 'Actualizar Regla de Acceso'}</button>
           </div>
+          {error && (
+            <div style={{ color: '#ffdddd', background:'#7e1e1e', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>{error}</div>
+          )}
+          {success && (
+            <div style={{ color: '#e9ffe9', background:'#1e7e3a', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>Regla de acceso actualizada. Redirigiendo...</div>
+          )}
           
 
         </form>

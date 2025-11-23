@@ -78,19 +78,32 @@ public sealed class EspacioRepository : IEspacioRepository
 
     public async Task<Espacio?> ActualizarAsync(Espacio espacio)
     {
-        switch (espacio)
+        // Verificar si la entidad ya está siendo rastreada
+        var existingEntry = _context.ChangeTracker.Entries<Espacio>()
+            .FirstOrDefault(e => e.Entity.Id == espacio.Id);
+
+        if (existingEntry != null)
         {
-            case Edificio edificio:
-                _context.Edificios.Update(edificio);
-                break;
-            case Salon salon:
-                _context.Salones.Update(salon);
-                break;
-            case Laboratorio laboratorio:
-                _context.Laboratorios.Update(laboratorio);
-                break;
-            default:
-                throw new ArgumentException($"Tipo de espacio no soportado: {espacio.GetType().Name}");
+            // Si ya está rastreada, actualizar sus propiedades
+            existingEntry.CurrentValues.SetValues(espacio);
+        }
+        else
+        {
+            // Si no está rastreada, hacer Update según el tipo
+            switch (espacio)
+            {
+                case Edificio edificio:
+                    _context.Edificios.Update(edificio);
+                    break;
+                case Salon salon:
+                    _context.Salones.Update(salon);
+                    break;
+                case Laboratorio laboratorio:
+                    _context.Laboratorios.Update(laboratorio);
+                    break;
+                default:
+                    throw new ArgumentException($"Tipo de espacio no soportado: {espacio.GetType().Name}");
+            }
         }
 
         await _context.SaveChangesAsync();
@@ -120,11 +133,22 @@ public sealed class EspacioRepository : IEspacioRepository
 
     public async Task<bool> EliminarAsync(long id)
     {
-        // TPT: Buscar y eliminar usando Set<Espacio>()
+        // TPT: Buscar y marcar como inactivo (soft delete)
         var espacio = await _context.Set<Espacio>().FindAsync(id);
         if (espacio is not null)
         {
-            _context.Set<Espacio>().Remove(espacio);
+            // Cascade manual: desactivar todas las reglas de acceso asociadas
+            var reglasAsociadas = await _context.ReglasAcceso
+                .Where(r => r.EspacioId == id && r.Activo)
+                .ToListAsync();
+            
+            foreach (var regla in reglasAsociadas)
+            {
+                _context.Entry(regla).Property(r => r.Activo).CurrentValue = false;
+            }
+            
+            // Soft delete del espacio
+            _context.Entry(espacio).Property(e => e.Activo).CurrentValue = false;
             await _context.SaveChangesAsync();
             return true;
         }

@@ -32,7 +32,7 @@ public sealed class EspacioFactory : IEspacioFactory
             Capacidad: request.Capacidad,
             NumeroPisos: request.NumeroPisos,
             CodigoEdificio: request.CodigoEdificio,
-            Activo: request.Activo
+            Activo: true
         );
     }
 
@@ -54,7 +54,7 @@ public sealed class EspacioFactory : IEspacioFactory
             EdificioId: request.EdificioId,
             NumeroSalon: request.NumeroSalon,
             TipoSalon: request.TipoSalon,
-            Activo: request.Activo
+            Activo: true
         );
     }
 
@@ -77,7 +77,7 @@ public sealed class EspacioFactory : IEspacioFactory
             NumeroLaboratorio: request.NumeroLaboratorio,
             TipoLaboratorio: request.TipoLaboratorio,
             EquipamientoEspecial: request.EquipamientoEspecial,
-            Activo: request.Activo
+            Activo: true
         );
     }
 

@@ -43,7 +43,6 @@ export default function CrearEdificioPage() {
 	const [capacidad, setCapacidad] = useState('');
 	const [numeroPisos, setNumeroPisos] = useState('');
 	const [codigoEdificio, setCodigoEdificio] = useState('');
-	const [activo, setActivo] = useState(true);
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState(null);
 	const [success, setSuccess] = useState(false);
@@ -65,7 +64,7 @@ export default function CrearEdificioPage() {
 			descripcion: descripcion || undefined,
 			ubicacion,
 			capacidad: Number(capacidad),
-			activo,
+			activo: true,
 			numeroPisos: Number(numeroPisos),
 			codigoEdificio: codigoEdificio || undefined
 		};
@@ -102,10 +101,11 @@ export default function CrearEdificioPage() {
 				</div>
 				<div className="header-middle-bar">
 					<form className="text-card" onSubmit={(e) => { e.preventDefault(); if (!submitting) handleSubmit(); }} aria-label="Formulario crear edificio">
-						<div style={{alignItems: 'center', width: '100%'}}>
-							<h1 className="text-3xl font-bold text-white">Crear Edificio</h1>
-							<hr />
-						</div>
+					<div style={{alignItems: 'center', width: '100%'}}>
+						<button type="button" onClick={() => router.back()} style={{ background: 'transparent', border: '2px solid #F37426', color: '#F37426', padding: '6px 16px', borderRadius: '20px', cursor: 'pointer', marginBottom: '12px', fontSize: '0.9rem', fontWeight: '500', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.background = '#F37426'; e.target.style.color = 'white'; }} onMouseLeave={(e) => { e.target.style.background = 'transparent'; e.target.style.color = '#F37426'; }}>← Regresar</button>
+						<h1 className="text-3xl font-bold text-white">Crear Edificio</h1>
+						<hr />
+					</div>
 						<div className='input-container'>
 							<div className='w-full'>
 								<span>Nombre *</span>
@@ -127,15 +127,11 @@ export default function CrearEdificioPage() {
 								<span>Código (opcional)</span>
 								<input type="text" value={codigoEdificio} onChange={(e) => setCodigoEdificio(e.target.value)} placeholder="Código único" />
 							</div>
-							<div className='w-full'>
-								<span>Descripción (opcional)</span>
-								<textarea style={{borderRadius:'20px', width:'calc(100% - 2vw)', marginLeft:'1vw', marginRight:'1vw', padding:'8px', minHeight:'80px'}} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción" />
-							</div>
-							<div className='w-full' style={{display:'flex', alignItems:'center', gap:'8px', marginLeft:'1vw', marginRight:'1vw'}}>
-								<input id="activo-edificio" type="checkbox" checked={activo} onChange={(e) => setActivo(e.target.checked)} />
-								<label htmlFor="activo-edificio" style={{margin:0, fontSize:'0.8rem'}}>Activo</label>
-							</div>
+						<div className='w-full'>
+							<span>Descripción (opcional)</span>
+							<textarea style={{borderRadius:'20px', width:'calc(100% - 2vw)', marginLeft:'1vw', marginRight:'1vw', padding:'8px', minHeight:'80px'}} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción" />
 						</div>
+					</div>
 						{error && (
 							<div style={{ color: '#ffdddd', background:'#7e1e1e', borderRadius:12, padding:'8px 14px', margin:'10px 1vw', width:'calc(100% - 2vw)', fontSize:'0.85rem' }}>{error}</div>
 						)}

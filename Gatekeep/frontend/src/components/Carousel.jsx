@@ -245,9 +245,9 @@ const Carousel = ({ items, route }) => {
 
         .carousel-item h3 {
           margin: 0 0 8px;
-          /* Fluid font size: small on phones, larger on desktop */
-          font-size: clamp(1rem, 1.6vw, 1.25rem);
-          line-height: 1.2;
+          /* Fluid font size: responsive across devices */
+          font-size: clamp(0.875rem, 1.6vw, 1.25rem);
+          line-height: 1.3;
           margin-bottom: 0.5rem;
           /* Limit title to two lines and gracefully truncate */
           display: -webkit-box;
@@ -255,19 +255,23 @@ const Carousel = ({ items, route }) => {
           -webkit-box-orient: vertical;
           overflow: hidden;
           text-overflow: ellipsis;
+          word-wrap: break-word;
+          word-break: break-word;
         }
 
         .carousel-item p {
           margin: 0;
           color: #231F20;
-          font-size: clamp(0.85rem, 1.2vw, 1rem);
-          line-height: 1.35;
+          font-size: clamp(0.75rem, 1.2vw, 0.95rem);
+          line-height: 1.4;
           /* Allow paragraphs to take up to 3 lines then truncate */
           display: -webkit-box;
           -webkit-line-clamp: 3;
           -webkit-box-orient: vertical;
           overflow: hidden;
           text-overflow: ellipsis;
+          word-wrap: break-word;
+          word-break: break-word;
         }
 
         .carousel-button {
@@ -314,14 +318,16 @@ const Carousel = ({ items, route }) => {
         }
 
         .see-more-top {
-          font-size: clamp(0.9rem, 1.6vw, 1.05rem);
+          font-size: clamp(0.85rem, 1.6vw, 1.05rem);
           font-weight: 700;
           margin-bottom: 8px;
           color: #231F20;
+          line-height: 1.3;
+          word-wrap: break-word;
         }
 
         .see-more-arrow {
-          font-size: clamp(1.8rem, 3.2vw, 2.6rem);
+          font-size: clamp(1.6rem, 3.2vw, 2.6rem);
           color: #231F20;
           transition: transform 0.18s ease;
           line-height: 1;
@@ -343,23 +349,32 @@ const Carousel = ({ items, route }) => {
             max-width: none;
             min-width: 16vw;
             aspect-ratio: 9 / 13;
-            padding: 8px;
+            padding: 10px;
             border-radius: 12px;
           }
 
-          /* Reduce text sizes more aggressively on phones */
+          /* Optimized text sizes for mobile readability */
           .carousel-item h3 {
-            font-size: clamp(0.8rem, 2.2vw, 1rem);
+            font-size: 0.8rem;
+            line-height: 1.25;
             -webkit-line-clamp: 2;
+            margin-bottom: 6px;
           }
 
           .carousel-item p {
-            font-size: clamp(0.7rem, 1.8vw, 0.85rem);
+            font-size: 0.7rem;
+            line-height: 1.3;
             -webkit-line-clamp: 2;
           }
 
-          .see-more-top { font-size: clamp(0.75rem, 1.6vw, 0.9rem); }
-          .see-more-arrow { font-size: clamp(1.6rem, 2.6vw, 1.9rem); }
+          .see-more-top { 
+            font-size: 0.75rem;
+            line-height: 1.3;
+          }
+          .see-more-arrow { 
+            font-size: 1.6rem;
+            line-height: 1;
+          }
 
           .carousel-button {
             width: 32px;

@@ -16,7 +16,9 @@ public sealed class AnuncioRepository : IAnuncioRepository
 
     public async Task<IEnumerable<Anuncio>> ObtenerTodosAsync()
     {
-        return await _context.Anuncios.ToListAsync();
+        return await _context.Anuncios
+            .Where(a => a.Activo)
+            .ToListAsync();
     }
 
     public async Task<Anuncio?> ObtenerPorIdAsync(long id)
@@ -33,6 +35,14 @@ public sealed class AnuncioRepository : IAnuncioRepository
 
     public async Task<Anuncio> ActualizarAsync(Anuncio anuncio)
     {
+        var existing = await _context.Anuncios.FindAsync(anuncio.Id);
+        if (existing is not null)
+        {
+            _context.Entry(existing).CurrentValues.SetValues(anuncio);
+            await _context.SaveChangesAsync();
+            return existing;
+        }
+        
         _context.Anuncios.Update(anuncio);
         await _context.SaveChangesAsync();
         return anuncio;
@@ -43,7 +53,8 @@ public sealed class AnuncioRepository : IAnuncioRepository
         var anuncio = await _context.Anuncios.FindAsync(id);
         if (anuncio is not null)
         {
-            _context.Anuncios.Remove(anuncio);
+            // Soft delete: marcar como inactivo en lugar de eliminar
+            _context.Entry(anuncio).Property(a => a.Activo).CurrentValue = false;
             await _context.SaveChangesAsync();
         }
     }

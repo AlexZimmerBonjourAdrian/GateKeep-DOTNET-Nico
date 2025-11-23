@@ -17,7 +17,9 @@ export default function Header() {
   const [notificaciones, setNotificaciones] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
+  const [adminMenuMobileOpen, setAdminMenuMobileOpen] = useState(false);
   const adminMenuRef = useRef(null);
+  const adminMenuMobileRef = useRef(null);
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -85,6 +87,19 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [adminMenuOpen]);
 
+  // Cierre por click fuera del menú admin móvil
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (adminMenuMobileRef.current && !adminMenuMobileRef.current.contains(e.target)) {
+        setAdminMenuMobileOpen(false);
+      }
+    };
+    if (adminMenuMobileOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [adminMenuMobileOpen]);
+
   const handleLogout = (e) => {
     e.preventDefault();
     SecurityService.logout();
@@ -137,34 +152,68 @@ export default function Header() {
               <div className="admin-menu-wrapper" ref={adminMenuRef}>
                 <button
                   type="button"
-                  className="item-card admin-trigger"
+                  className="item-card"
                   aria-haspopup="true"
                   aria-expanded={adminMenuOpen}
                   aria-label="Recursos administrativos"
                   onClick={() => setAdminMenuOpen(o => !o)}
-                  onBlur={(e) => {
-                    // Cerrar si el foco sale completamente del contenedor
-                    if (adminMenuRef.current && !adminMenuRef.current.contains(e.relatedTarget)) {
-                      setAdminMenuOpen(false);
-                    }
-                  }}
                 >
                   <i className="pi pi-sliders-h item-icon" aria-hidden={true}></i>
                 </button>
                 {adminMenuOpen && (
                   <div className="admin-dropdown" role="menu">
-                    <Link href="/reglas-acceso/listadoReglasAcceso" role="menuitem" tabIndex={0} className="admin-dropdown-item">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      tabIndex={0}
+                      className="admin-dropdown-item"
+                      onClick={() => {
+                        router.push('/reglas-acceso/listadoReglasAcceso');
+                        setAdminMenuOpen(false);
+                      }}
+                    >
                       <i className="pi pi-sliders-h" aria-hidden={true}></i>
                       <span>Reglas</span>
-                    </Link>
-                    <Link href="/edificios/listadoEdificios" role="menuitem" tabIndex={0} className="admin-dropdown-item">
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      tabIndex={0}
+                      className="admin-dropdown-item"
+                      onClick={() => {
+                        router.push('/edificios/listadoEdificios');
+                        setAdminMenuOpen(false);
+                      }}
+                    >
                       <i className="pi pi-building" aria-hidden={true}></i>
                       <span>Edificios</span>
-                    </Link>
-                    <Link href="/salones/listadoSalones" role="menuitem" tabIndex={0} className="admin-dropdown-item">
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      tabIndex={0}
+                      className="admin-dropdown-item"
+                      onClick={() => {
+                        router.push('/salones/listadoSalones');
+                        setAdminMenuOpen(false);
+                      }}
+                    >
                       <i className="pi pi-th-large" aria-hidden={true}></i>
                       <span>Salones</span>
-                    </Link>
+                    </button>
+                    <button
+                  type="button"
+                  role="menuitem"
+                  tabIndex={0}
+                  className="admin-dropdown-item"
+                  onClick={() => {
+                    router.push('/usuarios/listadoUsuarios');
+                    setAdminMenuOpen(false);
+                  }}
+                >
+                  <i className="pi pi-users" aria-hidden={true}></i>
+                  <span>Usuarios</span>
+                </button>
                   </div>
                 )}
               </div>
@@ -223,12 +272,75 @@ export default function Header() {
         </Link>
 
         {isAdmin && (
-          <Link href="/edificios/listadoEdificios" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Edificios" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
-            <div className="item-card">
-              <i className="pi pi-building item-icon" aria-hidden={true}></i>
-              <p className="item-text">Edificios</p>
-            </div>
-          </Link>
+          <div className="admin-menu-wrapper-mobile" ref={adminMenuMobileRef}>
+            <button
+              type="button"
+              className="item-card admin-trigger-mobile"
+              aria-haspopup="true"
+              aria-expanded={adminMenuMobileOpen}
+              aria-label="Recursos administrativos"
+              onClick={() => setAdminMenuMobileOpen(o => !o)}
+            >
+              <i className="pi pi-sliders-h item-icon" aria-hidden={true}></i>
+              <p className="item-text">Admin</p>
+            </button>
+            {adminMenuMobileOpen && (
+              <div className="admin-dropdown-mobile" role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  tabIndex={0}
+                  className="admin-dropdown-item"
+                  onClick={() => {
+                    router.push('/reglas-acceso/listadoReglasAcceso');
+                    setAdminMenuMobileOpen(false);
+                  }}
+                >
+                  <i className="pi pi-sliders-h" aria-hidden={true}></i>
+                  <span>Reglas</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  tabIndex={0}
+                  className="admin-dropdown-item"
+                  onClick={() => {
+                    router.push('/edificios/listadoEdificios');
+                    setAdminMenuMobileOpen(false);
+                  }}
+                >
+                  <i className="pi pi-building" aria-hidden={true}></i>
+                  <span>Edificios</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  tabIndex={0}
+                  className="admin-dropdown-item"
+                  onClick={() => {
+                    router.push('/salones/listadoSalones');
+                    setAdminMenuMobileOpen(false);
+                  }}
+                >
+                  <i className="pi pi-th-large" aria-hidden={true}></i>
+                  <span>Salones</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  tabIndex={0}
+                  className="admin-dropdown-item"
+                  onClick={() => {
+                    router.push('/usuarios/listadoUsuarios');
+                    setAdminMenuMobileOpen(false);
+                  }}
+                >
+                  <i className="pi pi-users" aria-hidden={true}></i>
+                  <span>Usuarios</span>
+                </button>
+              </div>
+            )}
+          </div>
         )}
 
         <Link href="/perfil" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Perfil" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
@@ -246,8 +358,8 @@ export default function Header() {
           box-sizing: border-box;
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
-          /* Reserve vertical scrollbar space to avoid horizontal layout shifts */
-          overflow-y: scroll;
+          margin: 0;
+          padding: 0;
         }
 
         :global(*), :global(*::before), :global(*::after) {
@@ -256,6 +368,7 @@ export default function Header() {
         .header-root {
           width: 100%;
           display: block;
+          overflow: hidden; /* Prevent header from creating extra scrollbars */
         }
 
         .header-hero {
@@ -324,6 +437,8 @@ export default function Header() {
           transition: transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
           z-index: 2; /* Ensure item cards are above the bottom bar */
           box-sizing: border-box;
+          border: none; /* Remove default button border */
+          outline: none; /* Remove default button outline */
         }
         .item-card:hover {
           transform: translateY(-4px);
@@ -366,64 +481,76 @@ export default function Header() {
           box-sizing: border-box;
         }
 
-        .admin-menu-wrapper { position: relative; }
+        .admin-menu-wrapper { 
+          position: relative;
+          z-index: 9998;
+        }
         .admin-trigger { position: relative; }
         .admin-dropdown {
           position: absolute;
           top: 64px;
-          left: 0;
-          background: rgba(35,31,32,0.92);
-          padding: 10px;
-          border-radius: 20px;
+          right: 0;
+          background: rgba(255, 255, 255, 0.98);
+          padding: 8px;
+          border-radius: 16px;
           display: flex;
           flex-direction: column;
-          gap: 10px;
+          gap: 6px;
           min-width: 200px;
-          box-shadow: 0 12px 32px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.05);
-          z-index: 10;
-          border: 1px solid #423a3a;
-          animation: adminMenuFade 140ms ease;
-          backdrop-filter: blur(6px);
+          max-width: 280px;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
+          z-index: 9999;
+          border: 1px solid rgba(243, 116, 38, 0.2);
+          animation: adminMenuFade 200ms ease;
+          backdrop-filter: blur(10px);
         }
         .admin-dropdown-item {
-          background: linear-gradient(135deg, #F37426 0%, #ff9e5a 100%);
+          background: #FFFFFF;
           color: #231F20;
           text-decoration: none;
-          padding: 14px 20px;
-          font-size: 0.82rem;
+          padding: 12px 16px;
+          font-size: 0.95rem;
           outline: none;
           display: flex;
           align-items: center;
-          gap: 14px;
-          font-weight: 700;
-          letter-spacing: 0.5px;
+          gap: 12px;
+          font-weight: 600;
+          letter-spacing: 0.3px;
           position: relative;
-          border-radius: 50px;
-          box-shadow: 0 3px 6px rgba(0,0,0,0.20), 0 1px 0 rgba(255,255,255,0.35) inset;
-          transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
-          border: 1px solid rgba(255,255,255,0.18);
-          overflow: hidden;
+          border-radius: 12px;
+          transition: all 180ms ease;
+          border: 1.5px solid transparent;
+          box-sizing: border-box;
+          cursor: pointer;
+          width: 100%;
+          text-align: left;
         }
-        .admin-dropdown-item::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          border-radius: inherit;
-          background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.28), transparent 60%);
-          opacity: 0.55;
-          pointer-events: none;
+        .admin-dropdown-item i {
+          font-size: 1.15rem;
+          color: #F37426;
+          transition: transform 180ms ease;
         }
-        .admin-dropdown-item i { font-size: 1.1rem; color: #231F20; }
         .admin-dropdown-item:hover, .admin-dropdown-item:focus-visible {
-          transform: translateY(-4px);
-          box-shadow: 0 10px 22px rgba(0,0,0,0.30), 0 0 0 2px rgba(255,255,255,0.15);
-          filter: brightness(1.06);
+          background: #F37426;
+          color: #FFFFFF;
+          border-color: #F37426;
+          transform: translateX(4px);
+          box-shadow: 0 4px 12px rgba(243, 116, 38, 0.25);
+        }
+        .admin-dropdown-item:hover i,
+        .admin-dropdown-item:focus-visible i {
+          color: #FFFFFF;
+          transform: scale(1.1);
         }
         .admin-dropdown-item:active {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 16px rgba(0,0,0,0.26);
+          transform: translateX(2px) scale(0.98);
+          box-shadow: 0 2px 6px rgba(243, 116, 38, 0.2);
         }
-        .admin-dropdown-item span { flex: 1; text-align: left; text-transform: uppercase; letter-spacing: 0.8px; }
+        .admin-dropdown-item span {
+          flex: 1;
+          text-align: left;
+          font-weight: 600;
+        }
         @keyframes adminMenuFade {
           from { opacity: 0; transform: translateY(-8px) scale(.96); }
           to { opacity: 1; transform: translateY(0) scale(1); }
@@ -446,7 +573,7 @@ export default function Header() {
 
         .header-middle-bar {
           position: relative;
-          z-index: 2; /* above image/overlay */
+          z-index: 0; /* below topbar and dropdown */
           display: flex;
           justify-content: flex-start;
         }
@@ -467,7 +594,7 @@ export default function Header() {
           width: 100%;
         }
 
-    @media (max-width: 425px) {
+    @media (max-width: 430px) {
             .header-bottom-bar {
                 width: 100%;
                 height: 80px; 
@@ -572,6 +699,100 @@ export default function Header() {
                 box-shadow: none;
             }
 
+            .admin-menu-wrapper-mobile {
+              position: relative;
+            }
+
+            .admin-trigger-mobile {
+              border: none;
+              background-color: #F37426;
+            }
+
+            .admin-dropdown-mobile {
+              position: fixed;
+              bottom: 90px;
+              left: 50%;
+              transform: translateX(-50%);
+              background: rgba(255, 255, 255, 0.98);
+              padding: 8px;
+              border-radius: 16px;
+              display: flex;
+              flex-direction: column;
+              gap: 6px;
+              min-width: 200px;
+              max-width: 280px;
+              box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
+              z-index: 9999;
+              border: 1px solid rgba(243, 116, 38, 0.2);
+              animation: adminMenuFade 200ms ease;
+              backdrop-filter: blur(10px);
+            }
+
+            .admin-dropdown-item {
+              background: #FFFFFF;
+              color: #231F20;
+              text-decoration: none;
+              padding: 12px 16px;
+              font-size: 0.95rem;
+              outline: none;
+              display: flex;
+              align-items: center;
+              gap: 12px;
+              font-weight: 600;
+              letter-spacing: 0.3px;
+              position: relative;
+              border-radius: 12px;
+              transition: all 180ms ease;
+              border: 1.5px solid transparent;
+              box-sizing: border-box;
+              cursor: pointer;
+              width: 100%;
+              text-align: left;
+            }
+
+            .admin-dropdown-item i {
+              font-size: 1.15rem;
+              color: #F37426;
+              transition: transform 180ms ease;
+            }
+
+            .admin-dropdown-item:hover,
+            .admin-dropdown-item:focus-visible {
+              background: #F37426;
+              color: #FFFFFF;
+              border-color: #F37426;
+              transform: translateX(4px);
+              box-shadow: 0 4px 12px rgba(243, 116, 38, 0.25);
+            }
+
+            .admin-dropdown-item:hover i,
+            .admin-dropdown-item:focus-visible i {
+              color: #FFFFFF;
+              transform: scale(1.1);
+            }
+
+            .admin-dropdown-item:active {
+              transform: translateX(2px) scale(0.98);
+              box-shadow: 0 2px 6px rgba(243, 116, 38, 0.2);
+            }
+
+            .admin-dropdown-item span {
+              flex: 1;
+              text-align: left;
+              font-weight: 600;
+            }
+
+            @keyframes adminMenuFade {
+              from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-10px);
+              }
+              to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+              }
+            }
+
             /* Very small screens: make buttons slightly smaller */
             @media (max-width: 360px) {
               .header-bottom-bar .item-card {
@@ -602,7 +823,7 @@ export default function Header() {
     }
 
     /* Tablet/layout tweaks: 426px - 768px */
-    @media (min-width: 426px) and (max-width: 768px) {
+    @media (min-width: 431px) and (max-width: 768px) {
       .item-card {
         height: 52px;
         min-width: 52px;

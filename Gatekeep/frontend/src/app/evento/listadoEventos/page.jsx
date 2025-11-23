@@ -103,6 +103,17 @@ export default function listadoEventos() {
     if (inputRef.current) inputRef.current.blur();
   };
 
+  const handleDelete = async (id) => {
+    if (!confirm('¿Estás seguro de eliminar este evento?')) return;
+    try {
+      await EventoService.deleteEvento(id);
+      setEventos(eventos.filter(ev => (ev.Id || ev.id) !== id));
+    } catch (e) {
+      console.error('Error al eliminar evento:', e);
+      alert('Error al eliminar el evento');
+    }
+  };
+
   return (
     <div className="container-nothing">
         <Header />
@@ -200,18 +211,39 @@ export default function listadoEventos() {
                         key={id}
                         className="event-card"
                         tabIndex={0}
-                        role="button"
-                        onClick={() => router.push(`/evento/${id}`)}
-                        onKeyDown={(e) => { if (e.key==='Enter' || e.key===' ') { e.preventDefault(); router.push(`/evento/${id}`) }}}
                       >
-                        {nombre && <h3>{nombre}</h3>}
-                        {fecha && <p>{new Date(fecha).toLocaleDateString('es-ES', { 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                      })}</p>}
-                        {punto && <p><strong>Punto Control:</strong> {punto}</p>}
-                        {resultado && <p><strong>Resultado:</strong> {resultado}</p>}
+                        <div 
+                          onClick={() => router.push(`/evento/${id}`)}
+                          onKeyDown={(e) => { if (e.key==='Enter' || e.key===' ') { e.preventDefault(); router.push(`/evento/${id}`) }}}
+                          style={{ cursor: 'pointer', flex: 1 }}
+                        >
+                          {nombre && <h3>{nombre}</h3>}
+                          {fecha && <p>{new Date(fecha).toLocaleDateString('es-ES', { 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        })}</p>}
+                          {punto && <p><strong>Punto Control:</strong> {punto}</p>}
+                          {resultado && <p><strong>Resultado:</strong> {resultado}</p>}
+                        </div>
+                        {isAdmin && (
+                          <div className="card-actions" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              className="card-action-btn edit-btn"
+                              onClick={(e) => { e.stopPropagation(); router.push(`/evento/editarEvento/${id}`); }}
+                              aria-label={`Editar ${nombre}`}
+                            >
+                              ✏️ Editar
+                            </button>
+                            <button
+                              className="card-action-btn delete-btn"
+                              onClick={(e) => { e.stopPropagation(); handleDelete(id); }}
+                              aria-label={`Eliminar ${nombre}`}
+                            >
+                              🗑️ Eliminar
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -259,12 +291,18 @@ export default function listadoEventos() {
           @media (min-width: 769px) { .event-group{ grid-template-columns: repeat(4, 1fr); gap:16px; } }
 
           /* Event card keeps proportions via aspect-ratio so height scales with width */
-          .event-card{ width:100%; aspect-ratio: 4 / 3; padding:12px; background:#f37426; border-radius:20px; box-shadow:0 2px 6px rgba(0,0,0,0.12); transition:transform 0.18s ease, box-shadow 0.18s ease; color:#231F20; box-sizing:border-box; display:flex; flex-direction:column; justify-content:center; }
+          .event-card{ width:100%; aspect-ratio: 4 / 3; padding:12px; background:#f37426; border-radius:20px; box-shadow:0 2px 6px rgba(0,0,0,0.12); transition:transform 0.18s ease, box-shadow 0.18s ease; color:#231F20; box-sizing:border-box; display:flex; flex-direction:column; justify-content:space-between; }
           .event-card:hover{ transform: translateY(-4px) scale(1.01); box-shadow:0 8px 18px rgba(0,0,0,0.18); z-index:1; }
           .event-card:focus, .event-card:focus-visible{ transform: translateY(-4px) scale(1.01); box-shadow:0 10px 20px rgba(0,0,0,0.22); border:2px solid rgba(37,99,235,0.12); z-index:2; }
 
           .event-card h3{ font-size: clamp(1rem, 1.6vw, 1.2rem); margin:0 0 6px 0; }
           .event-card p{ font-size: clamp(0.85rem, 1.1vw, 1rem); margin:0; }
+          .card-actions{ display:flex; gap:6px; margin-top:8px; }
+          .card-action-btn{ padding:6px 10px; border:none; border-radius:12px; cursor:pointer; font-size:0.75rem; font-weight:600; transition:all 0.15s ease; }
+          .edit-btn{ background:#231F20; color:#fff; }
+          .edit-btn:hover{ background:#3d3739; transform:scale(1.05); }
+          .delete-btn{ background:#231F20; color:#fff; }
+          .delete-btn:hover{ background:#7e1e1e; transform:scale(1.05); }
 
       `}</style>
     </div>

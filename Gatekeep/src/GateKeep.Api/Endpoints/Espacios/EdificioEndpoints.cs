@@ -123,7 +123,8 @@ public static class EdificioEndpoints
                 NumeroPisos = request.NumeroPisos,
                 CodigoEdificio = request.CodigoEdificio ?? edificio.CodigoEdificio,
                 Descripcion = request.Descripcion ?? edificio.Descripcion,
-                Ubicacion = request.Ubicacion ?? edificio.Ubicacion
+                Ubicacion = request.Ubicacion ?? edificio.Ubicacion,
+                Activo = true
             };
             
             await espacioRepository.ActualizarAsync(edificioActualizado);
@@ -154,7 +155,7 @@ public static class EdificioEndpoints
             
             return Results.Ok(new
             {
-                message = $"Edificio {id} marcado como eliminado (borrado lógico)",
+                message = $"Edificio {id} desactivado correctamente",
                 id = edificio.Id,
                 nombre = edificio.Nombre
             });

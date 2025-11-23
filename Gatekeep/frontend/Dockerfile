@@ -36,13 +36,22 @@ COPY package*.json ./
 # Copy scripts for postinstall
 COPY scripts ./scripts
 
-# Install only production dependencies
-RUN npm ci --only=production
+# Install dependencies (including next which is needed for next start)
+RUN npm ci --production
 
 # Copy built application and necessary files from build stage
-COPY --from=build /app/.next ./.next
+# IMPORTANTE: next.config.js tiene distDir: 'out', pero next start busca '.next' por defecto
+# Copiamos 'out' a '.next' y ajustamos el next.config.js para usar '.next'
+COPY --from=build /app/out ./.next
 COPY --from=build /app/public ./public
+COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/next.config.js ./next.config.js
+
+# Modificar next.config.js para cambiar distDir: 'out' a distDir: '.next'
+# Usamos sed que es más confiable en Alpine Linux
+RUN sed -i "s/distDir: 'out'/distDir: '.next'/g" ./next.config.js || \
+    sed -i "s/distDir: \"out\"/distDir: \".next\"/g" ./next.config.js
+
 # Cache directory is optional, skip if it doesn't exist
 RUN mkdir -p ./node_modules/.cache || true
 

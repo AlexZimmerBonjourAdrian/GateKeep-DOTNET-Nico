@@ -323,6 +323,9 @@ namespace GateKeep.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<bool>("Activo")
+                        .HasColumnType("boolean");
+
                     b.Property<long>("EspacioId")
                         .HasColumnType("bigint");
 
