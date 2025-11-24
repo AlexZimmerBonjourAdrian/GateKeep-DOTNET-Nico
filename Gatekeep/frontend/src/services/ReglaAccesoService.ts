@@ -1,30 +1,46 @@
-import axios from "axios";
+import apiClient from '@/lib/axios-offline-interceptor';
 import { URLService } from "./urlService";
-import { SecurityService } from "./securityService";
+import { isOnline } from '@/lib/sync';
+import { obtenerReglasAccesoLocales, obtenerReglaAccesoPorEspacioIdLocal } from '@/lib/sqlite-db';
 
 const API_URL = URLService.getLink() + "reglas-acceso";
 
 export class ReglaAccesoService {
-  static getAuthHeaders() {
-    const token = SecurityService.getToken();
-    return {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    };
-  }
-
   static async getReglasAcceso() {
-    return axios.get(API_URL, this.getAuthHeaders());
+    if (!isOnline()) {
+      const reglasLocales = obtenerReglasAccesoLocales();
+      return Promise.resolve({ data: reglasLocales, fromCache: true });
+    }
+    return apiClient.get(API_URL);
   }
 
   static async getReglaAccesoById(id: number) {
-    return axios.get(`${API_URL}/${id}`, this.getAuthHeaders());
+    if (!isOnline()) {
+      const reglasLocales = obtenerReglasAccesoLocales();
+      const regla = reglasLocales.find((r: any) => r.id === id);
+      if (regla) {
+        return Promise.resolve({ data: regla, fromCache: true });
+      }
+      return Promise.reject({ 
+        isOffline: true, 
+        message: 'Sin conexión y regla no encontrada en cache local' 
+      });
+    }
+    return apiClient.get(`${API_URL}/${id}`);
   }
 
   static async getReglaAccesoPorEspacioId(espacioId: number) {
-    return axios.get(`${API_URL}/espacio/${espacioId}`, this.getAuthHeaders());
+    if (!isOnline()) {
+      const reglaLocal = obtenerReglaAccesoPorEspacioIdLocal(espacioId);
+      if (reglaLocal) {
+        return Promise.resolve({ data: reglaLocal, fromCache: true });
+      }
+      return Promise.reject({ 
+        isOffline: true, 
+        message: 'Sin conexión y regla no encontrada en cache local' 
+      });
+    }
+    return apiClient.get(`${API_URL}/espacio/${espacioId}`);
   }
 
   static async crearReglaAcceso(data: {
@@ -44,7 +60,7 @@ export class ReglaAccesoService {
       RolesPermitidos: data.rolesPermitidos,
       EspacioId: data.espacioId,
     };
-    return axios.post(API_URL, payload, this.getAuthHeaders());
+    return apiClient.post(API_URL, payload);
   }
 
   static async actualizarReglaAcceso(
@@ -67,10 +83,10 @@ export class ReglaAccesoService {
       RolesPermitidos: data.rolesPermitidos,
       EspacioId: data.espacioId,
     };
-    return axios.put(`${API_URL}/${id}`, payload, this.getAuthHeaders());
+    return apiClient.put(`${API_URL}/${id}`, payload);
   }
 
   static async eliminarReglaAcceso(id: number) {
-    return axios.delete(`${API_URL}/${id}`, this.getAuthHeaders());
+    return apiClient.delete(`${API_URL}/${id}`);
   }
 }

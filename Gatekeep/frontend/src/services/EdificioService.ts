@@ -1,26 +1,33 @@
-import axios from "axios";
+import apiClient from '@/lib/axios-offline-interceptor';
 import { URLService } from "./urlService";
-import { SecurityService } from "./securityService";
+import { isOnline } from '@/lib/sync';
+import { obtenerEspaciosLocales, obtenerEspacioPorId } from '@/lib/sqlite-db';
 
 const API_URL = URLService.getLink() + "espacios/edificios";
 
 export class EdificioService {
-  static getAuthHeaders() {
-    const token = SecurityService.getToken();
-    return {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    };
-  }
-
   static async getEdificios() {
-    return axios.get(API_URL, this.getAuthHeaders());
+    if (!isOnline()) {
+      // Filtrar solo edificios del cache local
+      const espaciosLocales = obtenerEspaciosLocales();
+      const edificios = espaciosLocales.filter((e: any) => e.tipo === 'Edificio' || e.tipo === 'edificio');
+      return Promise.resolve({ data: edificios, fromCache: true });
+    }
+    return apiClient.get(API_URL);
   }
 
   static async getEdificioById(id: number) {
-    return axios.get(`${API_URL}/${id}` , this.getAuthHeaders());
+    if (!isOnline()) {
+      const espacioLocal = obtenerEspacioPorId(id);
+      if (espacioLocal && (espacioLocal.tipo === 'Edificio' || espacioLocal.tipo === 'edificio')) {
+        return Promise.resolve({ data: espacioLocal, fromCache: true });
+      }
+      return Promise.reject({ 
+        isOffline: true, 
+        message: 'Sin conexión y edificio no encontrado en cache local' 
+      });
+    }
+    return apiClient.get(`${API_URL}/${id}`);
   }
 
   static async crearEdificio(data: {
@@ -42,7 +49,7 @@ export class EdificioService {
       NumeroPisos: data.numeroPisos,
       CodigoEdificio: data.codigoEdificio || null,
     };
-    return axios.post(API_URL, payload, this.getAuthHeaders());
+    return apiClient.post(API_URL, payload);
   }
 
   static async updateEdificio(id: number, data: {
@@ -63,10 +70,10 @@ export class EdificioService {
       NumeroPisos: data.numeroPisos,
       CodigoEdificio: data.codigoEdificio || null,
     };
-    return axios.put(`${API_URL}/${id}`, payload, this.getAuthHeaders());
+    return apiClient.put(`${API_URL}/${id}`, payload);
   }
 
   static async deleteEdificio(id: number) {
-    return axios.delete(`${API_URL}/${id}`, this.getAuthHeaders());
+    return apiClient.delete(`${API_URL}/${id}`);
   }
 }

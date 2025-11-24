@@ -1,31 +1,8 @@
-import axios, { AxiosInstance } from "axios";
-import type { InternalAxiosRequestConfig } from "axios";
+import apiClient from '@/lib/axios-offline-interceptor';
 import { URLService } from "./urlService";
 
 const API_URL = URLService.getLink(); // Incluye /api/
 const ACCESO_URL = `${API_URL}acceso/`; // → /api/acceso/
-
-// Instancia Axios con autenticación
-const api: AxiosInstance = axios.create({
-  baseURL: API_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    const h: any = config.headers ?? {};
-    if (typeof h.set === "function") {
-      h.set("Authorization", `Bearer ${token}`);
-    } else {
-      h["Authorization"] = `Bearer ${token}`;
-    }
-    (config as any).headers = h;
-  }
-  return config;
-});
 
 export class AccesoService {
   /**
@@ -36,7 +13,7 @@ export class AccesoService {
     espacioId: number;
     puntoControl: string;
   }) {
-    return api.post(ACCESO_URL + "validar", {
+    return apiClient.post(ACCESO_URL + "validar", {
       UsuarioId: payload.usuarioId,
       EspacioId: payload.espacioId,
       PuntoControl: payload.puntoControl

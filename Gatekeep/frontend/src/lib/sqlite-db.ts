@@ -596,6 +596,93 @@ export function obtenerEspacioPorId(id: number): any {
 }
 
 /**
+ * Obtiene todos los beneficios del cache local
+ */
+export function obtenerBeneficiosLocales(): any[] {
+  if (!db) return [];
+
+  const stmt = db.prepare('SELECT * FROM beneficios ORDER BY nombre ASC');
+  const beneficios = [];
+
+  while (stmt.step()) {
+    beneficios.push(stmt.getAsObject());
+  }
+  stmt.free();
+
+  return beneficios;
+}
+
+/**
+ * Obtiene un beneficio específico del cache local por ID
+ */
+export function obtenerBeneficioLocal(id: number): any {
+  if (!db) return null;
+
+  const stmt = db.prepare('SELECT * FROM beneficios WHERE id = ?');
+  stmt.bind([id]);
+
+  let beneficio = null;
+  if (stmt.step()) {
+    beneficio = stmt.getAsObject();
+  }
+  stmt.free();
+
+  return beneficio;
+}
+
+/**
+ * Obtiene todos los usuarios del cache local
+ */
+export function obtenerUsuariosLocales(): any[] {
+  if (!db) return [];
+
+  const stmt = db.prepare('SELECT * FROM usuarios ORDER BY nombre ASC');
+  const usuarios = [];
+
+  while (stmt.step()) {
+    usuarios.push(stmt.getAsObject());
+  }
+  stmt.free();
+
+  return usuarios;
+}
+
+/**
+ * Obtiene todas las reglas de acceso del cache local
+ */
+export function obtenerReglasAccesoLocales(): any[] {
+  if (!db) return [];
+
+  const stmt = db.prepare('SELECT * FROM reglas_acceso ORDER BY id ASC');
+  const reglas = [];
+
+  while (stmt.step()) {
+    reglas.push(stmt.getAsObject());
+  }
+  stmt.free();
+
+  return reglas;
+}
+
+/**
+ * Obtiene una regla de acceso por espacio ID del cache local
+ */
+export function obtenerReglaAccesoPorEspacioIdLocal(espacioId: number): any {
+  if (!db) return null;
+
+  const stmt = db.prepare('SELECT * FROM reglas_acceso WHERE espacioId = ? LIMIT 1');
+  stmt.bind([espacioId]);
+
+  let regla = null;
+  if (stmt.step()) {
+    regla = stmt.getAsObject();
+  }
+  stmt.free();
+
+  return regla;
+}
+
+/**
  * Obtiene resumen de estado de la BD local
  */
 export function getOfflineStatus() {

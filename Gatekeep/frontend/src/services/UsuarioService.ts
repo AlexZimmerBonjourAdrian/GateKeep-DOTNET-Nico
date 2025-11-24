@@ -1,34 +1,13 @@
-import axios, { AxiosInstance } from "axios";
-import type { InternalAxiosRequestConfig } from "axios";
+import apiClient from '@/lib/axios-offline-interceptor';
 import { URLService } from "./urlService";
+import { isOnline } from '@/lib/sync';
+import { getUsuarioLocal, obtenerUsuariosLocales } from '@/lib/sqlite-db';
 
 // Base URL del backend y recursos específicos
 const API_URL = URLService.getLink(); // URL dinámica según entorno (producción o desarrollo) - incluye /api/
 // Todas las rutas del backend están bajo /api/
 const USUARIOS_URL = `${API_URL}usuarios/`;  // → /api/usuarios/
 const AUTH_URL = `${API_URL}auth/`;           // → /api/auth/
-
-// Instancia Axios para usuarios (reutiliza token si existe)
-const api: AxiosInstance = axios.create({
-  baseURL: API_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    const h: any = config.headers ?? {};
-    if (typeof h.set === "function") {
-      h.set("Authorization", `Bearer ${token}`);
-    } else {
-      h["Authorization"] = `Bearer ${token}`;
-    }
-    (config as any).headers = h;
-  }
-  return config;
-});
 
 export class UsuarioService {
   /**
@@ -43,27 +22,40 @@ export class UsuarioService {
     telefono?: string | null; 
     rol: string; 
   }) {
-    return axios.post(AUTH_URL + "register", payload);
+    return apiClient.post(AUTH_URL + "register", payload);
   }
   /**
    * Login de usuario con email y contraseña.
    */
   static login(credentials: { email: string; password: string }) {
-    return axios.post(AUTH_URL + "login", credentials);
+    return apiClient.post(AUTH_URL + "login", credentials);
   }
 
   /**
    * Obtiene un usuario por ID (valida que el backend autorice si no es el propio).
+   * Si está offline, intenta obtener desde cache local.
    */
-  static getUsuario(id: number) {
-    return api.get(USUARIOS_URL + id);
+  static async getUsuario(id: number) {
+    if (!isOnline()) {
+      // Intentar obtener desde cache local
+      const usuarioLocal = getUsuarioLocal(id);
+      if (usuarioLocal) {
+        return Promise.resolve({ data: usuarioLocal, fromCache: true });
+      }
+      // Si no está en cache, rechazar con error offline
+      return Promise.reject({ 
+        isOffline: true, 
+        message: 'Sin conexión y usuario no encontrado en cache local' 
+      });
+    }
+    return apiClient.get(USUARIOS_URL + id);
   }
 
   /**
    * Actualiza datos básicos del usuario (Nombre, Apellido, Telefono)
    */
   static updateUsuario(id: number, data: { nombre: string; apellido: string; telefono?: string | null }) {
-    return api.put(USUARIOS_URL + id, data);
+    return apiClient.put(USUARIOS_URL + id, data);
   }
 
   /** Actualiza el usuario actual (resuelve id desde cache/token). */
@@ -139,7 +131,7 @@ export class UsuarioService {
    * Cantidad de notificaciones sin leer para un usuario.
    */
   static getNotificacionesSinLeer(id: number) {
-    return api.get(USUARIOS_URL + id + "/notificaciones/no-leidas/count");
+    return apiClient.get(USUARIOS_URL + id + "/notificaciones/no-leidas/count");
   }
 
   /**
@@ -153,7 +145,7 @@ export class UsuarioService {
     if (params?.height) query.push(`h=${params.height}`);
     const q = query.length ? `?${query.join("&")}` : "";
 
-  const response = await api.get(AUTH_URL + `qr${q}`, { responseType: "blob" });
+  const response = await apiClient.get(AUTH_URL + `qr${q}`, { responseType: "blob" });
     return response.data as Blob;
   }
 
@@ -168,9 +160,14 @@ export class UsuarioService {
 
   /**
    * Obtiene todos los usuarios (solo para administradores).
+   * Si está offline, retorna usuarios del cache local.
    */
-  static getUsuarios() {
-    return api.get(USUARIOS_URL);
+  static async getUsuarios() {
+    if (!isOnline()) {
+      const usuariosLocales = obtenerUsuariosLocales();
+      return Promise.resolve({ data: usuariosLocales, fromCache: true });
+    }
+    return apiClient.get(USUARIOS_URL);
   }
 
   /**
@@ -193,14 +190,14 @@ export class UsuarioService {
       telefono: payload.telefono,
       rol: payload.rol
     };
-    return api.post(USUARIOS_URL, backendPayload);
+    return apiClient.post(USUARIOS_URL, backendPayload);
   }
 
   /**
    * Elimina un usuario (solo para administradores).
    */
   static deleteUsuario(id: number) {
-    return api.delete(USUARIOS_URL + id);
+    return apiClient.delete(USUARIOS_URL + id);
   }
 }
 

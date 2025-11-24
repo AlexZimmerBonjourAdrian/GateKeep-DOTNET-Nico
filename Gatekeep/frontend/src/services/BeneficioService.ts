@@ -1,26 +1,31 @@
-import axios from "axios";
+import apiClient from '@/lib/axios-offline-interceptor';
 import { URLService } from "./urlService";
-import { SecurityService } from "./securityService";
+import { isOnline } from '@/lib/sync';
+import { obtenerBeneficiosLocales, obtenerBeneficioLocal } from '@/lib/sqlite-db';
 
 const API_URL = URLService.getLink() + "beneficios";
 
 export class BeneficioService {
-  static getAuthHeaders() {
-    const token = SecurityService.getToken();
-    return {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    };
-  }
-
   static async getBeneficios() {
-    return axios.get(API_URL, this.getAuthHeaders());
+    if (!isOnline()) {
+      const beneficiosLocales = obtenerBeneficiosLocales();
+      return Promise.resolve({ data: beneficiosLocales, fromCache: true });
+    }
+    return apiClient.get(API_URL);
   }
 
   static async getBeneficioById(id: number) {
-    return axios.get(`${API_URL}/${id}`, this.getAuthHeaders());
+    if (!isOnline()) {
+      const beneficioLocal = obtenerBeneficioLocal(id);
+      if (beneficioLocal) {
+        return Promise.resolve({ data: beneficioLocal, fromCache: true });
+      }
+      return Promise.reject({ 
+        isOffline: true, 
+        message: 'Sin conexión y beneficio no encontrado en cache local' 
+      });
+    }
+    return apiClient.get(`${API_URL}/${id}`);
   }
 
   static async crearBeneficio(data: {
@@ -35,7 +40,7 @@ export class BeneficioService {
       FechaDeVencimiento: data.fechaDeVencimiento,
       Cupos: data.cupos,
     };
-    return axios.post(API_URL, payload, this.getAuthHeaders());
+    return apiClient.post(API_URL, payload);
   }
 
   static async actualizarBeneficio(
@@ -53,22 +58,22 @@ export class BeneficioService {
       FechaDeVencimiento: data.fechaDeVencimiento,
       Cupos: data.cupos,
     };
-    return axios.put(`${API_URL}/${id}`, payload, this.getAuthHeaders());
+    return apiClient.put(`${API_URL}/${id}`, payload);
   }
 
   static async eliminarBeneficio(id: number) {
-    return axios.delete(`${API_URL}/${id}`, this.getAuthHeaders());
+    return apiClient.delete(`${API_URL}/${id}`);
   }
 
   // PATCH /api/usuarios/{usuarioId}/beneficios/{beneficioId}/canjear
   static async canjearBeneficio(usuarioId: number, beneficioId: number, puntoControl: string) {
     const url = `${URLService.getLink()}usuarios/${usuarioId}/beneficios/${beneficioId}/canjear`;
-    return axios.patch(url, { PuntoControl: puntoControl }, this.getAuthHeaders());
+    return apiClient.patch(url, { PuntoControl: puntoControl });
   }
 
   // GET /api/usuarios/{usuarioId}/beneficios/canjeados
   static async getBeneficiosCanjeados(usuarioId: number) {
     const url = `${URLService.getLink()}usuarios/${usuarioId}/beneficios/canjeados`;
-    return axios.get(url, this.getAuthHeaders());
+    return apiClient.get(url);
   }
 }

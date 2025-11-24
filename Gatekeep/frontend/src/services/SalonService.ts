@@ -1,26 +1,33 @@
-import axios from "axios";
+import apiClient from '@/lib/axios-offline-interceptor';
 import { URLService } from "./urlService";    
-import { SecurityService } from "./securityService";
+import { isOnline } from '@/lib/sync';
+import { obtenerEspaciosLocales, obtenerEspacioPorId } from '@/lib/sqlite-db';
 
 const API_URL = URLService.getLink() + "espacios/salones";
 
 export class SalonService {
-  static getAuthHeaders() {
-    const token = SecurityService.getToken();
-    return {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    };
-  }
-
   static async getSalones() {
-    return axios.get(API_URL, this.getAuthHeaders());
+    if (!isOnline()) {
+      // Filtrar solo salones del cache local
+      const espaciosLocales = obtenerEspaciosLocales();
+      const salones = espaciosLocales.filter((e: any) => e.tipo === 'Salon' || e.tipo === 'salon');
+      return Promise.resolve({ data: salones, fromCache: true });
+    }
+    return apiClient.get(API_URL);
   }
 
   static async getSalon(id: number) {
-    return axios.get(`${API_URL}/${id}`, this.getAuthHeaders());
+    if (!isOnline()) {
+      const espacioLocal = obtenerEspacioPorId(id);
+      if (espacioLocal && (espacioLocal.tipo === 'Salon' || espacioLocal.tipo === 'salon')) {
+        return Promise.resolve({ data: espacioLocal, fromCache: true });
+      }
+      return Promise.reject({ 
+        isOffline: true, 
+        message: 'Sin conexión y salón no encontrado en cache local' 
+      });
+    }
+    return apiClient.get(`${API_URL}/${id}`);
   }
 
   static async getSalonById(id: number) {
@@ -36,7 +43,7 @@ export class SalonService {
     descripcion?: string;
     activo?: boolean;
   }) {
-    return axios.post(API_URL, data, this.getAuthHeaders());
+    return apiClient.post(API_URL, data);
   }
 
   static async updateSalon(id: number, data: { 
@@ -48,10 +55,10 @@ export class SalonService {
     descripcion?: string;
     activo?: boolean;
   }) {
-    return axios.put(`${API_URL}/${id}`, data, this.getAuthHeaders());
+    return apiClient.put(`${API_URL}/${id}`, data);
   }
 
   static async deleteSalon(id: number) {
-    return axios.delete(`${API_URL}/${id}`, this.getAuthHeaders());
+    return apiClient.delete(`${API_URL}/${id}`);
   }
 }

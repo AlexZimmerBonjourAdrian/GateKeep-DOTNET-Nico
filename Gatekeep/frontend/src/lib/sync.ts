@@ -263,17 +263,43 @@ export async function syncWithServer(authToken: string, maxRetries = 3): Promise
   return false;
 }
 
+// Variable global para almacenar el timeout
+let syncTimeoutId: NodeJS.Timeout | null = null;
+
 /**
- * Configura listeners de conectividad
+ * Configura listeners de conectividad con retraso de 2 minutos
  */
 export function setupConnectivityListeners(authToken: string) {
   window.addEventListener('online', async () => {
-    console.log('🌐 Conexión recuperada. Sincronizando...');
-    await syncWithServer(authToken);
+    console.log('🌐 Conexión recuperada. Esperando 2 minutos antes de sincronizar...');
+    
+    // Cancelar timeout anterior si existe
+    if (syncTimeoutId) {
+      clearTimeout(syncTimeoutId);
+      syncTimeoutId = null;
+    }
+    
+    // Esperar 2 minutos (120000 ms) antes de sincronizar
+    syncTimeoutId = setTimeout(async () => {
+      console.log('🔄 Sincronizando después de 2 minutos de conexión estable...');
+      try {
+        await syncWithServer(authToken);
+      } catch (error) {
+        console.error('Error en sincronización después de recuperar conexión:', error);
+      }
+      syncTimeoutId = null;
+    }, 120000); // 2 minutos = 120,000 milisegundos
   });
 
   window.addEventListener('offline', () => {
     console.log('📡 Modo offline activado');
+    
+    // Cancelar sincronización pendiente si se pierde la conexión
+    if (syncTimeoutId) {
+      clearTimeout(syncTimeoutId);
+      syncTimeoutId = null;
+      console.log('⏹️ Sincronización cancelada (pérdida de conexión)');
+    }
   });
 }
 

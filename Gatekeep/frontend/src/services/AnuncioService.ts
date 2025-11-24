@@ -1,37 +1,26 @@
-import axios from "axios";
-import { URLService } from "./urlService";    
-import { SecurityService } from "./securityService";
+import apiClient from '@/lib/axios-offline-interceptor';
+import { URLService } from "./urlService";
 
 const API_URL = URLService.getLink() + "anuncios";
 
 export class AnuncioService {
-  static getAuthHeaders() {
-    const token = SecurityService.getToken();
-    return {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    };
-  }
-
   static getAnuncios() {
-    return axios.get(API_URL, this.getAuthHeaders());
+    return apiClient.get(API_URL);
   }
 
   static getAnuncio(id: number) {
-    return axios.get(`${API_URL}/${id}`, this.getAuthHeaders());
+    return apiClient.get(`${API_URL}/${id}`);
   }
 
   static createAnuncio(data: { nombre: string; fecha: string; descripcion?: string; puntoControl?: string }) {
-    return axios.post(API_URL, data, this.getAuthHeaders());
+    return apiClient.post(API_URL, data);
   }
 
   static updateAnuncio(id: number, data: { nombre: string; fecha: string; descripcion?: string; puntoControl?: string }) {
-    return axios.put(`${API_URL}/${id}`, data, this.getAuthHeaders());
+    return apiClient.put(`${API_URL}/${id}`, data);
   }
 
   static deleteAnuncio(id: number) {
-    return axios.delete(`${API_URL}/${id}`, this.getAuthHeaders());
+    return apiClient.delete(`${API_URL}/${id}`);
   }
 }

@@ -145,3 +145,4 @@ self.addEventListener('message', (event) => {
     );
   }
 });
+

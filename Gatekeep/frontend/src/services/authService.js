@@ -1,42 +1,7 @@
-import axios from 'axios';
-import { config } from '../../config.js';
+import apiClient from '@/lib/axios-offline-interceptor';
 
-// Configurar axios con la URL base
-const api = axios.create({
-    baseURL: `${config.apiUrl}/api`,
-    headers: {
-        'Content-Type': 'application/json',
-    },
-});
-
-// Interceptor para agregar el token de autorización automáticamente
-api.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
-    }
-);
-
-// Interceptor para manejar respuestas de error
-api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        if (error.response?.status === 401) {
-            // Token expirado o inválido
-            localStorage.removeItem('token');
-            localStorage.removeItem('refreshToken');
-            localStorage.removeItem('user');
-            window.location.href = '/auth/login';
-        }
-        return Promise.reject(error);
-    }
-);
+// Nota: apiClient ya maneja el token automáticamente y los errores 401
+// No es necesario agregar interceptores adicionales aquí
 
 class AuthService {
     /**
@@ -47,7 +12,7 @@ class AuthService {
      */
     async login(email, password) {
         try {
-            const response = await api.post('/auth/login', {
+            const response = await apiClient.post('auth/login', {
                 email,
                 password,
             });
@@ -90,7 +55,7 @@ class AuthService {
    */
   async register({ nombre, apellido, email, password, telefono }) {
     try {
-      const response = await api.post('/auth/register', {
+      const response = await apiClient.post('auth/register', {
         nombre,
         apellido,
         email,
@@ -182,7 +147,7 @@ class AuthService {
             const refreshToken = localStorage.getItem('refreshToken');
             if (!refreshToken) return false;
 
-            const response = await api.post('/auth/refresh', {
+            const response = await apiClient.post('auth/refresh', {
                 refreshToken,
             });
 
@@ -206,7 +171,7 @@ class AuthService {
      */
     async createTestUsers() {
         try {
-            const response = await api.post('/auth/create-test-users');
+            const response = await apiClient.post('auth/create-test-users');
             return {
                 success: true,
                 data: response.data,
@@ -226,7 +191,7 @@ class AuthService {
      */
     async listUsers() {
         try {
-            const response = await api.get('/auth/list-users');
+            const response = await apiClient.get('auth/list-users');
             return {
                 success: true,
                 data: response.data,
@@ -246,7 +211,7 @@ class AuthService {
      */
     async getCurrentUserFromServer() {
         try {
-            const response = await api.get('/usuarios/me');
+            const response = await apiClient.get('usuarios/me');
             return {
                 success: true,
                 data: response.data,
