@@ -10,6 +10,22 @@ import { AccesoService } from '../../../services/AccesoService'
 import TokenUtils from '../../../utils/tokenUtils'
 
 export default function EdificioDetalle() {
+    // Manejo de errores personalizados para validación QR
+    const errorMessages = {
+      FUERA_DE_HORARIO: (data) => `El acceso está fuera del horario permitido. Horario permitido: ${data?.detallesAdicionales?.HorarioApertura} - ${data?.detallesAdicionales?.HorarioCierre}. Hora actual: ${data?.detallesAdicionales?.HoraActual}`,
+      FUERA_DE_VIGENCIA: () => 'El acceso está fuera de la vigencia permitida.',
+      REGLAS_NO_CONFIGURADAS: () => 'No hay reglas de acceso configuradas para este espacio.',
+      ROL_NO_PERMITIDO: () => 'Tu rol no tiene permiso para acceder a este espacio.',
+      USUARIO_NO_EXISTE: () => 'El usuario no existe.',
+      ESPACIO_NO_EXISTE: () => 'El espacio no existe.',
+      ESPACIO_INACTIVO: () => 'El espacio está inactivo.',
+      USUARIO_INVALIDO: () => 'El usuario no es válido.',
+      PUNTO_CONTROL_REQUERIDO: () => 'El punto de control es requerido.',
+      USUARIO_ID_INVALIDO: () => 'El ID de usuario es inválido.',
+      ESPACIO_ID_INVALIDO: () => 'El ID de espacio es inválido.',
+      ACCESO_DENEGADO: () => 'Acceso denegado.',
+      ERROR_INTERNO: () => 'Error interno del servidor.',
+    };
   const params = useParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -133,10 +149,8 @@ export default function EdificioDetalle() {
   const validateAccess = async (token) => {
     try {
       setValidationError(null)
-      console.log('[QR] validateAccess: token recibido', token)
       // Extraer el userId del token usando TokenUtils
       const decoded = TokenUtils.decodeToken(token)
-      console.log('[QR] validateAccess: token decodificado', decoded)
       const usuarioId =
         decoded?.sub ||
         decoded?.userId ||
@@ -144,50 +158,38 @@ export default function EdificioDetalle() {
         decoded?.id ||
         decoded?.Id ||
         decoded?.["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"]
-      console.log('[QR] validateAccess: usuarioId extraído', usuarioId)
       if (!usuarioId) {
         setValidationError('No se pudo obtener el ID de usuario del QR')
-        console.warn('[QR] validateAccess: No se pudo extraer el ID de usuario del token')
         return
       }
-      // Obtener el punto de control del edificio (usamos el código o nombre del edificio)
+      // Obtener el punto de control del edificio (usamos el código o nombre)
       const puntoControl = edificio.CodigoEdificio || edificio.codigoEdificio || edificio.Nombre || edificio.nombre || `Edificio-${id}`
-      console.log('[QR] validateAccess: puntoControl', puntoControl)
       // Validar acceso
-      console.log('[QR] validateAccess: Enviando POST a AccesoService.validarAcceso', {
-        usuarioId,
+      const response = await AccesoService.validarAcceso({
+        usuarioId: usuarioId,
         espacioId: id,
-        puntoControl
+        puntoControl: String(puntoControl)
       })
-      let response = null
-      try {
-        response = await AccesoService.validarAcceso({
-          usuarioId: usuarioId,
-          espacioId: id,
-          puntoControl: puntoControl
-        })
-        console.log('[QR] validateAccess: respuesta del backend', response)
-      } catch (err) {
-        console.error('[QR] validateAccess: error en AccesoService.validarAcceso', err)
-        setValidationError('Error de red o CORS al validar acceso')
-        return
-      }
-      if (response?.data?.permitido) {
+      if (response.data.permitido) {
         setValidationResult({
           permitido: true,
           mensaje: 'Acceso Permitido',
           usuarioId: usuarioId,
           fecha: response.data.fecha
         })
-        console.info('[QR] validateAccess: Acceso permitido', response.data)
       } else {
-        setValidationError(response?.data?.razon || 'Acceso denegado')
-        console.warn('[QR] validateAccess: Acceso denegado', response?.data)
+        setValidationError(response.data.razon || 'Acceso denegado')
       }
     } catch (err) {
-      console.error('[QR] Error validando acceso:', err)
-      const errorMsg = err.response?.data?.mensaje || err.response?.data?.Mensaje || 'Error al validar el acceso'
-      setValidationError(errorMsg)
+      console.error('Error validando acceso:', err)
+      const codigoError = err.response?.data?.codigoError;
+      const data = err.response?.data;
+      if (codigoError && errorMessages[codigoError]) {
+        setValidationError(errorMessages[codigoError](data));
+      } else {
+        const errorMsg = data?.mensaje || data?.Mensaje || 'Error al validar el acceso';
+        setValidationError(errorMsg);
+      }
     }
   }
 
@@ -287,9 +289,9 @@ export default function EdificioDetalle() {
                         <i className="pi pi-clock" style={{color: '#231F20', marginRight: '6px'}}></i>
                         <span className="regla-label">Horario:</span>
                         <span className="regla-value">
-                          {new Date(reglaAcceso.HorarioApertura || reglaAcceso.horarioApertura).toISOString().slice(11,16)}
+                          {(reglaAcceso.HorarioApertura || reglaAcceso.horarioApertura)?.slice(0,5)}
                           {' - '}
-                          {new Date(reglaAcceso.HorarioCierre || reglaAcceso.horarioCierre).toISOString().slice(11,16)}
+                          {(reglaAcceso.HorarioCierre || reglaAcceso.horarioCierre)?.slice(0,5)}
                         </span>
                       </div>
                       

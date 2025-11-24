@@ -75,6 +75,8 @@ public static class AccesoEndpoints
 
                 if (resultado.Permitido)
                 {
+                    var argentinaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Argentina Standard Time");
+                    var fechaLocal = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, argentinaTimeZone);
                     var response = new ValidarAccesoResponse
                     {
                         Permitido = true,
@@ -82,7 +84,7 @@ public static class AccesoEndpoints
                         UsuarioId = request.UsuarioId,
                         EspacioId = request.EspacioId,
                         PuntoControl = request.PuntoControl,
-                        Fecha = DateTime.UtcNow
+                        Fecha = fechaLocal
                     };
                     return Results.Ok(response);
                 }

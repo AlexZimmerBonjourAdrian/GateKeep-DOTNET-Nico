@@ -49,6 +49,7 @@ public static class SalonEndpoints
                 salon.NumeroSalon,
                 EdificioId = salon.EdificioId,
                 salon.Descripcion,
+                salon.Ubicacion
             });
         })
             .RequireAuthorization("AllUsers")
