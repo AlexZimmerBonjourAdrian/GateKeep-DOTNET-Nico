@@ -130,6 +130,22 @@ export default function SalonDetalle() {
   }
 
   // Función para validar el acceso del usuario
+  const errorMessages = {
+    FUERA_DE_HORARIO: (data) => `El acceso está fuera del horario permitido. Horario permitido: ${data?.detallesAdicionales?.HorarioApertura} - ${data?.detallesAdicionales?.HorarioCierre}. Hora actual: ${data?.detallesAdicionales?.HoraActual}`,
+    FUERA_DE_VIGENCIA: () => 'El acceso está fuera de la vigencia permitida.',
+    REGLAS_NO_CONFIGURADAS: () => 'No hay reglas de acceso configuradas para este espacio.',
+    ROL_NO_PERMITIDO: () => 'Tu rol no tiene permiso para acceder a este espacio.',
+    USUARIO_NO_EXISTE: () => 'El usuario no existe.',
+    ESPACIO_NO_EXISTE: () => 'El espacio no existe.',
+    ESPACIO_INACTIVO: () => 'El espacio está inactivo.',
+    USUARIO_INVALIDO: () => 'El usuario no es válido.',
+    PUNTO_CONTROL_REQUERIDO: () => 'El punto de control es requerido.',
+    USUARIO_ID_INVALIDO: () => 'El ID de usuario es inválido.',
+    ESPACIO_ID_INVALIDO: () => 'El ID de espacio es inválido.',
+    ACCESO_DENEGADO: () => 'Acceso denegado.',
+    ERROR_INTERNO: () => 'Error interno del servidor.',
+  };
+
   const validateAccess = async (token) => {
     try {
       setValidationError(null)
@@ -166,8 +182,14 @@ export default function SalonDetalle() {
       }
     } catch (err) {
       console.error('Error validando acceso:', err)
-      const errorMsg = err.response?.data?.mensaje || err.response?.data?.Mensaje || 'Error al validar el acceso'
-      setValidationError(errorMsg)
+      const codigoError = err.response?.data?.codigoError;
+      const data = err.response?.data;
+      if (codigoError && errorMessages[codigoError]) {
+        setValidationError(errorMessages[codigoError](data));
+      } else {
+        const errorMsg = data?.mensaje || data?.Mensaje || 'Error al validar el acceso';
+        setValidationError(errorMsg);
+      }
     }
   }
 
@@ -215,9 +237,6 @@ export default function SalonDetalle() {
               <article className="card">
                 <header className="card-header">
                   <h1 className="title">{salon.Nombre || salon.nombre || 'Salón'}</h1>
-                  <span className={`badge ${((salon.Activo ?? salon.activo) ? 'ok' : 'off')}`}>
-                    {(salon.Activo ?? salon.activo) ? 'Activo' : 'Inactivo'}
-                  </span>
                 </header>
 
                 <div className="meta">
@@ -227,7 +246,7 @@ export default function SalonDetalle() {
                   </div>
                   <div className="meta-item">
                     <span className="meta-label">Ubicación</span>
-                    <span className="meta-value">{salon.Ubicacion || salon.ubicacion || 'No especificada'}</span>
+                    <span className="meta-value">{salon.Ubicacion || 'No especificada'}</span>
                   </div>
                   <div className="meta-item">
                     <span className="meta-label">Capacidad</span>
@@ -273,9 +292,9 @@ export default function SalonDetalle() {
                         <i className="pi pi-clock" style={{color: '#231F20', marginRight: '6px'}}></i>
                         <span className="regla-label">Horario:</span>
                         <span className="regla-value">
-                          {new Date(reglaAcceso.HorarioApertura || reglaAcceso.horarioApertura).toISOString().slice(11,16)}
+                          {(reglaAcceso.HorarioApertura || reglaAcceso.horarioApertura)?.slice(0,5)}
                           {' - '}
-                          {new Date(reglaAcceso.HorarioCierre || reglaAcceso.horarioCierre).toISOString().slice(11,16)}
+                          {(reglaAcceso.HorarioCierre || reglaAcceso.horarioCierre)?.slice(0,5)}
                         </span>
                       </div>
                       
