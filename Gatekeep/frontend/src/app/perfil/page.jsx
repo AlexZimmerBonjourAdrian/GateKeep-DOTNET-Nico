@@ -27,8 +27,6 @@ export default function Perfil() {
   const [userId, setUserId] = useState(null)
   const [editMode, setEditMode] = useState(false)
   const [notificaciones, setNotificaciones] = useState(0);
-  const [profileImage, setProfileImage] = useState(null)
-  const [preview, setPreview] = useState(null)
   const [qrUrl, setQrUrl] = useState(null)
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -87,18 +85,6 @@ export default function Perfil() {
       fetchNotifications();
     }, [pathname, router]);
 
-  useEffect(() => {
-    if (!profileImage) {
-      setPreview(null)
-      return
-    }
-
-    const objectUrl = URL.createObjectURL(profileImage)
-    setPreview(objectUrl)
-
-    return () => URL.revokeObjectURL(objectUrl)
-  }, [profileImage])
-
   // Cargar datos reales del usuario y QR desde el backend
   useEffect(() => {
     let revokedUrl = null
@@ -146,11 +132,6 @@ export default function Perfil() {
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [adminMenuOpen]);
-
-  const handleImageChange = (e) => {
-    const file = e.target.files && e.target.files[0]
-    if (file) setProfileImage(file)
-  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -219,19 +200,8 @@ export default function Perfil() {
           <div className="profile-form">
             <div className="image-section">
               <div className="image-preview">
-                {preview ? (
-                  // Preview seleccionado
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={preview} alt="Preview" className="preview-img" />
-                ) : (
-                  <Image src={logo} alt="Avatar" width={120} height={120} className="preview-img" />
-                )}
+                <Image src={logo} alt="Avatar" width={120} height={120} className="preview-img" />
               </div>
-
-              <label className="file-label">
-                <input type="file" accept="image/*" onChange={handleImageChange} />
-                <span>Seleccionar imagen</span>
-              </label>
             </div>
 
             <div className="fields-section">
