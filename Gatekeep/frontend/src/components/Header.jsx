@@ -352,6 +352,9 @@ export default function Header() {
       </div>
 
       <style jsx>{`
+
+     
+
         /* Global layout fixes to avoid viewport-width shifts when scrollbars appear/disappear
            and to ensure consistent box-sizing. */
         :global(html), :global(body) {
@@ -853,6 +856,9 @@ export default function Header() {
           height: 56px;
           min-width: 56px;
           padding: 0 14px;
+        }
+        .header-bottom-bar{
+          display: none; /* tablet uses topbar */
         }
       }  
     @media (max-width: 430px) {
