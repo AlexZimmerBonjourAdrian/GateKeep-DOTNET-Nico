@@ -342,14 +342,15 @@ export default function SalonDetalle() {
 
             {/* Botón y modal de escáner QR idénticos a Beneficio */}
             {!loading && salon && reglaAcceso && (
-              <article className="card scanner-card">
+              <article className="card">
                 <div className="body">
                   <button className="canjear-btn" onClick={() => { setShowScanner(true); setIsScanning(true); setValidationError(null); setScanResult(null); }}>
-                    Validar acceso
+                    Validar acceso con QR
                   </button>
                 </div>
               </article>
             )}
+            {/* Modal del escáner QR */}
             {showScanner && (
               <div className="modal-overlay" onClick={cerrarEscaner}>
                 <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -552,159 +553,149 @@ export default function SalonDetalle() {
         /* Error state */
         .card.error { background: #fee2e2; color: #991b1b; border: 2px solid rgba(153,27,27,0.3); }
 
-        /* Escáner QR */
-        .scanner-card {
-          margin-top: 16px;
-          background: linear-gradient(135deg, rgba(243,116,38,0.95) 0%, rgba(243,116,38,0.85) 100%);
-        }
 
-        .scanner-content {
-          margin-top: 12px;
-        }
-
-        .scanner-idle {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 12px;
-        }
-
+        /* Botón y modal QR idénticos a Beneficio */
         .canjear-btn {
-          background: rgba(255,255,255,0.9);
+          width: 100%;
+          background: #231F20;
           color: #F37426;
-          border: 2px solid rgba(35,31,32,0.15);
+          border: none;
           border-radius: 12px;
-          padding: 12px 24px;
+          padding: 14px 20px;
           font-size: 1rem;
           font-weight: 700;
           cursor: pointer;
-          display: inline-flex;
-          align-items: center;
           transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
         }
-
         .canjear-btn:hover {
-          background: white;
+          background: #1a1617;
           transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          box-shadow: 0 6px 20px rgba(0,0,0,0.3);
         }
-
         .canjear-btn:active {
           transform: translateY(0);
         }
 
         .modal-overlay {
           position: fixed;
-          top: 0;
-          left: 0;
-          width: 100vw;
-          height: 100vh;
-          background: rgba(0,0,0,0.55);
+          inset: 0;
+          background: rgba(0,0,0,0.85);
           display: flex;
           align-items: center;
           justify-content: center;
           z-index: 1000;
+          padding: 20px;
         }
 
         .modal-content {
-          background: #fff;
-          color: #231F20;
-          border-radius: 18px;
-          padding: 32px 24px 24px 24px;
-          min-width: 320px;
-          max-width: 95vw;
-          min-height: 220px;
-          box-shadow: 0 8px 32px rgba(0,0,0,0.25);
           position: relative;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
+          background: #1c1a1b;
+          border-radius: 20px;
+          padding: 30px;
+          max-width: 500px;
+          width: 100%;
+          color: #fff;
         }
 
         .close-btn {
           position: absolute;
-          top: 12px;
-          right: 16px;
-          background: transparent;
+          top: 15px;
+          right: 15px;
+          background: rgba(255,255,255,0.1);
           border: none;
-          font-size: 1.5rem;
-          color: #F37426;
+          color: #fff;
+          font-size: 24px;
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
           cursor: pointer;
-          font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.2s;
+        }
+        .close-btn:hover {
+          background: rgba(255,255,255,0.2);
         }
 
         .scanner-title {
           margin: 0 0 8px 0;
-          font-size: 1.2rem;
-          font-weight: 800;
-          text-align: center;
+          font-size: 1.5rem;
+          color: #F37426;
         }
 
         .scanner-hint {
-          margin: 0 0 18px 0;
-          font-size: 0.98rem;
-          color: #F37426;
-          text-align: center;
+          margin: 0 0 20px 0;
+          font-size: 0.9rem;
+          color: rgba(255,255,255,0.7);
         }
 
         .qr-reader {
           width: 100%;
-          min-height: 260px;
-          margin-bottom: 12px;
+          border-radius: 12px;
+          overflow: hidden;
         }
 
         .success-message {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 10px;
-          margin-top: 12px;
+          text-align: center;
+          padding: 40px 20px;
         }
+
         .success-icon {
-          width: 54px;
-          height: 54px;
+          width: 80px;
+          height: 80px;
+          background: #10b981;
           border-radius: 50%;
-          background: #16a34a;
-          color: #fff;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 2.2rem;
-          font-weight: 900;
+          font-size: 48px;
+          color: white;
+          margin: 0 auto 20px;
+          animation: scaleIn 0.3s ease;
         }
+
+        @keyframes scaleIn {
+          from { transform: scale(0); }
+          to { transform: scale(1); }
+        }
+
         .success-message p {
-          margin: 0;
           font-size: 1.1rem;
-          color: #16a34a;
-          font-weight: 700;
+          margin: 10px 0;
         }
 
         .error-message {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 10px;
-          margin-top: 12px;
+          text-align: center;
+          padding: 30px 20px;
+          background: rgba(239, 68, 68, 0.1);
+          border-radius: 12px;
+          border: 2px solid rgba(239, 68, 68, 0.3);
         }
+
         .error-message p {
-          margin: 0;
-          color: #b91c1c;
-          font-weight: 700;
+          color: #fca5a5;
+          margin: 0 0 20px 0;
         }
+
         .retry-btn {
           background: #F37426;
-          color: #fff;
+          color: #231F20;
           border: none;
-          border-radius: 12px;
+          border-radius: 8px;
           padding: 10px 20px;
-          font-size: 1rem;
+          font-size: 0.95rem;
           font-weight: 700;
           cursor: pointer;
-          margin-top: 8px;
-          transition: background 0.2s;
+          transition: all 0.2s;
         }
         .retry-btn:hover {
-          background: #ff8d45;
+          background: #e66815;
+          transform: translateY(-2px);
         }
 
         .scanner-active {
