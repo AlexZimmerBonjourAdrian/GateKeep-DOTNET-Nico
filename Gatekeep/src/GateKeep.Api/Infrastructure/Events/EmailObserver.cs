@@ -117,6 +117,23 @@ public sealed class EmailObserver : IEventObserver
         }
     }
 
+    public async Task OnBeneficioCanjeadoAsync(long usuarioId, long beneficioId, string beneficioNombre, string puntoControl, DateTime fecha)
+    {
+        try
+        {
+            var asunto = "Beneficio Canjeado";
+            var cuerpo = $"Has canjeado el beneficio: {beneficioNombre} en el punto de control {puntoControl} el {fecha:yyyy-MM-dd HH:mm:ss}";
+            
+            await EnviarEmailAsync(usuarioId, asunto, cuerpo);
+            
+            _logger?.LogInformation($"Email enviado a usuario {usuarioId}: {asunto}");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, $"Error enviando email de beneficio canjeado a usuario {usuarioId}");
+        }
+    }
+
     private async Task EnviarEmailAsync(long usuarioId, string asunto, string cuerpo, string? email = null)
     {
         // Simulación de envío de email - En producción implementar servicio real

@@ -100,6 +100,14 @@ public class EventPublisher : IEventPublisher
         await Task.CompletedTask;
     }
 
+    public async Task NotifyBeneficioCanjeadoAsync(long usuarioId, long beneficioId, string beneficioNombre, string puntoControl, DateTime fecha)
+    {
+        // Encolar en lugar de procesar directamente
+        var eventoData = new EventoQueueProcessor.BeneficioCanjeadoData(usuarioId, beneficioId, beneficioNombre, puntoControl, fecha);
+        _eventoQueue.Enqueue("beneficio_canjeado", eventoData);
+        await Task.CompletedTask;
+    }
+
     // Método interno para procesar eventos desde la cola (llamado por el procesador)
     internal async Task ProcesarEventoAsync(string tipoEvento, object eventoData)
     {
@@ -149,6 +157,12 @@ public class EventPublisher : IEventPublisher
                         if (eventoData is EventoQueueProcessor.BeneficioDesasignadoData data6)
                         {
                             await observer.OnBeneficioDesasignadoAsync(data6.UsuarioId, data6.BeneficioId, data6.BeneficioNombre, data6.Fecha);
+                        }
+                        break;
+                    case "beneficio_canjeado":
+                        if (eventoData is EventoQueueProcessor.BeneficioCanjeadoData data7)
+                        {
+                            await observer.OnBeneficioCanjeadoAsync(data7.UsuarioId, data7.BeneficioId, data7.BeneficioNombre, data7.PuntoControl, data7.Fecha);
                         }
                         break;
                 }
