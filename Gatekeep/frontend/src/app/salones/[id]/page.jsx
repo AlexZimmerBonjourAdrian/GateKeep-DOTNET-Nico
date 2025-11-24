@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState, useRef } from 'react'
+import { NotificacionService } from '../../../services/NotificacionService'
 import { useParams, usePathname, useRouter } from 'next/navigation'
 import Header from '../../../components/Header'
 import { SalonService } from '../../../services/SalonService'
@@ -160,6 +161,13 @@ export default function SalonDetalle() {
         decoded?.["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"]
       if (!usuarioId) {
         setValidationError('No se pudo obtener el ID de usuario del QR')
+        // Notificación de rechazo
+        try {
+          await NotificacionService.crearNotificacion({
+            mensaje: `Intento de acceso fallido: QR inválido en salón ${salon?.Nombre || salon?.nombre || id}`,
+            tipo: 'AccesoRechazado'
+          });
+        } catch (e) { /* opcional: manejar error de notificación */ }
         return
       }
       // Obtener el punto de control del salón (usamos el número de salón o nombre)
@@ -179,6 +187,13 @@ export default function SalonDetalle() {
         })
       } else {
         setValidationError(response.data.razon || 'Acceso denegado')
+        // Notificación de rechazo
+        try {
+          await NotificacionService.crearNotificacion({
+            mensaje: `Acceso rechazado para usuario ${usuarioId} en salón ${salon?.Nombre || salon?.nombre || id}: ${response.data.razon || 'Acceso denegado'}`,
+            tipo: 'AccesoRechazado'
+          });
+        } catch (e) { /* opcional: manejar error de notificación */ }
       }
     } catch (err) {
       console.error('Error validando acceso:', err)
@@ -186,9 +201,23 @@ export default function SalonDetalle() {
       const data = err.response?.data;
       if (codigoError && errorMessages[codigoError]) {
         setValidationError(errorMessages[codigoError](data));
+        // Notificación de rechazo
+        try {
+          await NotificacionService.crearNotificacion({
+            mensaje: `Acceso rechazado para usuario ${usuarioId} en salón ${salon?.Nombre || salon?.nombre || id}: ${errorMessages[codigoError](data)}`,
+            tipo: 'AccesoRechazado'
+          });
+        } catch (e) { /* opcional: manejar error de notificación */ }
       } else {
         const errorMsg = data?.mensaje || data?.Mensaje || 'Error al validar el acceso';
         setValidationError(errorMsg);
+        // Notificación de rechazo
+        try {
+          await NotificacionService.crearNotificacion({
+            mensaje: `Acceso rechazado para usuario ${usuarioId} en salón ${salon?.Nombre || salon?.nombre || id}: ${errorMsg}`,
+            tipo: 'AccesoRechazado'
+          });
+        } catch (e) { /* opcional: manejar error de notificación */ }
       }
     }
   }

@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState, useRef } from 'react'
+import { NotificacionService } from '../../../services/NotificacionService'
 import { useParams, usePathname, useRouter } from 'next/navigation'
 import Header from '../../../components/Header'
 import { EdificioService } from '../../../services/EdificioService'
@@ -160,6 +161,13 @@ export default function EdificioDetalle() {
         decoded?.["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"]
       if (!usuarioId) {
         setValidationError('No se pudo obtener el ID de usuario del QR')
+        // Notificación de rechazo
+        try {
+          await NotificacionService.crearNotificacion({
+            mensaje: `Intento de acceso fallido: QR inválido en edificio ${edificio?.Nombre || edificio?.nombre || id}`,
+            tipo: 'AccesoRechazado'
+          });
+        } catch (e) { /* opcional: manejar error de notificación */ }
         return
       }
       // Obtener el punto de control del edificio (usamos el código o nombre)
@@ -179,6 +187,13 @@ export default function EdificioDetalle() {
         })
       } else {
         setValidationError(response.data.razon || 'Acceso denegado')
+        // Notificación de rechazo
+        try {
+          await NotificacionService.crearNotificacion({
+            mensaje: `Acceso rechazado para usuario ${usuarioId} en edificio ${edificio?.Nombre || edificio?.nombre || id}: ${response.data.razon || 'Acceso denegado'}`,
+            tipo: 'AccesoRechazado'
+          });
+        } catch (e) { /* opcional: manejar error de notificación */ }
       }
     } catch (err) {
       console.error('Error validando acceso:', err)
@@ -186,9 +201,23 @@ export default function EdificioDetalle() {
       const data = err.response?.data;
       if (codigoError && errorMessages[codigoError]) {
         setValidationError(errorMessages[codigoError](data));
+        // Notificación de rechazo
+        try {
+          await NotificacionService.crearNotificacion({
+            mensaje: `Acceso rechazado para usuario ${usuarioId} en edificio ${edificio?.Nombre || edificio?.nombre || id}: ${errorMessages[codigoError](data)}`,
+            tipo: 'AccesoRechazado'
+          });
+        } catch (e) { /* opcional: manejar error de notificación */ }
       } else {
         const errorMsg = data?.mensaje || data?.Mensaje || 'Error al validar el acceso';
         setValidationError(errorMsg);
+        // Notificación de rechazo
+        try {
+          await NotificacionService.crearNotificacion({
+            mensaje: `Acceso rechazado para usuario ${usuarioId} en edificio ${edificio?.Nombre || edificio?.nombre || id}: ${errorMsg}`,
+            tipo: 'AccesoRechazado'
+          });
+        } catch (e) { /* opcional: manejar error de notificación */ }
       }
     }
   }
@@ -274,7 +303,7 @@ export default function EdificioDetalle() {
                   </div>
                   <div className="meta-item">
                     <span className="meta-label">Pisos</span>
-                    <span className="meta-value">{edificio.Pisos ?? edificio.pisos ?? 'N/A'}</span>
+                    <span className="meta-value">{edificio.NumeroPisos ?? edificio.numeroPisos ?? 'N/A'}</span>
                   </div>
                 </div>
 
