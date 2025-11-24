@@ -1,9 +1,10 @@
 # ============================================
 # S3 + CLOUDFRONT PARA FRONTEND PWA
 # ============================================
-# RECURSOS ELIMINADOS - Ya no se usan S3/CloudFront para el frontend
-# El frontend ahora se sirve desde ECS
-
-# Todos los recursos de S3 y CloudFront han sido eliminados
-# Si necesitas restaurarlos en el futuro, revisa el historial de Git
+# NOTA: Los recursos de S3 y CloudFront para el frontend han sido movidos a archivos separados:
+# - s3-frontend.tf: Contiene el bucket S3 para el frontend
+# - cloudfront-frontend.tf: Contiene la distribución CloudFront
+# - s3-backend.tf: Contiene el bucket S3 y DynamoDB para el backend de Terraform
+#
+# Este archivo se mantiene por compatibilidad pero los recursos están en los archivos mencionados.
 

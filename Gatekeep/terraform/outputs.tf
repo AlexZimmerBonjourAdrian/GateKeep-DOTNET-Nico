@@ -109,23 +109,37 @@ output "application_url" {
 
 output "frontend_url" {
   description = "URL pública del frontend (CloudFront)"
-  value       = "https://${var.domain_name}"
+  value       = try("https://${aws_cloudfront_distribution.frontend.domain_name}", "https://${var.domain_name}")
 }
 
-#output "cloudfront_distribution_id" {
-#  description = "ID de la distribución de CloudFront"
-#  value       = aws_cloudfront_distribution.frontend.id
-#}
+# CloudFront
+output "cloudfront_distribution_id" {
+  description = "ID de la distribución de CloudFront"
+  value       = try(aws_cloudfront_distribution.frontend.id, null)
+}
 
-#output "cloudfront_domain_name" {
-#  description = "Nombre de dominio de CloudFront"
-#  value       = aws_cloudfront_distribution.frontend.domain_name
-#}
+output "cloudfront_domain_name" {
+  description = "Nombre de dominio de CloudFront"
+  value       = try(aws_cloudfront_distribution.frontend.domain_name, null)
+}
 
-#output "s3_bucket_frontend" {
-#  description = "Nombre del bucket S3 para el frontend"
-#  value       = aws_s3_bucket.frontend.bucket
-#}
+# S3
+output "s3_bucket_frontend" {
+  description = "Nombre del bucket S3 para el frontend"
+  value       = try(aws_s3_bucket.frontend.bucket, null)
+}
+
+output "s3_bucket_terraform_state" {
+  description = "Nombre del bucket S3 para Terraform state"
+  value       = try(aws_s3_bucket.terraform_state.bucket, null)
+  sensitive   = false
+}
+
+# DynamoDB
+output "dynamodb_table_terraform_locks" {
+  description = "Nombre de la tabla DynamoDB para Terraform locks"
+  value       = try(aws_dynamodb_table.terraform_locks.name, null)
+}
 
 output "backend_api_url" {
   description = "URL pública del backend API (ALB)"
@@ -143,11 +157,11 @@ output "ecr_frontend_repository_url" {
   value       = aws_ecr_repository.gatekeep_frontend.repository_url
 }
 
-# ECS Frontend - DESHABILITADO (frontend ahora en S3+CloudFront)
-# output "ecs_frontend_service_name" {
-#   description = "Nombre del servicio ECS del frontend"
-#   value       = aws_ecs_service.frontend.name
-# }
+# ECS Frontend
+output "ecs_frontend_service_name" {
+  description = "Nombre del servicio ECS del frontend"
+  value       = try(aws_ecs_service.frontend.name, null)
+}
 
 # ElastiCache Redis
 output "redis_endpoint" {
