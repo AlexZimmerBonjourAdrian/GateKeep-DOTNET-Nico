@@ -325,27 +325,20 @@ export default function EdificioDetalle() {
               </article>
             )}
 
-            {/* Escáner QR para validar acceso */}
+            {/* Botón y modal de escáner QR idénticos a Beneficio */}
             {!loading && edificio && reglaAcceso && (
               <article className="card scanner-card">
-                <header className="card-header">
-                  <h2 className="subtitle">
-                    <i className="pi pi-qrcode" style={{marginRight: '8px'}}></i>
-                    Validar Acceso
-                  </h2>
-                </header>
-                <div className="scanner-content">
-                  <button className="canjear-btn" onClick={() => { setShowScanner(true); setIsScanning(false); setValidationError(null); setScanResult(null); }}>
-                    Validar Acceso con QR
+                <div className="body">
+                  <button className="canjear-btn" onClick={() => { setShowScanner(true); setIsScanning(true); setValidationError(null); setScanResult(null); }}>
+                    Validar acceso
                   </button>
                 </div>
               </article>
             )}
-            {/* Modal del escáner QR (idéntico a Beneficio) */}
             {showScanner && (
-              <div className="modal-overlay" onClick={() => { setShowScanner(false); setIsScanning(false); setValidationError(null); setScanResult(null); }}>
+              <div className="modal-overlay" onClick={cerrarEscaner}>
                 <div className="modal-content" onClick={e => e.stopPropagation()}>
-                  <button className="close-btn" onClick={() => { setShowScanner(false); setIsScanning(false); setValidationError(null); setScanResult(null); }}>✕</button>
+                  <button className="close-btn" onClick={cerrarEscaner}>✕</button>
                   <h2 className="scanner-title">Escanea tu QR de Credenciales</h2>
                   <p className="scanner-hint">Escanea el QR que aparece en tu perfil</p>
                   {validationResult && validationResult.permitido ? (
@@ -356,13 +349,11 @@ export default function EdificioDetalle() {
                   ) : validationError ? (
                     <div className="error-message">
                       <p>{validationError}</p>
-                      <button className="retry-btn" onClick={startScanner}>Reintentar</button>
+                      <button className="retry-btn" onClick={resetScanner}>Reintentar</button>
                     </div>
                   ) : isScanning ? (
                     <div id="qr-reader" className="qr-reader"></div>
-                  ) : (
-                    <button className="canjear-btn" onClick={startScanner}>Iniciar Escáner</button>
-                  )}
+                  ) : null}
                 </div>
               </div>
             )}
