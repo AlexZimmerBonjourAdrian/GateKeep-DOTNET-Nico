@@ -1,14 +1,30 @@
 import apiClient from '@/lib/axios-offline-interceptor';
-import { URLService } from "./urlService";
+import { URLService } from "./urlService";    
+import { isOnline } from '@/lib/sync';
+import { obtenerEventosLocales, obtenerEventoLocal } from '@/lib/sqlite-db';
 
 const API_URL = URLService.getLink() + "eventos";
 
 export class EventoService {
-  static getEventos() {
+  static async getEventos() {
+    if (!isOnline()) {
+      const eventosLocales = obtenerEventosLocales();
+      return Promise.resolve({ data: eventosLocales, fromCache: true });
+    }
     return apiClient.get(API_URL);
   }
 
-  static getEvento(id: number) {
+  static async getEvento(id: number) {
+    if (!isOnline()) {
+      const eventoLocal = obtenerEventoLocal(id);
+      if (eventoLocal) {
+        return Promise.resolve({ data: eventoLocal, fromCache: true });
+  }
+      return Promise.reject({ 
+        isOffline: true, 
+        message: 'Sin conexión y evento no encontrado en cache local' 
+      });
+    }
     return apiClient.get(`${API_URL}/${id}`);
   }
 

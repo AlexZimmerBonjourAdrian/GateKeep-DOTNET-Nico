@@ -37,7 +37,7 @@
 ### Especificación Original
 > La base de datos principal queda a elección, pero debe ser administrada mediante Entity Framework Core con migraciones controladas.
 > 
-> La aplicación móvil deberá operar con modo offline, utilizando **SQLite para almacenamiento local** y sincronización posterior.
+> La PWA deberá operar con modo offline, utilizando **SQLite para almacenamiento local** y sincronización posterior.
 > 
 > **NOTA IMPORTANTE:** Para PWA (Progressive Web App) sin instalación, se usa **sql.js** (SQLite compilado a WebAssembly).
 

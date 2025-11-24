@@ -112,6 +112,26 @@ async function createTables() {
       fechaCreacion TEXT
     )`,
 
+    // Cache de eventos
+    `CREATE TABLE IF NOT EXISTS eventos (
+      id INTEGER PRIMARY KEY,
+      nombre TEXT,
+      fecha TEXT,
+      puntoControl TEXT,
+      resultado TEXT,
+      activo BOOLEAN,
+      ultimaActualizacion TEXT
+    )`,
+
+    // Cache de anuncios
+    `CREATE TABLE IF NOT EXISTS anuncios (
+      id INTEGER PRIMARY KEY,
+      nombre TEXT,
+      fecha TEXT,
+      activo BOOLEAN,
+      ultimaActualizacion TEXT
+    )`,
+
     // Eventos offline pendientes de sincronización
     `CREATE TABLE IF NOT EXISTS eventos_offline (
       idTemporal TEXT PRIMARY KEY,
@@ -524,6 +544,50 @@ export function syncDataFromServer(syncPayload: any): void {
     stmtNotif.free();
   }
 
+  // Sincronizar eventos
+  if (syncPayload.eventos) {
+    const stmtEventos = db.prepare(`
+      INSERT OR REPLACE INTO eventos 
+      (id, nombre, fecha, puntoControl, resultado, activo, ultimaActualizacion)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const evento of syncPayload.eventos) {
+      stmtEventos.bind([
+        evento.id,
+        evento.nombre || evento.Nombre,
+        evento.fecha || evento.Fecha,
+        evento.puntoControl || evento.PuntoControl || null,
+        evento.resultado || evento.Resultado || null,
+        evento.activo !== false ? 1 : 0,
+        evento.ultimaActualizacion,
+      ]);
+      stmtEventos.step();
+    }
+    stmtEventos.free();
+  }
+
+  // Sincronizar anuncios
+  if (syncPayload.anuncios) {
+    const stmtAnuncios = db.prepare(`
+      INSERT OR REPLACE INTO anuncios 
+      (id, nombre, fecha, activo, ultimaActualizacion)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+
+    for (const anuncio of syncPayload.anuncios) {
+      stmtAnuncios.bind([
+        anuncio.id,
+        anuncio.nombre || anuncio.Nombre,
+        anuncio.fecha || anuncio.Fecha,
+        anuncio.activo !== false ? 1 : 0,
+        anuncio.ultimaActualizacion,
+      ]);
+      stmtAnuncios.step();
+    }
+    stmtAnuncios.free();
+  }
+
   saveDatabaseToStorage();
   console.log('✅ Datos sincronizados desde servidor');
 }
@@ -680,6 +744,131 @@ export function obtenerReglaAccesoPorEspacioIdLocal(espacioId: number): any {
   stmt.free();
 
   return regla;
+}
+
+/**
+ * Obtiene todos los eventos del cache local
+ */
+export function obtenerEventosLocales(): any[] {
+  if (!db) return [];
+
+  const stmt = db.prepare('SELECT * FROM eventos ORDER BY fecha DESC');
+  const eventos = [];
+
+  while (stmt.step()) {
+    eventos.push(stmt.getAsObject());
+  }
+  stmt.free();
+
+  return eventos;
+}
+
+/**
+ * Obtiene un evento específico del cache local por ID
+ */
+export function obtenerEventoLocal(id: number): any {
+  if (!db) return null;
+
+  const stmt = db.prepare('SELECT * FROM eventos WHERE id = ?');
+  stmt.bind([id]);
+
+  let evento = null;
+  if (stmt.step()) {
+    evento = stmt.getAsObject();
+  }
+  stmt.free();
+
+  return evento;
+}
+
+/**
+ * Obtiene todos los anuncios del cache local
+ */
+export function obtenerAnunciosLocales(): any[] {
+  if (!db) return [];
+
+  const stmt = db.prepare('SELECT * FROM anuncios ORDER BY fecha DESC');
+  const anuncios = [];
+
+  while (stmt.step()) {
+    anuncios.push(stmt.getAsObject());
+  }
+  stmt.free();
+
+  return anuncios;
+}
+
+/**
+ * Obtiene un anuncio específico del cache local por ID
+ */
+export function obtenerAnuncioLocal(id: number): any {
+  if (!db) return null;
+
+  const stmt = db.prepare('SELECT * FROM anuncios WHERE id = ?');
+  stmt.bind([id]);
+
+  let anuncio = null;
+  if (stmt.step()) {
+    anuncio = stmt.getAsObject();
+  }
+  stmt.free();
+
+  return anuncio;
+}
+
+/**
+ * Obtiene todas las notificaciones del cache local
+ */
+export function obtenerNotificacionesLocales(): any[] {
+  if (!db) return [];
+
+  const stmt = db.prepare('SELECT * FROM notificaciones ORDER BY fechaCreacion DESC');
+  const notificaciones = [];
+
+  while (stmt.step()) {
+    notificaciones.push(stmt.getAsObject());
+  }
+  stmt.free();
+
+  return notificaciones;
+}
+
+/**
+ * Obtiene notificaciones de un usuario específico del cache local
+ */
+export function obtenerNotificacionesPorUsuarioLocal(usuarioId: number): any[] {
+  if (!db) return [];
+
+  // Las notificaciones en la tabla no tienen usuarioId directamente
+  // Por ahora retornamos todas las notificaciones locales
+  // Si necesitas filtrar por usuario, necesitarías agregar usuarioId a la tabla
+  const stmt = db.prepare('SELECT * FROM notificaciones ORDER BY fechaCreacion DESC');
+  const notificaciones = [];
+
+  while (stmt.step()) {
+    notificaciones.push(stmt.getAsObject());
+  }
+  stmt.free();
+
+  return notificaciones;
+}
+
+/**
+ * Obtiene una notificación específica del cache local por ID
+ */
+export function obtenerNotificacionLocal(id: string): any {
+  if (!db) return null;
+
+  const stmt = db.prepare('SELECT * FROM notificaciones WHERE id = ?');
+  stmt.bind([id]);
+
+  let notificacion = null;
+  if (stmt.step()) {
+    notificacion = stmt.getAsObject();
+  }
+  stmt.free();
+
+  return notificacion;
 }
 
 /**

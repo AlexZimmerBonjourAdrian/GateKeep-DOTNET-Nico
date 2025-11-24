@@ -1,5 +1,7 @@
 import apiClient from '@/lib/axios-offline-interceptor';
 import { URLService } from "./urlService";
+import { isOnline } from '@/lib/sync';
+import { obtenerNotificacionesLocales, obtenerNotificacionesPorUsuarioLocal, obtenerNotificacionLocal } from '@/lib/sqlite-db';
 
 const API_URL = URLService.getLink() + "notificaciones";
 const USUARIOS_URL = URLService.getLink() + "usuarios";
@@ -7,16 +9,34 @@ const USUARIOS_URL = URLService.getLink() + "usuarios";
 export class NotificacionService {
   // Obtener todas las notificaciones (admin/funcionario)
   static async getNotificaciones() {
+    if (!isOnline()) {
+      const notificacionesLocales = obtenerNotificacionesLocales();
+      return Promise.resolve({ data: notificacionesLocales, fromCache: true });
+    }
     return apiClient.get(API_URL);
   }
 
   // Obtener notificación por ID
   static async getNotificacionById(id: string) {
+    if (!isOnline()) {
+      const notificacionLocal = obtenerNotificacionLocal(id);
+      if (notificacionLocal) {
+        return Promise.resolve({ data: notificacionLocal, fromCache: true });
+      }
+      return Promise.reject({ 
+        isOffline: true, 
+        message: 'Sin conexión y notificación no encontrada en cache local' 
+      });
+    }
     return apiClient.get(`${API_URL}/${id}`);
   }
 
   // Obtener notificaciones de un usuario específico
   static async getNotificacionesPorUsuario(usuarioId: number) {
+    if (!isOnline()) {
+      const notificacionesLocales = obtenerNotificacionesPorUsuarioLocal(usuarioId);
+      return Promise.resolve(notificacionesLocales);
+    }
     try {
       const response = await apiClient.get(`${USUARIOS_URL}/${usuarioId}/notificaciones`);
       return response.data;

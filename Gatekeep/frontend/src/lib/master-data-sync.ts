@@ -32,12 +32,14 @@ export async function syncMasterData(authToken: string): Promise<boolean> {
     };
 
     // Descargar todos los datos maestros en paralelo
-    const [usuariosRes, espaciosRes, beneficiosRes, notificacionesRes, reglasRes] = await Promise.all([
+    const [usuariosRes, espaciosRes, beneficiosRes, notificacionesRes, reglasRes, eventosRes, anunciosRes] = await Promise.all([
       fetch(`${API_BASE}/api/usuarios`, { headers }),
       fetch(`${API_BASE}/api/espacios`, { headers }),
       fetch(`${API_BASE}/api/beneficios`, { headers }),
       fetch(`${API_BASE}/api/notificaciones`, { headers }),
       fetch(`${API_BASE}/api/reglas-acceso`, { headers }),
+      fetch(`${API_BASE}/api/eventos`, { headers }),
+      fetch(`${API_BASE}/api/anuncios`, { headers }),
     ]);
 
     // Verificar respuestas
@@ -51,6 +53,8 @@ export async function syncMasterData(authToken: string): Promise<boolean> {
     const beneficiosData = await beneficiosRes.json();
     const notificacionesData = notificacionesRes.ok ? await notificacionesRes.json() : { data: [] };
     const reglasData = reglasRes.ok ? await reglasRes.json() : { data: [] };
+    const eventosData = eventosRes.ok ? await eventosRes.json() : { data: [] };
+    const anunciosData = anunciosRes.ok ? await anunciosRes.json() : { data: [] };
 
     // Extraer arrays de datos (pueden venir como { data: [...] } o directamente como array)
     const usuarios = Array.isArray(usuariosData) ? usuariosData : (usuariosData.data || []);
@@ -58,6 +62,8 @@ export async function syncMasterData(authToken: string): Promise<boolean> {
     const beneficios = Array.isArray(beneficiosData) ? beneficiosData : (beneficiosData.data || []);
     const notificaciones = Array.isArray(notificacionesData) ? notificacionesData : (notificacionesData.data || []);
     const reglas = Array.isArray(reglasData) ? reglasData : (reglasData.data || []);
+    const eventos = Array.isArray(eventosData) ? eventosData : (eventosData.data || []);
+    const anuncios = Array.isArray(anunciosData) ? anunciosData : (anunciosData.data || []);
 
     // Guardar en SQLite local
     syncDataFromServer({
@@ -81,12 +87,20 @@ export async function syncMasterData(authToken: string): Promise<boolean> {
         ...r,
         ultimaActualizacion: new Date().toISOString(),
       })),
+      eventos: eventos.map((e: any) => ({
+        ...e,
+        ultimaActualizacion: new Date().toISOString(),
+      })),
+      anuncios: anuncios.map((a: any) => ({
+        ...a,
+        ultimaActualizacion: new Date().toISOString(),
+      })),
     });
 
     // Actualizar timestamp
     setSyncMetadata('ultimaSincronizacionMaster', new Date().toISOString());
     
-    console.log(`✅ Datos maestros sincronizados: ${usuarios.length} usuarios, ${espacios.length} espacios, ${beneficios.length} beneficios`);
+    console.log(`✅ Datos maestros sincronizados: ${usuarios.length} usuarios, ${espacios.length} espacios, ${beneficios.length} beneficios, ${eventos.length} eventos, ${anuncios.length} anuncios`);
     return true;
   } catch (error: any) {
     console.error('❌ Error sincronizando datos maestros:', error);

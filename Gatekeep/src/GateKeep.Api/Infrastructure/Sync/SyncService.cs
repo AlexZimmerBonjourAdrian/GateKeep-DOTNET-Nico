@@ -1,6 +1,16 @@
 using System.Text.Json;
 using GateKeep.Api.Application.Sync;
+using GateKeep.Api.Application.Usuarios;
+using GateKeep.Api.Application.Eventos;
+using GateKeep.Api.Application.Anuncios;
+using GateKeep.Api.Application.Beneficios;
+using GateKeep.Api.Application.Acceso;
 using GateKeep.Api.Contracts.Sync;
+using GateKeep.Api.Contracts.Usuarios;
+using GateKeep.Api.Contracts.Eventos;
+using GateKeep.Api.Contracts.Anuncios;
+using GateKeep.Api.Contracts.Beneficios;
+using GateKeep.Api.Contracts.Acceso;
 using GateKeep.Api.Domain.Entities;
 using GateKeep.Api.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -15,11 +25,28 @@ public class SyncService : ISyncService
 {
     private readonly GateKeepDbContext _context;
     private readonly ILogger<SyncService> _logger;
+    private readonly IUsuarioRepository _usuarioRepository;
+    private readonly IEventoService _eventoService;
+    private readonly IAnuncioService _anuncioService;
+    private readonly IBeneficioService _beneficioService;
+    private readonly IReglaAccesoService _reglaAccesoService;
 
-    public SyncService(GateKeepDbContext context, ILogger<SyncService> logger)
+    public SyncService(
+        GateKeepDbContext context,
+        ILogger<SyncService> logger,
+        IUsuarioRepository usuarioRepository,
+        IEventoService eventoService,
+        IAnuncioService anuncioService,
+        IBeneficioService beneficioService,
+        IReglaAccesoService reglaAccesoService)
     {
         _context = context;
         _logger = logger;
+        _usuarioRepository = usuarioRepository;
+        _eventoService = eventoService;
+        _anuncioService = anuncioService;
+        _beneficioService = beneficioService;
+        _reglaAccesoService = reglaAccesoService;
     }
 
     public async Task<SyncResponse> SyncAsync(SyncRequest request, long usuarioId, CancellationToken cancellationToken = default)
@@ -221,6 +248,12 @@ public class SyncService : ISyncService
 
         try
         {
+            // Si es un evento de tipo api_request, ejecutar la petición real
+            if (offlineEvent.EventType == "api_request")
+            {
+                await ExecuteApiRequestAsync(offlineEvent, usuarioId, cancellationToken);
+            }
+
             // Crear registro de evento offline en BD
             var eventoOffline = new EventoOffline
             {
@@ -230,7 +263,7 @@ public class SyncService : ISyncService
                 DatosEvento = offlineEvent.EventData,
                 FechaCreacionCliente = offlineEvent.CreatedAt,
                 FechaRecepcion = DateTime.UtcNow,
-                Estado = "Pendiente",
+                Estado = "Procesado",
                 IntentosProcessamiento = offlineEvent.AttemptCount,
                 UltimaActualizacion = DateTime.UtcNow
             };
@@ -251,6 +284,295 @@ public class SyncService : ISyncService
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Opciones de serialización JSON para manejar camelCase del frontend
+    /// </summary>
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
+    /// <summary>
+    /// Ejecuta una petición HTTP que fue guardada offline
+    /// </summary>
+    private async Task ExecuteApiRequestAsync(OfflineEventDto offlineEvent, long usuarioId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Deserializar los datos del evento
+            var apiRequestData = JsonSerializer.Deserialize<ApiRequestData>(offlineEvent.EventData, JsonOptions);
+            if (apiRequestData == null)
+            {
+                throw new InvalidOperationException("No se pudieron deserializar los datos de la petición");
+            }
+
+            _logger.LogInformation("Ejecutando petición offline: {Method} {Url}", apiRequestData.Method, apiRequestData.Url);
+
+            // Parsear la URL para determinar el recurso y el ID
+            var urlParts = ParseUrl(apiRequestData.Url);
+            if (urlParts == null)
+            {
+                throw new InvalidOperationException($"URL no reconocida: {apiRequestData.Url}");
+            }
+
+            // Deserializar el body si existe
+            // El data puede venir como string JSON o como objeto ya serializado
+            JsonElement? requestBody = null;
+            if (!string.IsNullOrEmpty(apiRequestData.Data))
+            {
+                // apiRequestData.Data puede ser un string JSON o un objeto serializado
+                // Intentar deserializar como JsonElement
+                try
+                {
+                    // Si es un string JSON, parsearlo
+                    if (apiRequestData.Data.TrimStart().StartsWith('{') || apiRequestData.Data.TrimStart().StartsWith('['))
+                    {
+                        requestBody = JsonSerializer.Deserialize<JsonElement>(apiRequestData.Data, JsonOptions);
+                    }
+                    else
+                    {
+                        // Si no empieza con { o [, puede ser un objeto serializado de otra forma
+                        // Intentar deserializar directamente
+                        requestBody = JsonSerializer.Deserialize<JsonElement>(apiRequestData.Data, JsonOptions);
+                    }
+                }
+                catch
+                {
+                    // Si falla, intentar crear un JsonElement desde el string directamente
+                    requestBody = JsonDocument.Parse(apiRequestData.Data).RootElement;
+                }
+            }
+
+            // Ejecutar la petición según el método HTTP
+            switch (apiRequestData.Method.ToUpper())
+            {
+                case "POST":
+                    await ExecutePostAsync(urlParts.Resource, urlParts.Id, requestBody, cancellationToken);
+                    break;
+                case "PUT":
+                    await ExecutePutAsync(urlParts.Resource, urlParts.Id, requestBody, cancellationToken);
+                    break;
+                case "DELETE":
+                    await ExecuteDeleteAsync(urlParts.Resource, urlParts.Id, cancellationToken);
+                    break;
+                case "PATCH":
+                    await ExecutePatchAsync(urlParts.Resource, urlParts.Id, requestBody, cancellationToken);
+                    break;
+                default:
+                    throw new InvalidOperationException($"Método HTTP no soportado: {apiRequestData.Method}");
+            }
+
+            _logger.LogInformation("Petición offline ejecutada exitosamente: {Method} {Url}", apiRequestData.Method, apiRequestData.Url);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error ejecutando petición offline {IdTemporal}", offlineEvent.IdTemporal);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Parsea una URL para extraer el recurso y el ID
+    /// </summary>
+    private UrlParts? ParseUrl(string url)
+    {
+        if (string.IsNullOrEmpty(url)) return null;
+
+        // Remover la base URL y /api/ si existe
+        var cleanUrl = url
+            .Replace("https://api.zimmzimmgames.com", "")
+            .Replace("http://localhost:5011", "")
+            .Replace("/api/", "")
+            .TrimStart('/');
+
+        // Dividir por /
+        var parts = cleanUrl.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return null;
+
+        var resource = parts[0];
+        long? id = null;
+
+        // Intentar parsear el segundo segmento como ID
+        if (parts.Length > 1 && long.TryParse(parts[1], out var parsedId))
+        {
+            id = parsedId;
+        }
+
+        return new UrlParts { Resource = resource, Id = id };
+    }
+
+    /// <summary>
+    /// Ejecuta una petición POST
+    /// </summary>
+    private async Task ExecutePostAsync(string resource, long? id, JsonElement? requestBody, CancellationToken cancellationToken)
+    {
+        if (!requestBody.HasValue)
+        {
+            throw new InvalidOperationException("El body de la petición POST no puede ser nulo");
+        }
+
+        switch (resource.ToLower())
+        {
+            case "eventos":
+                var crearEventoRequest = JsonSerializer.Deserialize<CrearEventoRequest>(requestBody.Value.GetRawText(), JsonOptions);
+                if (crearEventoRequest != null)
+                {
+                    await _eventoService.CrearAsync(crearEventoRequest);
+                }
+                break;
+            case "anuncios":
+                var crearAnuncioRequest = JsonSerializer.Deserialize<CrearAnuncioRequest>(requestBody.Value.GetRawText(), JsonOptions);
+                if (crearAnuncioRequest != null)
+                {
+                    await _anuncioService.CrearAsync(crearAnuncioRequest);
+                }
+                break;
+            case "beneficios":
+                var crearBeneficioRequest = JsonSerializer.Deserialize<CrearBeneficioRequest>(requestBody.Value.GetRawText(), JsonOptions);
+                if (crearBeneficioRequest != null)
+                {
+                    await _beneficioService.CrearAsync(crearBeneficioRequest);
+                }
+                break;
+            case "reglas-acceso":
+                var crearReglaRequest = JsonSerializer.Deserialize<CrearReglaAccesoRequest>(requestBody.Value.GetRawText(), JsonOptions);
+                if (crearReglaRequest != null)
+                {
+                    await _reglaAccesoService.CrearAsync(crearReglaRequest);
+                }
+                break;
+            default:
+                throw new InvalidOperationException($"Recurso no soportado para POST: {resource}");
+        }
+    }
+
+    /// <summary>
+    /// Ejecuta una petición PUT
+    /// </summary>
+    private async Task ExecutePutAsync(string resource, long? id, JsonElement? requestBody, CancellationToken cancellationToken)
+    {
+        if (!id.HasValue)
+        {
+            throw new InvalidOperationException("El ID es requerido para peticiones PUT");
+        }
+
+        if (!requestBody.HasValue)
+        {
+            throw new InvalidOperationException("El body de la petición PUT no puede ser nulo");
+        }
+
+        switch (resource.ToLower())
+        {
+            case "usuarios":
+                var actualizarUsuarioRequest = JsonSerializer.Deserialize<ActualizarUsuarioRequest>(requestBody.Value.GetRawText(), JsonOptions);
+                if (actualizarUsuarioRequest != null)
+                {
+                    var usuario = await _usuarioRepository.GetByIdAsync(id.Value);
+                    if (usuario != null)
+                    {
+                        var usuarioActualizado = usuario with
+                        {
+                            Nombre = actualizarUsuarioRequest.Nombre,
+                            Apellido = actualizarUsuarioRequest.Apellido,
+                            Telefono = actualizarUsuarioRequest.Telefono
+                        };
+                        await _usuarioRepository.UpdateAsync(usuarioActualizado);
+                    }
+                }
+                break;
+            case "eventos":
+                var actualizarEventoRequest = JsonSerializer.Deserialize<ActualizarEventoRequest>(requestBody.Value.GetRawText(), JsonOptions);
+                if (actualizarEventoRequest != null)
+                {
+                    await _eventoService.ActualizarAsync(id.Value, actualizarEventoRequest);
+                }
+                break;
+            case "anuncios":
+                var actualizarAnuncioRequest = JsonSerializer.Deserialize<ActualizarAnuncioRequest>(requestBody.Value.GetRawText(), JsonOptions);
+                if (actualizarAnuncioRequest != null)
+                {
+                    await _anuncioService.ActualizarAsync(id.Value, actualizarAnuncioRequest);
+                }
+                break;
+            case "beneficios":
+                var actualizarBeneficioRequest = JsonSerializer.Deserialize<ActualizarBeneficioRequest>(requestBody.Value.GetRawText(), JsonOptions);
+                if (actualizarBeneficioRequest != null)
+                {
+                    await _beneficioService.ActualizarAsync(id.Value, actualizarBeneficioRequest);
+                }
+                break;
+            case "reglas-acceso":
+                var actualizarReglaRequest = JsonSerializer.Deserialize<ActualizarReglaAccesoRequest>(requestBody.Value.GetRawText(), JsonOptions);
+                if (actualizarReglaRequest != null)
+                {
+                    await _reglaAccesoService.ActualizarAsync(id.Value, actualizarReglaRequest);
+                }
+                break;
+            default:
+                throw new InvalidOperationException($"Recurso no soportado para PUT: {resource}");
+        }
+    }
+
+    /// <summary>
+    /// Ejecuta una petición DELETE
+    /// </summary>
+    private async Task ExecuteDeleteAsync(string resource, long? id, CancellationToken cancellationToken)
+    {
+        if (!id.HasValue)
+        {
+            throw new InvalidOperationException("El ID es requerido para peticiones DELETE");
+        }
+
+        switch (resource.ToLower())
+        {
+            case "eventos":
+                await _eventoService.EliminarAsync(id.Value);
+                break;
+            case "anuncios":
+                await _anuncioService.EliminarAsync(id.Value);
+                break;
+            case "beneficios":
+                await _beneficioService.EliminarAsync(id.Value);
+                break;
+            case "reglas-acceso":
+                await _reglaAccesoService.EliminarAsync(id.Value);
+                break;
+            default:
+                throw new InvalidOperationException($"Recurso no soportado para DELETE: {resource}");
+        }
+    }
+
+    /// <summary>
+    /// Ejecuta una petición PATCH
+    /// </summary>
+    private async Task ExecutePatchAsync(string resource, long? id, JsonElement? requestBody, CancellationToken cancellationToken)
+    {
+        // Por ahora, PATCH se maneja igual que PUT
+        // En el futuro se puede implementar lógica específica para PATCH
+        await ExecutePutAsync(resource, id, requestBody, cancellationToken);
+    }
+
+    /// <summary>
+    /// Estructura para almacenar datos de una petición API offline
+    /// </summary>
+    private class ApiRequestData
+    {
+        public string Url { get; set; } = string.Empty;
+        public string Method { get; set; } = string.Empty;
+        public string? Data { get; set; }
+        public string? BaseUrl { get; set; }
+    }
+
+    /// <summary>
+    /// Estructura para almacenar partes parseadas de una URL
+    /// </summary>
+    private class UrlParts
+    {
+        public string Resource { get; set; } = string.Empty;
+        public long? Id { get; set; }
     }
 
     public async Task RetryFailedEventsAsync(int maxRetries = 3, CancellationToken cancellationToken = default)
