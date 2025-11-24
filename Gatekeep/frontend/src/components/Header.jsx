@@ -201,7 +201,7 @@ export default function Header() {
                       <i className="pi pi-th-large" aria-hidden={true}></i>
                       <span>Salones</span>
                     </button>
-                  <button
+                    <button
                   type="button"
                   role="menuitem"
                   tabIndex={0}
@@ -249,7 +249,6 @@ export default function Header() {
         </div>
       </div>
 
-      
       <div className="header-bottom-bar">
         <Link href="/" style={{ textDecoration: 'none', outline: 'none' }} aria-label="Home" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
           <div className="item-card">
@@ -257,7 +256,6 @@ export default function Header() {
             <p className="item-text">Home</p>
           </div>
         </Link>
-  
 
         <Link href="/evento/listadoEventos" style={{ textDecoration: 'none', outline: 'none'}} aria-label="Eventos" onFocus={(e) => e.currentTarget.style.outline = 'none'}>
           <div className="item-card">
@@ -351,26 +349,12 @@ export default function Header() {
             <p className="item-text">Perfil</p>
           </div>
         </Link>
-
       </div>
-      {/* Espaciador para evitar que el contenido quede oculto detrás de la bottom bar en mobile */}
-      <div className="header-bottom-bar-spacer" />
 
       <style jsx>{`
-                /* Espaciador para dejar espacio debajo del header-bottom-bar en mobile */
-                @media (max-width: 430px) {
-                  .header-bottom-bar-spacer {
-                    width: 100%;
-                    height: 45px;
-                    min-height: 45px;
-                    display: block;
-                  }
-                }
-                @media (min-width: 431px) {
-                  .header-bottom-bar-spacer {
-                    display: none;
-                  }
-                }
+
+     
+
         /* Global layout fixes to avoid viewport-width shifts when scrollbars appear/disappear
            and to ensure consistent box-sizing. */
         :global(html), :global(body) {
@@ -872,6 +856,9 @@ export default function Header() {
           height: 56px;
           min-width: 56px;
           padding: 0 14px;
+        }
+        .header-bottom-bar{
+          display: none; /* tablet uses topbar */
         }
       }  
     @media (max-width: 430px) {
