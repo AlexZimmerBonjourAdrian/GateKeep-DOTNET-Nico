@@ -339,9 +339,20 @@ export default function EdificioDetalle() {
                         <i className="pi pi-clock" style={{color: '#231F20', marginRight: '6px'}}></i>
                         <span className="regla-label">Horario:</span>
                         <span className="regla-value">
-                          {(reglaAcceso.HorarioApertura || reglaAcceso.horarioApertura)?.slice(0,5)}
-                          {' - '}
-                          {(reglaAcceso.HorarioCierre || reglaAcceso.horarioCierre)?.slice(0,5)}
+                          {(() => {
+                            const apertura = reglaAcceso.HorarioApertura || reglaAcceso.horarioApertura;
+                            const cierre = reglaAcceso.HorarioCierre || reglaAcceso.horarioCierre;
+                            const format = v => {
+                              if (!v) return '';
+                              // Si es string tipo '2025-01-01T08:00:00' o '08:00:00'
+                              const match = v.match(/T(\d{2}:\d{2})/); // ISO
+                              if (match) return match[1];
+                              const match2 = v.match(/^(\d{2}:\d{2})/); // solo hora:min
+                              if (match2) return match2[1];
+                              return v;
+                            };
+                            return `${format(apertura)} - ${format(cierre)}`;
+                          })()}
                         </span>
                       </div>
                       
