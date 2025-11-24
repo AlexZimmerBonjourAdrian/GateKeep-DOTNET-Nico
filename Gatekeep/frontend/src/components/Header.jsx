@@ -634,7 +634,9 @@ export default function Header() {
             }
 
             .header-bottom-bar .item-icon {
-                font-size: 2.1rem;
+                font-size: 1.8rem;
+                margin: 0;
+                color: #231F20;
             }
 
             :global(.harvard-image) {
@@ -675,26 +677,24 @@ export default function Header() {
             }
 
             .header-bottom-bar .item-text {
-                font-size: 0.7rem; /* 12px to rem */
-                font-weight: 250; /* Cambiado a un peso de fuente más fino */
+                font-size: 0.7rem;
+                font-weight: 250;
+                margin: 0;
+                color: #231F20;
             }
 
             .header-bottom-bar .item-card {
-              /* Use a clamped width so items don't reflow abruptly on very narrow viewports
-              (original designs used fixed px or vw which caused shifts under ~345px). */
-              width: clamp(56px, 18vw, 70px);
-              height: 64px;
+              width: 18vw;
+              height: 70px;
               background-color: #F37426;
-              border-radius: 16px;
+              border-radius: 20px;
               display: flex;
               flex-direction: column;
               align-items: center;
               justify-content: center;
               cursor: pointer;
-              opacity: 0.95;
+              opacity: 0.9;
               transition: transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
-              padding: 6px;
-              box-sizing: border-box;
             }
 
             /* Responsive tweaks for icons and labels in the bottom bar */
@@ -868,15 +868,56 @@ export default function Header() {
     }
 
     @media (min-width: 769px) {
-      /* Desktop: keep original large spacing but avoid vw-based widths */
-      .item-card {
-        height: 56px;
-        min-width: 56px;
-        padding: 0 14px;
+        .item-card {
+          height: 56px;
+          min-width: 56px;
+          padding: 0 14px;
+        }
+      }  
+    @media (max-width: 430px) {
+      .header-bottom-bar {
+        width: 100%;
+        height: 80px;
+        background-color: #7e4928;
+        display: flex;
+        justify-content: space-evenly;
+        align-items: center;
+        position: fixed;
+        bottom: 0;
+        z-index: 4;
+        padding: 7px;
       }
-      
-      .header-bottom-bar{
-        display: none; /* tablet uses topbar */
+
+      .header-bottom-bar .item-icon {
+        font-size: 1.8rem;
+        margin: 0;
+        color: #231F20;
+      }
+
+      .header-bottom-bar .item-text {
+        font-size: 0.7rem;
+        font-weight: 250;
+        margin: 0;
+        color: #231F20;
+      }
+
+      .header-bottom-bar .item-card {
+        width: 18vw;
+        height: 70px;
+        background-color: #F37426;
+        border-radius: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        opacity: 0.9;
+        transition: transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
+      }
+
+      .header-bottom-bar .item-card:hover {
+        transform: none;
+        box-shadow: none;
       }
     }
       `}</style>
