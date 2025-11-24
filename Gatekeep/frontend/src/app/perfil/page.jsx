@@ -9,6 +9,7 @@ import harvard from '/public/assets/Harvard.webp'
 import BasketballIcon from '/public/assets/basketball-icon.svg'
 import UsuarioService from '../../services/UsuarioService'
 import { SecurityService } from '../../services/securityService'
+import { NotificacionService } from '../../services/NotificacionService'
 
 export default function Perfil() {
   const pathname = usePathname();
