@@ -51,9 +51,11 @@ export default function editarReglaAcceso() {
           setError('No se encontró la regla de acceso.');
           return;
         }
-        // Mapeo robusto: soporta mayúsculas/minúsculas y variantes
-        setHorarioApertura(regla.HorarioApertura || regla.horarioApertura || '');
-        setHorarioCierre(regla.HorarioCierre || regla.horarioCierre || '');
+        // Precargar horarios en formato HH:mm si vienen en ISO
+        const horarioAperturaISO = regla.HorarioApertura || regla.horarioApertura || '';
+        const horarioCierreISO = regla.HorarioCierre || regla.horarioCierre || '';
+        setHorarioApertura(horarioAperturaISO ? horarioAperturaISO.slice(11, 16) : '');
+        setHorarioCierre(horarioCierreISO ? horarioCierreISO.slice(11, 16) : '');
         setVigenciaApertura((regla.VigenciaApertura || regla.vigenciaApertura || '').slice(0, 10));
         setVigenciaCierre((regla.VigenciaCierre || regla.vigenciaCierre || '').slice(0, 10));
         setEspacioId(String(regla.EspacioId || regla.espacioId || ''));
