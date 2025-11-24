@@ -328,7 +328,7 @@ export default function SalonDetalle() {
               </article>
             )}
 
-            {/* Escáner QR para validar acceso */}
+            {/* Escáner QR para validar acceso (modal y estilos unificados) */}
             {!loading && salon && reglaAcceso && (
               <article className="card scanner-card">
                 <header className="card-header">
@@ -338,61 +338,36 @@ export default function SalonDetalle() {
                   </h2>
                 </header>
                 <div className="scanner-content">
-                  <button className="btn-start-scan" onClick={() => setShowScanner(true)}>
-                    <i className="pi pi-camera" style={{marginRight: '8px'}}></i>
-                    Escanear QR
+                  <button className="canjear-btn" onClick={() => { setShowScanner(true); setIsScanning(false); setValidationError(null); setScanResult(null); }}>
+                    Validar Acceso con QR
                   </button>
                 </div>
-                {showScanner && (
-                  <div className="modal-overlay">
-                    <div className="modal-content">
-                      <button className="modal-close" onClick={async () => { setShowScanner(false); setIsScanning(false); setScanResult(null); setValidationResult(null); setValidationError(null); setCameraError(null); if (html5QrCodeRef.current) { await html5QrCodeRef.current.stop(); } }}>×</button>
-                      <h3>Escanear QR de Usuario</h3>
-                      <div id="qr-reader-salon" style={{ width: '100%', minHeight: '260px', border: 'none', marginBottom: 12 }}></div>
-                      {!isScanning && !scanResult && !cameraError && (
-                        <button className="btn-start-scan" onClick={startScanner} style={{marginTop:8}}>Iniciar Escáner</button>
-                      )}
-                      {isScanning && (
-                        <p className="scan-instruction">📷 Apunta la cámara al código QR del usuario</p>
-                      )}
-                      {cameraError && (
-                        <div className="result-box error-box">
-                          <div className="result-icon error-icon">✗</div>
-                          <h3>Error de Cámara</h3>
-                          <p>{cameraError}</p>
-                          <button className="btn-retry" onClick={startScanner}>Reintentar</button>
-                        </div>
-                      )}
-                      {validationResult && validationResult.permitido && (
-                        <div className="result-box success-box">
-                          <div className="result-icon success-icon">✓</div>
-                          <h3>Acceso Permitido</h3>
-                          <p className="result-message">El usuario tiene acceso autorizado a este salón.</p>
-                          <div className="result-details">
-                            <div className="detail-item">
-                              <span className="detail-label">Usuario ID:</span>
-                              <span className="detail-value">{validationResult.usuarioId}</span>
-                            </div>
-                            <div className="detail-item">
-                              <span className="detail-label">Fecha:</span>
-                              <span className="detail-value">{new Date(validationResult.fecha).toLocaleString('es-ES')}</span>
-                            </div>
-                          </div>
-                          <button className="btn-scan-again" onClick={resetScanner}>Escanear Otro QR</button>
-                        </div>
-                      )}
-                      {validationError && (
-                        <div className="result-box error-box">
-                          <div className="result-icon error-icon">✗</div>
-                          <h3>Acceso Denegado</h3>
-                          <p className="result-message">{validationError}</p>
-                          <button className="btn-scan-again" onClick={resetScanner}>Escanear Otro QR</button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
               </article>
+            )}
+            {/* Modal del escáner QR (idéntico a Beneficio/Edificio) */}
+            {showScanner && (
+              <div className="modal-overlay" onClick={() => { setShowScanner(false); setIsScanning(false); setValidationError(null); setScanResult(null); }}>
+                <div className="modal-content" onClick={e => e.stopPropagation()}>
+                  <button className="close-btn" onClick={() => { setShowScanner(false); setIsScanning(false); setValidationError(null); setScanResult(null); }}>✕</button>
+                  <h2 className="scanner-title">Escanea tu QR de Credenciales</h2>
+                  <p className="scanner-hint">Escanea el QR que aparece en tu perfil</p>
+                  {validationResult && validationResult.permitido ? (
+                    <div className="success-message">
+                      <div className="success-icon">✓</div>
+                      <p>¡Acceso concedido!</p>
+                    </div>
+                  ) : validationError ? (
+                    <div className="error-message">
+                      <p>{validationError}</p>
+                      <button className="retry-btn" onClick={startScanner}>Reintentar</button>
+                    </div>
+                  ) : isScanning ? (
+                    <div id="qr-reader-salon" className="qr-reader"></div>
+                  ) : (
+                    <button className="canjear-btn" onClick={startScanner}>Iniciar Escáner</button>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -591,7 +566,7 @@ export default function SalonDetalle() {
           gap: 12px;
         }
 
-        .btn-start-scan {
+        .canjear-btn {
           background: rgba(255,255,255,0.9);
           color: #F37426;
           border: 2px solid rgba(35,31,32,0.15);
@@ -605,14 +580,128 @@ export default function SalonDetalle() {
           transition: all 0.2s ease;
         }
 
-        .btn-start-scan:hover {
+        .canjear-btn:hover {
           background: white;
           transform: translateY(-2px);
           box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
-        .btn-start-scan:active {
+        .canjear-btn:active {
           transform: translateY(0);
+        }
+
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background: rgba(0,0,0,0.55);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+        }
+
+        .modal-content {
+          background: #fff;
+          color: #231F20;
+          border-radius: 18px;
+          padding: 32px 24px 24px 24px;
+          min-width: 320px;
+          max-width: 95vw;
+          min-height: 220px;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .close-btn {
+          position: absolute;
+          top: 12px;
+          right: 16px;
+          background: transparent;
+          border: none;
+          font-size: 1.5rem;
+          color: #F37426;
+          cursor: pointer;
+          font-weight: 700;
+        }
+
+        .scanner-title {
+          margin: 0 0 8px 0;
+          font-size: 1.2rem;
+          font-weight: 800;
+          text-align: center;
+        }
+
+        .scanner-hint {
+          margin: 0 0 18px 0;
+          font-size: 0.98rem;
+          color: #F37426;
+          text-align: center;
+        }
+
+        .qr-reader {
+          width: 100%;
+          min-height: 260px;
+          margin-bottom: 12px;
+        }
+
+        .success-message {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
+          margin-top: 12px;
+        }
+        .success-icon {
+          width: 54px;
+          height: 54px;
+          border-radius: 50%;
+          background: #16a34a;
+          color: #fff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 2.2rem;
+          font-weight: 900;
+        }
+        .success-message p {
+          margin: 0;
+          font-size: 1.1rem;
+          color: #16a34a;
+          font-weight: 700;
+        }
+
+        .error-message {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
+          margin-top: 12px;
+        }
+        .error-message p {
+          margin: 0;
+          color: #b91c1c;
+          font-weight: 700;
+        }
+        .retry-btn {
+          background: #F37426;
+          color: #fff;
+          border: none;
+          border-radius: 12px;
+          padding: 10px 20px;
+          font-size: 1rem;
+          font-weight: 700;
+          cursor: pointer;
+          margin-top: 8px;
+          transition: background 0.2s;
+        }
+        .retry-btn:hover {
+          background: #ff8d45;
         }
 
         .scanner-active {
