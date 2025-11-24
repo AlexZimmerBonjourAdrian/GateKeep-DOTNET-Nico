@@ -59,17 +59,25 @@ export default function listadoBeneficios() {
   const [searchInput, setSearchInput] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [soloVigentes, setSoloVigentes] = useState(false);
   const inputRef = useRef(null);
 
   // Filter beneficios based on search input (case-insensitive) and optional date range
   const filteredBeneficios = useMemo(() => {
     const q = searchInput.trim().toLowerCase();
+    const hoy = new Date();
     return beneficios.filter((beneficio) => {
       // Solo mostrar beneficios activos
       if (!(beneficio.Activo ?? beneficio.activo)) return false;
 
       const tipo = beneficio.Tipo ?? beneficio.tipo;
       const fechaVencimiento = beneficio.FechaDeVencimiento ?? beneficio.fechaDeVencimiento ?? null;
+
+      // Filtrar por vigencia (fecha) solo si el usuario marca 'Solo vigentes'
+      if (soloVigentes && fechaVencimiento) {
+        const fechaVenc = new Date(fechaVencimiento);
+        if (fechaVenc < hoy) return false;
+      }
 
       // Filter by query on tipo (convertir a texto y buscar)
       if (q) {
@@ -85,14 +93,13 @@ export default function listadoBeneficios() {
       // Filter by date range if provided (filtrar por fecha de vencimiento)
       if (fechaVencimiento) {
         const fechaVencimientoIso = new Date(fechaVencimiento).toISOString().split('T')[0];
-
         if (dateFrom && fechaVencimientoIso < dateFrom) return false;
         if (dateTo && fechaVencimientoIso > dateTo) return false;
       }
 
       return true;
     });
-  }, [beneficios, searchInput, dateFrom, dateTo]);
+  }, [beneficios, searchInput, dateFrom, dateTo, soloVigentes]);
 
   // Group filtered beneficios in chunks of 4
   const groupedBeneficios = [];
@@ -172,7 +179,20 @@ export default function listadoBeneficios() {
                 />
               </div>
 
-              {/* Filtro de solo vigentes eliminado */}
+
+              <div className="field" style={{ minWidth: '140px' }}>
+                <label className="field-label" htmlFor="solo-vigentes">Solo vigentes</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', background:'#f8fafc', border:'1px solid #e5e7eb', borderRadius: '20px' }}>
+                  <input
+                    id="solo-vigentes"
+                    type="checkbox"
+                    checked={soloVigentes}
+                    onChange={(e) => setSoloVigentes(e.target.checked)}
+                    aria-label="Filtrar vigentes"
+                  />
+                  <span style={{ fontSize: '0.8rem', color:'#111827' }}>Vigentes</span>
+                </div>
+              </div>
 
               {isAdmin && (
                 <div className="actions-inline">

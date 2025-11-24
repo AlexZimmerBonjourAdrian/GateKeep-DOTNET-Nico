@@ -193,13 +193,25 @@ export default function SalonDetalle() {
     }
   }
 
-  // Función para reiniciar el escáner
+  // Función para reiniciar el escáner (igual Beneficio)
   const resetScanner = () => {
     setScanResult(null)
     setValidationResult(null)
     setValidationError(null)
     setCameraError(null)
+    setIsScanning(true)
     startScanner()
+  }
+
+  // Función para cerrar el escáner (igual Beneficio)
+  const cerrarEscaner = async () => {
+    if (html5QrCodeRef.current && isScanning) {
+      await html5QrCodeRef.current.stop()
+    }
+    setShowScanner(false)
+    setIsScanning(false)
+    setScanResult(null)
+    setValidationError(null)
   }
 
   // Limpiar escáner al desmontar
@@ -328,27 +340,20 @@ export default function SalonDetalle() {
               </article>
             )}
 
-            {/* Escáner QR para validar acceso (modal y estilos unificados) */}
+            {/* Botón y modal de escáner QR idénticos a Beneficio */}
             {!loading && salon && reglaAcceso && (
               <article className="card scanner-card">
-                <header className="card-header">
-                  <h2 className="subtitle">
-                    <i className="pi pi-qrcode" style={{marginRight: '8px'}}></i>
-                    Validar Acceso
-                  </h2>
-                </header>
-                <div className="scanner-content">
-                  <button className="canjear-btn" onClick={() => { setShowScanner(true); setIsScanning(false); setValidationError(null); setScanResult(null); }}>
-                    Validar Acceso con QR
+                <div className="body">
+                  <button className="canjear-btn" onClick={() => { setShowScanner(true); setIsScanning(true); setValidationError(null); setScanResult(null); }}>
+                    Validar acceso
                   </button>
                 </div>
               </article>
             )}
-            {/* Modal del escáner QR (idéntico a Beneficio/Edificio) */}
             {showScanner && (
-              <div className="modal-overlay" onClick={() => { setShowScanner(false); setIsScanning(false); setValidationError(null); setScanResult(null); }}>
+              <div className="modal-overlay" onClick={cerrarEscaner}>
                 <div className="modal-content" onClick={e => e.stopPropagation()}>
-                  <button className="close-btn" onClick={() => { setShowScanner(false); setIsScanning(false); setValidationError(null); setScanResult(null); }}>✕</button>
+                  <button className="close-btn" onClick={cerrarEscaner}>✕</button>
                   <h2 className="scanner-title">Escanea tu QR de Credenciales</h2>
                   <p className="scanner-hint">Escanea el QR que aparece en tu perfil</p>
                   {validationResult && validationResult.permitido ? (
@@ -359,21 +364,18 @@ export default function SalonDetalle() {
                   ) : validationError ? (
                     <div className="error-message">
                       <p>{validationError}</p>
-                      <button className="retry-btn" onClick={startScanner}>Reintentar</button>
+                      <button className="retry-btn" onClick={resetScanner}>Reintentar</button>
                     </div>
                   ) : isScanning ? (
                     <div id="qr-reader-salon" className="qr-reader"></div>
-                  ) : (
-                    <button className="canjear-btn" onClick={startScanner}>Iniciar Escáner</button>
-                  )}
+                  ) : null}
                 </div>
               </div>
             )}
           </div>
         </div>
       </section>
-
-      <style jsx>{`
+   <style jsx>{`
         .page-root {
           width: 100%;
           min-height: 100vh;
@@ -418,6 +420,7 @@ export default function SalonDetalle() {
           border: 1px solid rgba(243,116,38,0.35);
           border-radius: 9999px;
           padding: 8px 12px;
+
           font-weight: 700;
           cursor: pointer;
           display: inline-flex;
