@@ -214,9 +214,16 @@ export default function BeneficioDetalle() {
               <article className="card">
                 <header className="card-header">
                   <h1 className="title">Beneficio #{beneficio.Id || beneficio.id}</h1>
-                  <span className={`badge ${((beneficio.Vigencia ?? beneficio.vigencia) ? 'ok' : 'off')}`}>
-                    {(beneficio.Vigencia ?? beneficio.vigencia) ? 'Vigente' : 'No vigente'}
-                  </span>
+                  {(() => {
+                    const hoy = new Date();
+                    const fechaVenc = new Date(beneficio.FechaDeVencimiento || beneficio.fechaDeVencimiento);
+                    const vigente = fechaVenc >= hoy;
+                    return (
+                      <span className={`badge ${vigente ? 'ok' : 'off'}`}>
+                        {vigente ? 'Vigente' : 'No vigente'}
+                      </span>
+                    );
+                  })()}
                 </header>
 
                 <div className="meta">
