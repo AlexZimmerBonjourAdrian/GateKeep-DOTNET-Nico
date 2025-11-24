@@ -4,6 +4,7 @@ FROM node:18-alpine AS build
 WORKDIR /app
 
 # Accept build argument for API URL (CRÍTICO: debe estar disponible en build time)
+# Valor por defecto: https://api.zimmzimmgames.com
 ARG NEXT_PUBLIC_API_URL=https://api.zimmzimmgames.com
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
