@@ -359,26 +359,29 @@ const Carousel = ({ items, route }) => {
             border-radius: 12px;
           }
 
-          /* Optimized text sizes for mobile readability */
+
+          /* Mejorar legibilidad y ajuste en mobile */
           .carousel-item h3 {
-            font-size: 0.8rem;
-            line-height: 1.25;
+            font-size: 0.72rem;
+            line-height: 1.18;
             -webkit-line-clamp: 2;
-            margin-bottom: 6px;
+            margin-bottom: 5px;
+            word-break: break-word;
           }
 
           .carousel-item p {
-            font-size: 0.7rem;
-            line-height: 1.3;
+            font-size: 0.62rem;
+            line-height: 1.18;
             -webkit-line-clamp: 2;
+            word-break: break-word;
           }
 
           .see-more-top { 
-            font-size: 0.75rem;
-            line-height: 1.3;
+            font-size: 0.68rem;
+            line-height: 1.2;
           }
           .see-more-arrow { 
-            font-size: 1.6rem;
+            font-size: 1.3rem;
             line-height: 1;
           }
 
@@ -388,6 +391,7 @@ const Carousel = ({ items, route }) => {
             font-size: 0.95rem;
           }
         }
+
 
         /* TABLET: 426px - 768px */
         @media (min-width: 426px) and (max-width: 768px) {
@@ -401,14 +405,36 @@ const Carousel = ({ items, route }) => {
             max-width: 300px;
             min-width: 140px;
             aspect-ratio: 9 / 13;
-            padding: 16px;
-            border-radius: 18px;
+            padding: 14px;
+            border-radius: 16px;
+          }
+
+          .carousel-item h3 {
+            font-size: 0.85rem;
+            line-height: 1.18;
+            margin-bottom: 6px;
+            word-break: break-word;
+          }
+
+          .carousel-item p {
+            font-size: 0.72rem;
+            line-height: 1.18;
+            word-break: break-word;
+          }
+
+          .see-more-top { 
+            font-size: 0.75rem;
+            line-height: 1.2;
+          }
+          .see-more-arrow { 
+            font-size: 1.5rem;
+            line-height: 1;
           }
 
           .carousel-button {
-            width: 42px;
-            height: 42px;
-            font-size: 1.1rem;
+            width: 38px;
+            height: 38px;
+            font-size: 1rem;
           }
         }
 
