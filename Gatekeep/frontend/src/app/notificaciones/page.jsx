@@ -115,7 +115,8 @@ export default function ListadoNotificaciones() {
                     const notifId = n.NotificacionId || n.notificacionId;
                     const mensaje = n.Mensaje || n.mensaje || '';
                     const tipo = n.Tipo || n.tipo || 'General';
-                    const fechaCreacion = n.FechaCreacion || n.fechaCreacion;
+                    // Usar el primer campo de fecha disponible
+                    const fechaCreacion = n.fecha;
                     // Asegurarse de que el valor sea booleano y considerar 'leido' (todo minúscula)
                     const leida = Boolean(n.Leida ?? n.leida ?? n.leido);
                     const isOpen = openId === notifId;
