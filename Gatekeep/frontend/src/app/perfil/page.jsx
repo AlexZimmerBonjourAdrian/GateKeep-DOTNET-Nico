@@ -357,6 +357,19 @@ export default function Perfil() {
                   <i className="pi pi-th-large" aria-hidden={true}></i>
                   <span>Salones</span>
                 </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  tabIndex={0}
+                  className="admin-dropdown-item"
+                  onClick={() => {
+                    router.push('/usuarios/listadoUsuarios');
+                    setAdminMenuOpen(false);
+                  }}
+                >
+                  <i className="pi pi-users" aria-hidden={true}></i>
+                  <span>Usuarios</span>
+                </button>
               </div>
             )}
           </div>
