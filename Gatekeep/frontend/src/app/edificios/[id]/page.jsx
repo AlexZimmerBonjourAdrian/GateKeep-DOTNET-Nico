@@ -193,6 +193,7 @@ export default function EdificioDetalle() {
     }
   }
 
+
   // Función para reiniciar el escáner
   const resetScanner = () => {
     setScanResult(null)
@@ -201,6 +202,26 @@ export default function EdificioDetalle() {
     setCameraError(null)
     startScanner()
   }
+
+  // Función para cerrar el escáner (modal)
+  const cerrarEscaner = async () => {
+    if (html5QrCodeRef.current && isScanning) {
+      await html5QrCodeRef.current.stop()
+    }
+    setShowScanner(false)
+    setIsScanning(false)
+    setScanResult(null)
+    setValidationError(null)
+  }
+
+
+  // Iniciar escáner automáticamente al abrir el modal
+  useEffect(() => {
+    if (showScanner && isScanning) {
+      startScanner();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showScanner, isScanning]);
 
   // Limpiar escáner al desmontar
   useEffect(() => {
