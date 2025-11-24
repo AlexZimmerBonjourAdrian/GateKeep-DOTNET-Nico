@@ -214,6 +214,15 @@ export default function SalonDetalle() {
     setValidationError(null)
   }
 
+
+  // Iniciar escáner automáticamente al abrir el modal
+  useEffect(() => {
+    if (showScanner && isScanning) {
+      startScanner();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showScanner, isScanning]);
+
   // Limpiar escáner al desmontar
   useEffect(() => {
     return () => {
