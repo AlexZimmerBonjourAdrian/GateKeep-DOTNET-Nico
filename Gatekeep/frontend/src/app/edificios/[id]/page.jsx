@@ -335,61 +335,36 @@ export default function EdificioDetalle() {
                   </h2>
                 </header>
                 <div className="scanner-content">
-                  <button className="btn-start-scan" onClick={() => setShowScanner(true)}>
-                    <i className="pi pi-camera" style={{marginRight: '8px'}}></i>
-                    Escanear QR
+                  <button className="canjear-btn" onClick={() => { setShowScanner(true); setIsScanning(false); setValidationError(null); setScanResult(null); }}>
+                    Validar Acceso con QR
                   </button>
                 </div>
-                {showScanner && (
-                  <div className="modal-overlay">
-                    <div className="modal-content">
-                      <button className="modal-close" onClick={async () => { setShowScanner(false); setIsScanning(false); setScanResult(null); setValidationResult(null); setValidationError(null); setCameraError(null); if (html5QrCodeRef.current) { await html5QrCodeRef.current.stop(); } }}>×</button>
-                      <h3>Escanear QR de Usuario</h3>
-                      <div id="qr-reader" style={{ width: '100%', minHeight: '260px', border: 'none', marginBottom: 12 }}></div>
-                      {!isScanning && !scanResult && !cameraError && (
-                        <button className="btn-start-scan" onClick={startScanner} style={{marginTop:8}}>Iniciar Escáner</button>
-                      )}
-                      {isScanning && (
-                        <p className="scan-instruction">📷 Apunta la cámara al código QR del usuario</p>
-                      )}
-                      {cameraError && (
-                        <div className="result-box error-box">
-                          <div className="result-icon error-icon">✗</div>
-                          <h3>Error de Cámara</h3>
-                          <p>{cameraError}</p>
-                          <button className="btn-retry" onClick={startScanner}>Reintentar</button>
-                        </div>
-                      )}
-                      {validationResult && validationResult.permitido && (
-                        <div className="result-box success-box">
-                          <div className="result-icon success-icon">✓</div>
-                          <h3>Acceso Permitido</h3>
-                          <p className="result-message">El usuario tiene acceso autorizado a este edificio.</p>
-                          <div className="result-details">
-                            <div className="detail-item">
-                              <span className="detail-label">Usuario ID:</span>
-                              <span className="detail-value">{validationResult.usuarioId}</span>
-                            </div>
-                            <div className="detail-item">
-                              <span className="detail-label">Fecha:</span>
-                              <span className="detail-value">{new Date(validationResult.fecha).toLocaleString('es-ES')}</span>
-                            </div>
-                          </div>
-                          <button className="btn-scan-again" onClick={resetScanner}>Escanear Otro QR</button>
-                        </div>
-                      )}
-                      {validationError && (
-                        <div className="result-box error-box">
-                          <div className="result-icon error-icon">✗</div>
-                          <h3>Acceso Denegado</h3>
-                          <p className="result-message">{validationError}</p>
-                          <button className="btn-scan-again" onClick={resetScanner}>Escanear Otro QR</button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
               </article>
+            )}
+            {/* Modal del escáner QR (idéntico a Beneficio) */}
+            {showScanner && (
+              <div className="modal-overlay" onClick={() => { setShowScanner(false); setIsScanning(false); setValidationError(null); setScanResult(null); }}>
+                <div className="modal-content" onClick={e => e.stopPropagation()}>
+                  <button className="close-btn" onClick={() => { setShowScanner(false); setIsScanning(false); setValidationError(null); setScanResult(null); }}>✕</button>
+                  <h2 className="scanner-title">Escanea tu QR de Credenciales</h2>
+                  <p className="scanner-hint">Escanea el QR que aparece en tu perfil</p>
+                  {validationResult && validationResult.permitido ? (
+                    <div className="success-message">
+                      <div className="success-icon">✓</div>
+                      <p>¡Acceso concedido!</p>
+                    </div>
+                  ) : validationError ? (
+                    <div className="error-message">
+                      <p>{validationError}</p>
+                      <button className="retry-btn" onClick={startScanner}>Reintentar</button>
+                    </div>
+                  ) : isScanning ? (
+                    <div id="qr-reader" className="qr-reader"></div>
+                  ) : (
+                    <button className="canjear-btn" onClick={startScanner}>Iniciar Escáner</button>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </div>

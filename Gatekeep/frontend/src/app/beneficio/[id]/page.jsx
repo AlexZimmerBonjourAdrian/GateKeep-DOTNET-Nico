@@ -110,38 +110,57 @@ export default function BeneficioDetalle() {
   const validarYCanjear = async (token) => {
     try {
       setCanjeError(null)
-      // Extraer el userId del token usando TokenUtils
-      const decoded = TokenUtils.decodeToken(token)
-      const qrUsuarioId =
-        decoded?.sub ||
-        decoded?.userId ||
-        decoded?.nameid ||
-        decoded?.id ||
-        decoded?.Id ||
-        decoded?.["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"]
-      if (!qrUsuarioId) {
-        setCanjeError('No se pudo obtener el ID de usuario del QR')
+
+      // 1. Validar que el token pertenece al usuario loggeado
+      const response = await fetch('http://localhost:5011/auth/validate', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        setCanjeError('QR inválido o expirado')
         return
       }
-      // Comparar con el usuario logueado
+
+      const data = await response.json()
+
+      if (!data.isValid || !data.user) {
+        setCanjeError('Credenciales inválidas')
+        return
+      }
+
+      // 2. Verificar que el QR es del usuario loggeado
+      const qrUsuarioId = data.user.id || data.user.Id
+      // Comparar como strings para evitar issues de tipo
       if (String(qrUsuarioId) !== String(usuarioId)) {
+        console.log('IDs no coinciden:', { qrUsuarioId, usuarioId, qrType: typeof qrUsuarioId, userType: typeof usuarioId })
         setCanjeError('Este QR no pertenece a tu cuenta')
         return
       }
-      // Canjear el beneficio
+      console.log('IDs coinciden - Procediendo al canje')
+      console.log('Datos del canje:', { usuarioId: parseInt(usuarioId, 10), beneficioId: id })
+
+      // 3. Canjear el beneficio (convertir usuarioId a number para el servicio)
       const canjearResponse = await BeneficioService.canjearBeneficio(
         parseInt(usuarioId, 10),
         id,
         'Punto de Control - App Web'
       )
+
       if (canjearResponse.status === 200) {
         setCanjeSuccess(true)
         setTimeout(() => {
           router.push('/historialBeneficios')
         }, 2000)
       }
+
     } catch (err) {
       console.error('Error canjeando beneficio:', err)
+      console.error('URL intentada:', err.config?.url)
+      console.error('Respuesta del servidor:', err.response?.data)
       if (err.response?.data?.error) {
         setCanjeError(err.response.data.error)
       } else if (err.response?.status === 404) {

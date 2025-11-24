@@ -137,13 +137,7 @@ export default function CrearBeneficio() {
               </div>
 
               <div className='w-full' style={{display:'flex', alignItems:'center', gap:'8px', marginLeft:'1vw', marginRight:'1vw'}}>
-                <input 
-                  id="vigencia-beneficio" 
-                  type="checkbox" 
-                  checked={vigencia} 
-                  onChange={(e) => setVigencia(e.target.checked)} 
-                />
-                <label htmlFor="vigencia-beneficio" style={{margin:0, fontSize:'0.8rem'}}>Vigente</label>
+                {/* Checkbox de Vigente eliminado */}
               </div>
             </div>
          

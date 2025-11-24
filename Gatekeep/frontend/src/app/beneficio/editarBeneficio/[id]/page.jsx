@@ -22,7 +22,7 @@ export default function EditarBeneficioPage() {
 	const [tipo, setTipo] = useState(0);
 	const [vigencia, setVigencia] = useState(true);
 	const [fechaDeVencimiento, setFechaDeVencimiento] = useState('');
-	const [cupos, setCupos] = useState(1);
+	const [cupos, setCupos] = useState('1');
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState(null);
 	const [success, setSuccess] = useState(false);
@@ -76,7 +76,8 @@ export default function EditarBeneficioPage() {
 	}, [beneficioId]);
 
 	const validate = () => {
-		if (!fechaDeVencimiento || cupos < 1) return 'Fecha de vencimiento y cupos (mínimo 1) son obligatorios';
+		if (!fechaDeVencimiento || cupos === '' || isNaN(Number(cupos))) return 'Fecha de vencimiento y cupos son obligatorios';
+		if (Number(cupos) < 1) return 'La cantidad de cupos debe ser mayor a 0';
 		const vencimiento = new Date(fechaDeVencimiento);
 		const hoy = new Date();
 		if (vencimiento <= hoy) return 'La fecha de vencimiento debe ser posterior a la fecha actual';
@@ -94,7 +95,7 @@ export default function EditarBeneficioPage() {
 			tipo,
 			vigencia,
 			fechaDeVencimiento: fechaVencimientoIso,
-			cupos
+			cupos: Number(cupos)
 		};
 		console.log('Enviando PUT a beneficio ID:', beneficioId);
 		console.log('Payload:', payload);
@@ -163,20 +164,14 @@ export default function EditarBeneficioPage() {
 								<span>Cupos Disponibles *</span>
 								<input 
 									type="number" 
-									min="1" 
 									placeholder="Cantidad de cupos" 
 									value={cupos} 
-									onChange={(e) => setCupos(parseInt(e.target.value) || 1)} 
+									onChange={(e) => setCupos(e.target.value)} 
+									onBlur={() => { if (cupos === '' || Number(cupos) < 1) setCupos('1'); }}
 								/>
 							</div>
 							<div className='w-full' style={{display:'flex', alignItems:'center', gap:'8px', marginLeft:'1vw', marginRight:'1vw'}}>
-								<input 
-									id="vigencia-beneficio" 
-									type="checkbox" 
-									checked={vigencia} 
-									onChange={(e) => setVigencia(e.target.checked)} 
-								/>
-								<label htmlFor="vigencia-beneficio" style={{margin:0, fontSize:'0.8rem'}}>Vigente</label>
+								{/* Checkbox de Vigente eliminado */}
 							</div>
 						</div>
 						{error && (
